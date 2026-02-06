@@ -6,11 +6,22 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from app import db
-from app.models import Assessment, Response, Attachment, AssessmentDocument
+from app.models import Assessment, AssessmentAccess, Response, Attachment, AssessmentDocument, User
 from app.ssbj_criteria import (
     SSBJ_CRITERIA, MATURITY_LEVELS, OBLIGATION_LABELS, LA_SCOPE_LABELS, LA_PRIORITY_LABELS,
     get_criteria_by_pillar,
 )
+
+
+def _require_access(assessment, required="view"):
+    """Check current_user has at least `required` permission. Returns None if OK, or redirect."""
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not assessment.user_can(current_user, required):
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    return None
 
 
 def _allowed_file(filename):
@@ -40,13 +51,29 @@ assessment_bp = Blueprint("assessment", __name__, url_prefix="/assessments")
 def list_assessments():
     if current_user.is_admin:
         assessments = Assessment.query.order_by(Assessment.updated_at.desc()).all()
+        shared_assessments = []
     else:
+        # Own assessments
         assessments = (
             Assessment.query.filter_by(user_id=current_user.id)
             .order_by(Assessment.updated_at.desc())
             .all()
         )
-    return render_template("assessment/list.html", assessments=assessments)
+        # Assessments shared with me
+        shared_ids = [
+            a.assessment_id for a in
+            AssessmentAccess.query.filter_by(user_id=current_user.id).all()
+        ]
+        shared_assessments = (
+            Assessment.query.filter(Assessment.id.in_(shared_ids))
+            .order_by(Assessment.updated_at.desc())
+            .all()
+        ) if shared_ids else []
+    return render_template(
+        "assessment/list.html",
+        assessments=assessments,
+        shared_assessments=shared_assessments,
+    )
 
 
 @assessment_bp.route("/create", methods=["GET", "POST"])
@@ -93,12 +120,9 @@ def create():
 @login_required
 def view(assessment_id):
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
 
     criteria_by_pillar = get_criteria_by_pillar()
     responses = {r.criterion_id: r for r in assessment.responses.all()}
@@ -108,6 +132,18 @@ def view(assessment_id):
     scored_count = assessment.responses.filter(Response.score.isnot(None)).count()
     unanswered_count = total_count - scored_count
     ai_enabled = bool(os.environ.get("ANTHROPIC_API_KEY", ""))
+    user_perm = assessment.user_permission(current_user)
+    can_edit = user_perm in ("owner", "manage", "edit")
+    can_manage = user_perm in ("owner", "manage")
+
+    # Team members for sharing panel
+    team_members = []
+    all_users = []
+    if can_manage:
+        team_members = assessment.team_access.all()
+        all_users = User.query.filter(
+            User.id != assessment.user_id
+        ).order_by(User.full_name).all()
 
     return render_template(
         "assessment/view.html",
@@ -119,6 +155,11 @@ def view(assessment_id):
         scored_count=scored_count,
         unanswered_count=unanswered_count,
         ai_enabled=ai_enabled,
+        user_perm=user_perm,
+        can_edit=can_edit,
+        can_manage=can_manage,
+        team_members=team_members,
+        all_users=all_users,
         maturity_levels=MATURITY_LEVELS,
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
@@ -130,12 +171,11 @@ def view(assessment_id):
 @login_required
 def assess_criterion(assessment_id, criterion_id):
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    # GET=view, POST=edit
+    required = "edit" if request.method == "POST" else "view"
+    denied = _require_access(assessment, required)
+    if denied:
+        return denied
 
     response = Response.query.filter_by(
         assessment_id=assessment_id, criterion_id=criterion_id
@@ -192,12 +232,9 @@ def assess_criterion(assessment_id, criterion_id):
 def bulk_save(assessment_id):
     """Save all inline score changes from the assessment view."""
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     updated = 0
     for resp in assessment.responses.all():
@@ -227,12 +264,9 @@ def bulk_save(assessment_id):
 @login_required
 def complete(assessment_id):
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     unanswered = assessment.responses.filter(Response.score.is_(None)).count()
     if unanswered > 0:
@@ -250,12 +284,9 @@ def complete(assessment_id):
 def roadmap(assessment_id):
     """Generate backcasting compliance roadmap."""
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
 
     from app.roadmap import generate_roadmap
     responses_list = assessment.responses.filter(Response.score.isnot(None)).all()
@@ -277,12 +308,9 @@ def roadmap(assessment_id):
 @login_required
 def report(assessment_id):
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
 
     criteria_by_pillar = get_criteria_by_pillar()
     responses = {r.criterion_id: r for r in assessment.responses.all()}
@@ -325,12 +353,9 @@ def report(assessment_id):
 def bulk_upload(assessment_id):
     """Upload documents at the assessment level."""
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     from app.analyzer import extract_text_from_file
 
@@ -371,12 +396,9 @@ def bulk_upload(assessment_id):
 def auto_assess(assessment_id):
     """Run auto-assessment on all uploaded documents."""
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     # GET requests redirect back to assessment view
     if request.method == "GET":
@@ -441,9 +463,9 @@ def delete_document(assessment_id, doc_id):
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     assessment = db.session.get(Assessment, assessment_id)
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], doc.filename)
     if os.path.exists(filepath):
@@ -463,12 +485,9 @@ def delete_document(assessment_id, doc_id):
 @login_required
 def upload_file(assessment_id, criterion_id):
     assessment = db.session.get(Assessment, assessment_id)
-    if not assessment:
-        flash("Assessment not found.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     response = Response.query.filter_by(
         assessment_id=assessment_id, criterion_id=criterion_id
@@ -544,9 +563,9 @@ def delete_file(assessment_id, attachment_id):
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     assessment = db.session.get(Assessment, assessment_id)
-    if not current_user.is_admin and assessment.user_id != current_user.id:
-        flash("Access denied.", "danger")
-        return redirect(url_for("assessment.list_assessments"))
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
 
     criterion_id = attachment.response.criterion_id
 
@@ -559,6 +578,77 @@ def delete_file(assessment_id, attachment_id):
     db.session.commit()
     flash("File deleted.", "success")
     return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+
+# =========================================================================
+# Team sharing
+# =========================================================================
+
+@assessment_bp.route("/<int:assessment_id>/share", methods=["POST"])
+@login_required
+def share_assessment(assessment_id):
+    """Add or update a team member's access."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "manage")
+    if denied:
+        return denied
+
+    user_id = request.form.get("user_id", type=int)
+    permission = request.form.get("permission", "view")
+    if permission not in ("view", "edit", "manage"):
+        permission = "view"
+
+    if not user_id:
+        flash("Please select a user.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    if user_id == assessment.user_id:
+        flash("The owner already has full access.", "info")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    target_user = db.session.get(User, user_id)
+    if not target_user:
+        flash("User not found.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    # Update existing or create new
+    existing = AssessmentAccess.query.filter_by(
+        assessment_id=assessment_id, user_id=user_id
+    ).first()
+    if existing:
+        existing.permission = permission
+        flash(f"Updated {target_user.full_name}'s access to '{permission}'.", "success")
+    else:
+        access = AssessmentAccess(
+            assessment_id=assessment_id,
+            user_id=user_id,
+            permission=permission,
+            granted_by=current_user.id,
+        )
+        db.session.add(access)
+        flash(f"Shared with {target_user.full_name} ({permission} access).", "success")
+
+    db.session.commit()
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
+@assessment_bp.route("/<int:assessment_id>/unshare/<int:access_id>", methods=["POST"])
+@login_required
+def unshare_assessment(assessment_id, access_id):
+    """Remove a team member's access."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "manage")
+    if denied:
+        return denied
+
+    access = db.session.get(AssessmentAccess, access_id)
+    if access and access.assessment_id == assessment_id:
+        name = access.user.full_name
+        db.session.delete(access)
+        db.session.commit()
+        flash(f"Removed {name}'s access.", "success")
+
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
 def _get_next_criterion(current_id):
