@@ -37,23 +37,34 @@ def index():
         "total_reviews": total_reviews,
     }
 
-    # Aggregate pillar scores across all completed assessments
-    pillar_averages = {}
-    completed = [a for a in assessments if a.status in ("completed", "under_review", "reviewed")]
-    for a in completed:
-        for pillar, score in a.pillar_scores().items():
-            if pillar not in pillar_averages:
-                pillar_averages[pillar] = {"total": 0, "count": 0}
-            pillar_averages[pillar]["total"] += score
-            pillar_averages[pillar]["count"] += 1
-    pillar_averages = {
-        k: round(v["total"] / v["count"], 1) if v["count"] else 0
-        for k, v in pillar_averages.items()
-    }
+    # Per-assessment pillar scores (for each completed/in-progress assessment)
+    scored_assessments = [
+        a for a in assessments
+        if a.status in ("in_progress", "completed", "under_review", "reviewed")
+        and a.overall_score > 0
+    ]
+
+    assessment_details = []
+    for a in scored_assessments:
+        pillar_scores = a.pillar_scores()
+        assessment_details.append({
+            "id": a.id,
+            "title": a.title,
+            "entity_name": a.entity_name,
+            "fiscal_year": a.fiscal_year,
+            "status": a.status,
+            "overall_score": a.overall_score,
+            "completion_pct": a.completion_pct,
+            "pillar_scores": pillar_scores,
+        })
+
+    # Collect all pillar names for consistent chart labels
+    all_pillars = ["Governance", "Strategy", "Risk Management", "Metrics & Targets"]
 
     return render_template(
         "dashboard/index.html",
         assessments=assessments,
         stats=stats,
-        pillar_averages=pillar_averages,
+        assessment_details=assessment_details,
+        all_pillars=all_pillars,
     )

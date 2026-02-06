@@ -104,12 +104,19 @@ def view(assessment_id):
     responses = {r.criterion_id: r for r in assessment.responses.all()}
     documents = assessment.documents.order_by(AssessmentDocument.uploaded_at.desc()).all()
 
+    total_count = assessment.responses.count()
+    scored_count = assessment.responses.filter(Response.score.isnot(None)).count()
+    unanswered_count = total_count - scored_count
+
     return render_template(
         "assessment/view.html",
         assessment=assessment,
         criteria_by_pillar=criteria_by_pillar,
         responses=responses,
         documents=documents,
+        total_count=total_count,
+        scored_count=scored_count,
+        unanswered_count=unanswered_count,
         maturity_levels=MATURITY_LEVELS,
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,

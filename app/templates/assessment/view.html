@@ -32,13 +32,6 @@
             <i class="bi bi-file-earmark-text me-1"></i>View Report
         </a>
         {% endif %}
-        {% if assessment.status == 'in_progress' and assessment.completion_pct == 100 %}
-        <form method="POST" action="{{ url_for('assessment.complete', assessment_id=assessment.id) }}">
-            <button type="submit" class="btn btn-success">
-                <i class="bi bi-check-circle me-1"></i>Mark Complete
-            </button>
-        </form>
-        {% endif %}
         {% if current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
         <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
             <button type="submit" class="btn btn-info text-white">
@@ -68,7 +61,7 @@
                         <input class="form-control" type="file" id="files" name="files" multiple required
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
                     </div>
-                    <small class="text-muted d-block mb-2">Supported: PDF, Word, Excel, CSV, TXT (max 16 MB each). You can select multiple files.</small>
+                    <small class="text-muted d-block mb-2">Supported: PDF, Word, Excel, CSV, TXT (max 100 MB each). You can select multiple files.</small>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-upload me-1"></i>Upload Documents
                     </button>
@@ -153,12 +146,26 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <strong>Overall Progress</strong>
-            <span>{{ assessment.completion_pct }}% complete</span>
+            <span>{{ assessment.completion_pct }}% complete ({{ scored_count }}/{{ total_count }} scored)</span>
         </div>
         <div class="progress" style="height: 12px;">
             <div class="progress-bar {% if assessment.completion_pct == 100 %}bg-success{% elif assessment.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}"
                  style="width: {{ assessment.completion_pct }}%"></div>
         </div>
+        {% if assessment.status in ('draft', 'in_progress') %}
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+            {% if unanswered_count > 0 %}
+            <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>{{ unanswered_count }} criteria not yet scored. Score all criteria to mark complete.</small>
+            {% else %}
+            <small class="text-success"><i class="bi bi-check-circle me-1"></i>All criteria scored. You can mark this assessment as complete.</small>
+            {% endif %}
+            <form method="POST" action="{{ url_for('assessment.complete', assessment_id=assessment.id) }}">
+                <button type="submit" class="btn btn-success btn-sm" {% if unanswered_count > 0 %}disabled title="Score all criteria first"{% endif %}>
+                    <i class="bi bi-check-circle me-1"></i>Mark Complete
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </div>
 
