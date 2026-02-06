@@ -94,6 +94,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Identify specific board committees or members with sustainability oversight. Document their mandate, authority, and reporting lines.",
         "assurance_focus": "Evidence of formal board mandate, committee terms of reference, and documented oversight activities.",
+        "minimum_action": "Designate one existing board committee (e.g., Risk Committee) as responsible for sustainability oversight. Add one line to their terms of reference: 'oversight of sustainability-related risks and opportunities.' Minute this decision.",
+        "best_practice": "Dedicated Sustainability Committee with named chair, quarterly meetings, formal terms of reference, direct reporting to full board, and documented agenda items. Peers like Toyota and Sony have standalone ESG committees with published charters.",
     },
     {
         "id": "GOV-02",
@@ -107,6 +109,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Ensure board charters and corporate governance policies explicitly reference sustainability oversight.",
         "assurance_focus": "Documented policies and terms of reference that explicitly include sustainability.",
+        "minimum_action": "Add sustainability oversight language to existing board committee charter or corporate governance policy. One paragraph is sufficient. Have the board formally approve the revised document.",
+        "best_practice": "Standalone sustainability governance policy linked to corporate governance code, annual policy review cycle, published in integrated report. Leading companies cross-reference SSBJ requirements in their governance framework.",
     },
     {
         "id": "GOV-03",
@@ -120,6 +124,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Document board member qualifications related to sustainability. Consider training programs.",
         "assurance_focus": "Board skills matrix, training records.",
+        "minimum_action": "Not required for minimum compliance (SHOULD, not SHALL). If desired: arrange one sustainability briefing session for the board and note it in minutes.",
+        "best_practice": "Board skills matrix including ESG competencies, annual sustainability training for all directors, external sustainability advisor retained, competency gaps assessed yearly.",
     },
     {
         "id": "GOV-04",
@@ -133,6 +139,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Define management roles with sustainability responsibilities. Establish clear reporting to the board.",
         "assurance_focus": "Organizational charts, role descriptions, evidence of management reporting to board.",
+        "minimum_action": "Assign sustainability data responsibility to an existing manager (e.g., Environmental Affairs or IR). Document their role in a brief memo and establish a reporting line to the board committee.",
+        "best_practice": "Dedicated Chief Sustainability Officer or equivalent, cross-functional sustainability working group, documented RACI matrix, quarterly management reports to board with KPIs.",
     },
     {
         "id": "GOV-05",
@@ -146,6 +154,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Document how climate factors influence capital allocation and strategic decisions.",
         "assurance_focus": "Evidence of climate considerations in management meeting minutes and investment decisions.",
+        "minimum_action": "Add a climate risk checklist item to existing capital investment approval process. Minute at least one management discussion where climate was considered in a business decision.",
+        "best_practice": "Systematic climate integration in all major investment decisions, internal carbon pricing applied to CAPEX, climate risk dashboard reviewed monthly by management, shadow carbon price in financial planning.",
     },
     # =========================================================================
     # STRATEGY
@@ -162,6 +172,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Assess risks across short, medium, and long-term horizons. Consider both financial and operational impacts.",
         "assurance_focus": "Documented risk register, methodology, time horizons applied.",
+        "minimum_action": "Create a simple sustainability risk register listing 5-10 key risks and opportunities. For each, note the time horizon (short/medium/long-term) and potential impact (high/medium/low). One workshop is enough.",
+        "best_practice": "Comprehensive risk register integrated with ERM, quantified financial impacts, regular stakeholder engagement to identify emerging risks, quarterly review cycle, published materiality matrix.",
     },
     {
         "id": "STR-02",
@@ -175,6 +187,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Map risks to specific business model elements. Assess value chain dependencies.",
         "assurance_focus": "Value chain mapping, business model impact assessment.",
+        "minimum_action": "Write a 1-2 page narrative describing how your top 3 sustainability risks affect your business model. Include a simple value chain diagram showing where risks concentrate.",
+        "best_practice": "Detailed value chain mapping with dependency analysis, quantified supply chain exposure, regular supplier engagement on sustainability, dynamic assessment updated annually.",
     },
     {
         "id": "STR-03",
@@ -188,6 +202,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Quantify financial impacts where possible. Connect sustainability risks to financial statement line items.",
         "assurance_focus": "Financial impact methodology, assumptions, connection to financial planning.",
+        "minimum_action": "Provide qualitative discussion of how sustainability risks may affect financial performance. Quantification can be phased in over time per SSBJ proportionality provisions.",
+        "best_practice": "Quantified financial impact analysis connected to specific P&L and balance sheet items, scenario-based financial projections, integration with medium-term business plan.",
     },
     {
         "id": "STR-04",
@@ -201,6 +217,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Use at least two scenarios including one consistent with 1.5°C. Document assumptions and time horizons.",
         "assurance_focus": "Scenario selection rationale, methodology documentation.",
+        "minimum_action": "Use two off-the-shelf scenarios (e.g., IEA NZE 2050 for transition, IPCC RCP 8.5 for physical). Write a qualitative narrative on how your strategy holds up under each. SSBJ allows proportionality.",
+        "best_practice": "Multiple quantified scenarios (IEA, NGFS), sector-specific modeling, financial impact quantification per scenario, board-reviewed resilience conclusions, annual update cycle.",
     },
     {
         "id": "STR-05",
@@ -214,6 +232,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "If a transition plan exists, document milestones, capital expenditure plans, and timelines.",
         "assurance_focus": "Documented transition plan, evidence of board approval, progress tracking.",
+        "minimum_action": "Not required for minimum compliance (interpretive). If you have any decarbonization plans, simply disclose them. If not, state that a plan is under development.",
+        "best_practice": "Board-approved transition plan with milestones, CAPEX allocation, SBTi-validated targets, annual progress reporting, third-party verification of progress.",
     },
     {
         "id": "STR-06",
@@ -227,6 +247,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Assess adaptability of business model under different scenarios. Identify key vulnerabilities.",
         "assurance_focus": "Documented resilience assessment.",
+        "minimum_action": "Not required for minimum compliance (SHOULD, not SHALL). A brief qualitative statement on strategy resilience is sufficient if you choose to address it.",
+        "best_practice": "Comprehensive resilience assessment linked to scenario analysis, adaptation strategies with timelines, regular board review of strategy resilience.",
     },
     # =========================================================================
     # RISK MANAGEMENT
@@ -243,6 +265,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Establish a formal risk identification process including environmental scanning and materiality assessment.",
         "assurance_focus": "Documented risk identification methodology, evidence of regular execution.",
+        "minimum_action": "Conduct one formal risk identification workshop. Document the process used (who participated, what was considered, how risks were identified). Keep the output as your risk register.",
+        "best_practice": "Annual structured risk identification with stakeholder engagement, emerging risk scanning, integration with materiality assessment, dynamic risk register with regular updates.",
     },
     {
         "id": "RSK-02",
@@ -256,6 +280,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Use consistent criteria for assessing likelihood and impact. Establish monitoring and escalation.",
         "assurance_focus": "Risk assessment criteria, risk registers, monitoring evidence.",
+        "minimum_action": "Add likelihood/impact scoring to your risk register (simple 3x3 matrix is sufficient). Document how you prioritize risks. Assign an owner to each top risk.",
+        "best_practice": "Quantified risk assessment with defined criteria, risk dashboard with KRIs, regular monitoring reports to management, automated alerts for threshold breaches.",
     },
     {
         "id": "RSK-03",
@@ -269,6 +295,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Integrate sustainability risks into the enterprise risk management (ERM) framework.",
         "assurance_focus": "ERM framework showing sustainability integration.",
+        "minimum_action": "Add sustainability as a risk category in your existing ERM framework. One paragraph in ERM policy describing integration is sufficient for minimum compliance.",
+        "best_practice": "Full integration of sustainability risks into ERM with unified risk appetite statement, cross-functional risk committee, combined reporting to board.",
     },
     {
         "id": "RSK-04",
@@ -282,6 +310,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Cover both physical risks (acute/chronic) and transition risks (policy, technology, market, reputation).",
         "assurance_focus": "Climate risk assessment documentation, physical and transition risk categorization.",
+        "minimum_action": "List your climate risks in two categories: physical (acute + chronic) and transition (policy, technology, market, reputation). Assess each as high/medium/low. Document in 1-2 pages.",
+        "best_practice": "Quantified climate risk assessment using TCFD framework, physical risk modeling (flood, heat stress), transition risk analysis with financial impacts, mitigation strategies per risk.",
     },
     {
         "id": "RSK-05",
@@ -295,6 +325,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "ESSENTIAL FOR LIMITED ASSURANCE: (1) Assign data owners for each emission source. (2) Document data collection procedures step-by-step. (3) Implement maker-checker review for calculations. (4) Maintain audit trail of all data changes. (5) Perform regular reconciliation of source data to reported figures. (6) Implement access controls on data systems.",
         "guidance": "Design controls comparable to financial reporting controls. Include data validation, reconciliation, and review procedures.",
         "assurance_focus": "Documented control framework, control testing evidence, data quality procedures, segregation of duties.",
+        "minimum_action": "CRITICAL FOR ASSURANCE: (1) Assign a data owner for GHG data. (2) Write a 1-page data collection procedure. (3) Implement maker-checker: one person calculates, another reviews. (4) Keep all source documents (invoices, meter readings). (5) Create a simple reconciliation checklist. This is the bare minimum an auditor needs to see.",
+        "best_practice": "Full internal control framework comparable to financial reporting (SOX-like), automated data validation, continuous monitoring, segregation of duties matrix, regular control testing by internal audit, error tracking with root cause analysis.",
     },
     # =========================================================================
     # METRICS & TARGETS
@@ -311,6 +343,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "ESSENTIAL FOR LIMITED ASSURANCE: (1) Complete inventory of all direct emission sources (fuel combustion, process, fugitive, mobile). (2) Documented calculation methodology (GHG Protocol preferred). (3) Verified activity data from meters, invoices, or logs. (4) Documented emission factors with sources and version dates. (5) Calculation review and sign-off by qualified person. (6) Reconciliation of activity data to financial records where applicable.",
         "guidance": "Measure using GHG Protocol or equivalent. Include all material sources. Use appropriate emission factors.",
         "assurance_focus": "Emission calculation methodology, source data, emission factors, completeness of boundary, data quality checks.",
+        "minimum_action": "CRITICAL FOR ASSURANCE: (1) List ALL direct emission sources (boilers, vehicles, refrigerants, etc.). (2) Write a calculation procedure: activity data x emission factor = tCO2e. (3) Use government-published emission factors (MOE Japan or DEFRA). (4) Collect activity data from fuel invoices. (5) Have someone review the calculation. (6) Keep all source documents.",
+        "best_practice": "Complete GHG inventory per GHG Protocol, third-party verified data, real-time monitoring systems, automated calculation tools, emission factors reviewed annually, continuous improvement of data quality.",
     },
     {
         "id": "MET-02",
@@ -324,6 +358,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "ESSENTIAL FOR LIMITED ASSURANCE: (1) Complete inventory of all purchased electricity, heat, steam, cooling. (2) Location-based calculation using grid emission factors. (3) Market-based calculation if applicable (contractual instruments). (4) Verified energy consumption data from utility invoices. (5) Documented grid emission factors with sources. (6) Review and sign-off by qualified person.",
         "guidance": "Report both location-based and market-based. Use appropriate grid emission factors.",
         "assurance_focus": "Both calculation approaches, grid factors, energy consumption data evidence.",
+        "minimum_action": "CRITICAL FOR ASSURANCE: (1) Collect electricity bills for ALL facilities. (2) Calculate location-based: kWh x grid emission factor (use Japan's area-specific factors from MOE). (3) If you buy green electricity, also calculate market-based. (4) SSBJ requires BOTH methods. (5) Have someone review. (6) Keep utility invoices.",
+        "best_practice": "Automated utility data collection, both location and market-based reported, renewable energy tracking with certificates, monthly monitoring, reconciliation to financial records, third-party verification.",
     },
     {
         "id": "MET-03",
@@ -337,6 +373,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Identify material Scope 3 categories. Use recognized estimation methodologies. Disclose data sources and assumptions.",
         "assurance_focus": "Category relevance assessment, calculation methodologies, data sources, assumptions.",
+        "minimum_action": "Not in initial LA scope. For minimum compliance: identify which of the 15 Scope 3 categories are material to your business. Calculate at least the top 2-3 categories using industry averages. SSBJ provides a relief period for first-year reporting.",
+        "best_practice": "All 15 categories assessed, material categories calculated with primary data where possible, supplier engagement program, annual improvement in data quality, science-based targeting for Scope 3.",
     },
     {
         "id": "MET-04",
@@ -350,6 +388,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Set credible targets. Define clear base years and milestones. Report progress annually.",
         "assurance_focus": "Target-setting methodology, base year data, progress tracking.",
+        "minimum_action": "Set at least one GHG reduction target. Define: base year, target year, whether absolute or intensity, and scope covered (at least Scope 1+2). Even a modest target is better than none for compliance.",
+        "best_practice": "SBTi-validated science-based targets for 1.5°C alignment, near-term and long-term targets, interim milestones, annual progress tracking with variance analysis, net-zero commitment with roadmap.",
     },
     {
         "id": "MET-05",
@@ -363,6 +403,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "Consider SASB industry standards as guidance. Disclosure depends on entity's assessment of relevance.",
         "assurance_focus": "Industry metric selection rationale if disclosed.",
+        "minimum_action": "Not required for minimum compliance (interpretive). If desired: check SASB standards for your industry and select 1-2 relevant metrics to disclose.",
+        "best_practice": "Full SASB industry standard disclosure, peer benchmarking, metrics integrated into management reporting, trend analysis over 3+ years.",
     },
     {
         "id": "MET-06",
@@ -376,6 +418,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "",
         "guidance": "SSBJ deliberated whether these should be mandatory. Currently subject to entity judgment on materiality.",
         "assurance_focus": "Methodology and data sources if disclosed.",
+        "minimum_action": "Not required for minimum compliance (interpretive). If desired: start with internal carbon price — even a simple estimate helps demonstrate climate integration in decision-making.",
+        "best_practice": "Internal carbon price applied to all CAPEX decisions, quantified transition and physical risk amounts, climate opportunity revenue tracking, capital deployment aligned to Paris goals.",
     },
     {
         "id": "MET-07",
@@ -389,6 +433,8 @@ SSBJ_CRITERIA = [
         "internal_controls": "ESSENTIAL FOR LIMITED ASSURANCE: (1) Data governance policy defining roles, responsibilities, and standards. (2) Validation rules at data entry points. (3) Reconciliation between source systems and reporting. (4) Error tracking and correction log. (5) Data completeness checks before reporting. (6) Documented data lineage from source to disclosure.",
         "guidance": "Implement data quality management comparable to financial reporting. Establish data governance and validation.",
         "assurance_focus": "Data governance framework, validation procedures, reconciliation evidence, data lineage.",
+        "minimum_action": "CRITICAL FOR ASSURANCE: (1) Create a data flow diagram: where does data come from, who enters it, who checks it. (2) Add basic validation (e.g., compare this year to last year — flag if >20% change). (3) Keep a simple error log. (4) Do a completeness check before reporting (all sites reported?).",
+        "best_practice": "Formal data governance policy, automated validation rules, real-time data quality dashboards, documented data lineage from source to disclosure, regular data quality audits, continuous improvement program.",
     },
 ]
 

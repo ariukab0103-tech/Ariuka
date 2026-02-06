@@ -41,6 +41,24 @@
         .pillar-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; }
         .progress { height: 8px; border-radius: 4px; }
         .table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #718096; }
+
+        /* Print styles for PDF export */
+        @media print {
+            body { background: white !important; font-size: 11px; }
+            .navbar, .sidebar, .no-print, #chat-btn, #chat-panel { display: none !important; }
+            .col-md-9, .col-lg-10 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+            .container-fluid { padding: 0 !important; }
+            .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+            .card-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .stat-card .stat-value { font-size: 1.5rem; }
+            .badge, .score-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .gap-high, .gap-medium, .gap-low, .stat-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table-danger, .table-warning { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            canvas { max-height: 200px !important; }
+            a { text-decoration: none !important; color: inherit !important; }
+            h2 { font-size: 1.4rem; }
+            @page { margin: 15mm; size: A4 landscape; }
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
