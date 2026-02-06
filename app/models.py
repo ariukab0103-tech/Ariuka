@@ -197,3 +197,27 @@ class Attachment(db.Model):
         backref=db.backref("attachments", lazy="dynamic", cascade="all, delete-orphan"),
     )
     uploader = db.relationship("User")
+
+
+class AssessmentDocument(db.Model):
+    """Assessment-level document used for bulk auto-assessment."""
+    __tablename__ = "assessment_documents"
+
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_id = db.Column(
+        db.Integer, db.ForeignKey("assessments.id"), nullable=False
+    )
+    filename = db.Column(db.String(256), nullable=False)
+    original_name = db.Column(db.String(256), nullable=False)
+    file_size = db.Column(db.Integer, default=0)
+    extracted_text = db.Column(db.Text, default="")
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    uploaded_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    assessment = db.relationship(
+        "Assessment",
+        backref=db.backref("documents", lazy="dynamic", cascade="all, delete-orphan"),
+    )
+    uploader = db.relationship("User")

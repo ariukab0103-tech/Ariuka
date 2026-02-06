@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from app import db
-from app.models import Assessment, Response, Attachment
+from app.models import Assessment, Response, Attachment, AssessmentDocument
 from app.ssbj_criteria import (
     SSBJ_CRITERIA, MATURITY_LEVELS, OBLIGATION_LABELS, LA_SCOPE_LABELS, LA_PRIORITY_LABELS,
     get_criteria_by_pillar,
@@ -16,6 +16,21 @@ from app.ssbj_criteria import (
 def _allowed_file(filename):
     return "." in filename and \
         filename.rsplit(".", 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
+
+
+def _save_uploaded_file(file):
+    """Save an uploaded file and return (stored_name, original_name, file_size)."""
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_dir, exist_ok=True)
+
+    original_name = secure_filename(file.filename)
+    ext = original_name.rsplit(".", 1)[1].lower() if "." in original_name else ""
+    stored_name = f"{uuid.uuid4().hex}.{ext}"
+
+    file.save(os.path.join(upload_dir, stored_name))
+    file_size = os.path.getsize(os.path.join(upload_dir, stored_name))
+    return stored_name, original_name, file_size
+
 
 assessment_bp = Blueprint("assessment", __name__, url_prefix="/assessments")
 
@@ -87,12 +102,14 @@ def view(assessment_id):
 
     criteria_by_pillar = get_criteria_by_pillar()
     responses = {r.criterion_id: r for r in assessment.responses.all()}
+    documents = assessment.documents.order_by(AssessmentDocument.uploaded_at.desc()).all()
 
     return render_template(
         "assessment/view.html",
         assessment=assessment,
         criteria_by_pillar=criteria_by_pillar,
         responses=responses,
+        documents=documents,
         maturity_levels=MATURITY_LEVELS,
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
@@ -226,6 +243,131 @@ def report(assessment_id):
     )
 
 
+# =========================================================================
+# Bulk document upload + auto-assessment
+# =========================================================================
+
+@assessment_bp.route("/<int:assessment_id>/bulk-upload", methods=["POST"])
+@login_required
+def bulk_upload(assessment_id):
+    """Upload documents at the assessment level."""
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    from app.analyzer import extract_text_from_file
+
+    files = request.files.getlist("files")
+    if not files or all(f.filename == "" for f in files):
+        flash("No files selected.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    uploaded_count = 0
+    for file in files:
+        if file.filename == "" or not _allowed_file(file.filename):
+            continue
+
+        stored_name, original_name, file_size = _save_uploaded_file(file)
+        filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], stored_name)
+
+        # Extract text
+        extracted = extract_text_from_file(filepath)
+
+        doc = AssessmentDocument(
+            assessment_id=assessment.id,
+            filename=stored_name,
+            original_name=original_name,
+            file_size=file_size,
+            extracted_text=extracted,
+            uploaded_by=current_user.id,
+        )
+        db.session.add(doc)
+        uploaded_count += 1
+
+    db.session.commit()
+    flash(f"{uploaded_count} document(s) uploaded. Click 'Auto-Assess' to analyze.", "success")
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
+@assessment_bp.route("/<int:assessment_id>/auto-assess", methods=["POST"])
+@login_required
+def auto_assess(assessment_id):
+    """Run auto-assessment on all uploaded documents."""
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    from app.analyzer import auto_assess_all
+
+    # Combine text from all assessment documents
+    docs = assessment.documents.all()
+    if not docs:
+        flash("No documents uploaded. Please upload documents first.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    combined_text = "\n\n".join(d.extracted_text for d in docs if d.extracted_text)
+    if not combined_text.strip():
+        flash("Could not extract text from uploaded documents. Try PDF, DOCX, XLSX, CSV, or TXT files.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    # Run auto-assessment
+    results = auto_assess_all(combined_text)
+
+    # Update responses
+    updated = 0
+    for resp in assessment.responses.all():
+        if resp.criterion_id in results:
+            score, evidence, notes = results[resp.criterion_id]
+            if score > 0:  # Only update if we found something
+                resp.score = score
+                resp.evidence = evidence
+                resp.notes = notes
+                updated += 1
+
+    if assessment.status == "draft":
+        assessment.status = "in_progress"
+
+    db.session.commit()
+    flash(f"Auto-assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored based on document analysis. You can review and adjust each score.", "success")
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
+@assessment_bp.route("/<int:assessment_id>/delete-doc/<int:doc_id>", methods=["POST"])
+@login_required
+def delete_document(assessment_id, doc_id):
+    """Delete an assessment-level document."""
+    doc = db.session.get(AssessmentDocument, doc_id)
+    if not doc:
+        flash("Document not found.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    assessment = db.session.get(Assessment, assessment_id)
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], doc.filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    db.session.delete(doc)
+    db.session.commit()
+    flash("Document deleted.", "success")
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
+# =========================================================================
+# Per-criterion file upload
+# =========================================================================
+
 @assessment_bp.route("/<int:assessment_id>/upload/<string:criterion_id>", methods=["POST"])
 @login_required
 def upload_file(assessment_id, criterion_id):
@@ -258,15 +400,7 @@ def upload_file(assessment_id, criterion_id):
         flash(f"File type not allowed. Accepted: {allowed}", "danger")
         return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
 
-    upload_dir = current_app.config["UPLOAD_FOLDER"]
-    os.makedirs(upload_dir, exist_ok=True)
-
-    original_name = secure_filename(file.filename)
-    ext = original_name.rsplit(".", 1)[1].lower() if "." in original_name else ""
-    stored_name = f"{uuid.uuid4().hex}.{ext}"
-
-    file.save(os.path.join(upload_dir, stored_name))
-    file_size = os.path.getsize(os.path.join(upload_dir, stored_name))
+    stored_name, original_name, file_size = _save_uploaded_file(file)
 
     attachment = Attachment(
         response_id=response.id,
@@ -293,6 +427,20 @@ def download_file(attachment_id):
     upload_dir = current_app.config["UPLOAD_FOLDER"]
     return send_from_directory(
         upload_dir, attachment.filename, download_name=attachment.original_name
+    )
+
+
+@assessment_bp.route("/download-doc/<int:doc_id>")
+@login_required
+def download_document(doc_id):
+    doc = db.session.get(AssessmentDocument, doc_id)
+    if not doc:
+        flash("File not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    return send_from_directory(
+        upload_dir, doc.filename, download_name=doc.original_name
     )
 
 
