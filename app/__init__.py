@@ -39,16 +39,6 @@ def create_app(config_class=Config):
     app.register_blueprint(review_bp)
     app.register_blueprint(chat_bp)
 
-    # Force password change for users who still have default/temporary passwords
-    @app.before_request
-    def check_password_change():
-        if (
-            current_user.is_authenticated
-            and current_user.must_change_password
-            and request.endpoint not in ("auth.change_password", "auth.logout", "static")
-        ):
-            return redirect(url_for("auth.change_password"))
-
     with app.app_context():
         db.create_all()
         _seed_admin()
@@ -66,7 +56,7 @@ def _seed_admin():
             email="admin@example.com",
             role="admin",
             full_name="Administrator",
-            must_change_password=True,
+            must_change_password=False,
         )
         admin.set_password("admin123")
         db.session.add(admin)

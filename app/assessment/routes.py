@@ -318,46 +318,51 @@ def auto_assess(assessment_id):
     if request.method == "GET":
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-    from app.analyzer import auto_assess_all
+    try:
+        from app.analyzer import auto_assess_all
 
-    # Combine text from all assessment documents
-    docs = assessment.documents.all()
-    if not docs:
-        flash("No documents uploaded. Please upload documents first.", "warning")
-        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+        # Combine text from all assessment documents
+        docs = assessment.documents.all()
+        if not docs:
+            flash("No documents uploaded. Please upload documents first.", "warning")
+            return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-    combined_text = "\n\n".join(d.extracted_text for d in docs if d.extracted_text)
-    if not combined_text.strip():
-        flash("Could not extract text from uploaded documents. Try PDF, DOCX, XLSX, CSV, or TXT files.", "warning")
-        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+        combined_text = "\n\n".join(d.extracted_text for d in docs if d.extracted_text)
+        if not combined_text.strip():
+            flash("Could not extract text from uploaded documents. Try PDF, DOCX, XLSX, CSV, or TXT files.", "warning")
+            return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-    # Run auto-assessment (AI if API key set, otherwise keyword fallback)
-    results, method, ai_error = auto_assess_all(combined_text)
+        # Run auto-assessment (AI if API key set, otherwise keyword fallback)
+        results, method, ai_error = auto_assess_all(combined_text)
 
-    # Update responses
-    updated = 0
-    for resp in assessment.responses.all():
-        if resp.criterion_id in results:
-            score, evidence, notes = results[resp.criterion_id]
-            if score > 0:  # Only update if we found something
-                resp.score = score
-                resp.evidence = evidence
-                resp.notes = notes
-                updated += 1
+        # Update responses
+        updated = 0
+        for resp in assessment.responses.all():
+            if resp.criterion_id in results:
+                score, evidence, notes = results[resp.criterion_id]
+                if score > 0:  # Only update if we found something
+                    resp.score = score
+                    resp.evidence = evidence
+                    resp.notes = notes
+                    updated += 1
 
-    if assessment.status == "draft":
-        assessment.status = "in_progress"
+        if assessment.status == "draft":
+            assessment.status = "in_progress"
 
-    db.session.commit()
+        db.session.commit()
 
-    if method == "ai":
-        flash(f"AI assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored by Claude AI. Review and adjust scores as needed.", "success")
-    elif ai_error:
-        # AI was attempted but failed — show the error clearly
-        flash(f"AI assessment FAILED: {ai_error}", "danger")
-        flash(f"Fell back to keyword-based scoring. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Fix the API issue and try again for accurate AI analysis.", "warning")
-    else:
-        flash(f"Keyword-based assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Set ANTHROPIC_API_KEY for AI-powered analysis.", "warning")
+        if method == "ai":
+            flash(f"AI assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored by Claude AI. Review and adjust scores as needed.", "success")
+        elif ai_error:
+            flash(f"AI assessment FAILED: {ai_error}", "danger")
+            flash(f"Fell back to keyword-based scoring. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Fix the API issue and try again for accurate AI analysis.", "warning")
+        else:
+            flash(f"Keyword-based assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Set ANTHROPIC_API_KEY for AI-powered analysis.", "warning")
+
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f"Auto-assess error: {traceback.format_exc()}")
+        flash(f"Auto-assessment error: {e}", "danger")
 
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
