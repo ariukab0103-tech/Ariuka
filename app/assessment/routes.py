@@ -7,7 +7,10 @@ from werkzeug.utils import secure_filename
 
 from app import db
 from app.models import Assessment, Response, Attachment
-from app.ssbj_criteria import SSBJ_CRITERIA, MATURITY_LEVELS, get_criteria_by_pillar
+from app.ssbj_criteria import (
+    SSBJ_CRITERIA, MATURITY_LEVELS, OBLIGATION_LABELS, LA_SCOPE_LABELS, LA_PRIORITY_LABELS,
+    get_criteria_by_pillar,
+)
 
 
 def _allowed_file(filename):
@@ -91,6 +94,9 @@ def view(assessment_id):
         criteria_by_pillar=criteria_by_pillar,
         responses=responses,
         maturity_levels=MATURITY_LEVELS,
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+        la_priority_labels=LA_PRIORITY_LABELS,
     )
 
 
@@ -149,6 +155,9 @@ def assess_criterion(assessment_id, criterion_id):
         criterion=criterion,
         response=response,
         maturity_levels=MATURITY_LEVELS,
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+        la_priority_labels=LA_PRIORITY_LABELS,
     )
 
 
@@ -211,6 +220,9 @@ def report(assessment_id):
         category_scores=category_scores,
         gaps=gaps,
         maturity_levels=MATURITY_LEVELS,
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+        la_priority_labels=LA_PRIORITY_LABELS,
     )
 
 

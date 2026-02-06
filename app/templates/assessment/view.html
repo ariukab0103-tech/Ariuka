@@ -43,6 +43,21 @@
     </div>
 </div>
 
+<!-- Legend -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <small class="fw-bold text-muted me-1">Legend:</small>
+            <small><span class="badge bg-danger">Mandatory (SHALL)</span> Required by SSBJ</small>
+            <small><span class="badge bg-warning text-dark">Recommended (SHOULD)</span> Expected practice</small>
+            <small><span class="badge bg-secondary">Interpretive</span> Entity discretion</small>
+            <span class="text-muted">|</span>
+            <small><span class="badge bg-danger bg-opacity-75"><i class="bi bi-shield-check me-1"></i>In LA Scope</span> Directly assured</small>
+            <small><span class="badge bg-warning text-dark bg-opacity-75"><i class="bi bi-shield me-1"></i>LA Supporting</span></small>
+        </div>
+    </div>
+</div>
+
 <!-- Progress Overview -->
 <div class="card mb-4">
     <div class="card-body">
@@ -76,8 +91,8 @@
             <thead>
                 <tr>
                     <th style="width: 80px;">ID</th>
+                    <th style="width: 130px;">Classification</th>
                     <th>Category</th>
-                    <th>Standard</th>
                     <th>Requirement</th>
                     <th style="width: 80px;">Score</th>
                     <th style="width: 100px;">Action</th>
@@ -86,10 +101,34 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr>
-                    <td><code>{{ c.id }}</code></td>
-                    <td>{{ c.category }}</td>
-                    <td><small class="text-muted">{{ c.standard }}</small></td>
+                <tr{% if c.la_scope == 'in_scope' %} class="table-danger table-active"{% endif %}>
+                    <td>
+                        <code>{{ c.id }}</code>
+                    </td>
+                    <td>
+                        {% set ob = obligation_labels.get(c.obligation, {}) %}
+                        <span class="badge bg-{{ ob.get('badge', 'secondary') }} mb-1" style="font-size: 0.65em;"
+                              title="{{ ob.get('description', '') }}">
+                            {{ ob.get('label', c.obligation) }}
+                        </span>
+                        <br>
+                        {% set la = la_scope_labels.get(c.la_scope, {}) %}
+                        {% if c.la_scope == 'in_scope' %}
+                        <span class="badge bg-danger bg-opacity-75" style="font-size: 0.6em;"
+                              title="{{ la.get('description', '') }}">
+                            <i class="bi bi-shield-check me-1"></i>{{ la.get('label', '') }}
+                        </span>
+                        {% elif c.la_scope == 'supporting' %}
+                        <span class="badge bg-warning text-dark bg-opacity-75" style="font-size: 0.6em;"
+                              title="{{ la.get('description', '') }}">
+                            <i class="bi bi-shield me-1"></i>{{ la.get('label', '') }}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ c.category }}</small>
+                        <br><small class="text-muted" style="font-size: 0.75em;">{{ c.standard }}</small>
+                    </td>
                     <td><small>{{ c.requirement[:120] }}{% if c.requirement|length > 120 %}...{% endif %}</small></td>
                     <td>
                         {% if resp and resp.score is not none %}

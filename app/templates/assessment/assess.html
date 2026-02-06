@@ -14,13 +14,38 @@
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
                     <span>
                         <code class="me-2">{{ criterion.id }}</code>
                         <span class="badge bg-secondary">{{ criterion.pillar }}</span>
                         <span class="badge bg-info text-dark">{{ criterion.standard }}</span>
                     </span>
                     <span class="text-muted">{{ criterion.category }}</span>
+                </div>
+                <!-- Classification Badges -->
+                <div class="mt-2">
+                    {% set ob = obligation_labels.get(criterion.obligation, {}) %}
+                    <span class="badge bg-{{ ob.get('badge', 'secondary') }}" title="{{ ob.get('description', '') }}">
+                        {{ ob.get('label', criterion.obligation) }}
+                    </span>
+                    {% set la = la_scope_labels.get(criterion.la_scope, {}) %}
+                    {% if criterion.la_scope == 'in_scope' %}
+                    <span class="badge bg-danger bg-opacity-75" title="{{ la.get('description', '') }}">
+                        <i class="bi bi-shield-check me-1"></i>{{ la.get('label', '') }}
+                    </span>
+                    {% elif criterion.la_scope == 'supporting' %}
+                    <span class="badge bg-warning text-dark bg-opacity-75" title="{{ la.get('description', '') }}">
+                        <i class="bi bi-shield me-1"></i>{{ la.get('label', '') }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary bg-opacity-50" title="{{ la.get('description', '') }}">
+                        {{ la.get('label', '') }}
+                    </span>
+                    {% endif %}
+                    {% set lp = la_priority_labels.get(criterion.la_priority, {}) %}
+                    <span class="badge bg-{{ lp.get('badge', 'secondary') }} bg-opacity-75" title="{{ lp.get('description', '') }}">
+                        Priority: {{ lp.get('label', criterion.la_priority) }}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
@@ -32,6 +57,13 @@
 
                 <h5>Limited Assurance Focus</h5>
                 <p class="text-muted"><i class="bi bi-search me-1"></i>{{ criterion.assurance_focus }}</p>
+
+                {% if criterion.internal_controls %}
+                <div class="alert alert-danger mt-3">
+                    <h6 class="alert-heading"><i class="bi bi-shield-lock me-1"></i>Internal Controls Required for Limited Assurance</h6>
+                    <p class="mb-0" style="white-space: pre-line;">{{ criterion.internal_controls }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -142,6 +174,37 @@
     </div>
 
     <div class="col-md-4">
+        <!-- Classification Card -->
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-tag me-2"></i>Requirement Classification</div>
+            <div class="card-body">
+                {% set ob = obligation_labels.get(criterion.obligation, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Obligation</small>
+                    <span class="badge bg-{{ ob.get('badge', 'secondary') }}">{{ ob.get('label', criterion.obligation) }}</span>
+                    <small class="text-muted d-block mt-1">{{ ob.get('description', '') }}</small>
+                </div>
+                {% set la = la_scope_labels.get(criterion.la_scope, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Limited Assurance Scope</small>
+                    {% if criterion.la_scope == 'in_scope' %}
+                    <span class="badge bg-danger bg-opacity-75"><i class="bi bi-shield-check me-1"></i>{{ la.get('label', '') }}</span>
+                    {% elif criterion.la_scope == 'supporting' %}
+                    <span class="badge bg-warning text-dark bg-opacity-75"><i class="bi bi-shield me-1"></i>{{ la.get('label', '') }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary bg-opacity-50">{{ la.get('label', '') }}</span>
+                    {% endif %}
+                    <small class="text-muted d-block mt-1">{{ la.get('description', '') }}</small>
+                </div>
+                {% set lp = la_priority_labels.get(criterion.la_priority, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Minimum Compliance Priority</small>
+                    <span class="badge bg-{{ lp.get('badge', 'secondary') }}">{{ lp.get('label', criterion.la_priority) }}</span>
+                    <small class="text-muted d-block mt-1">{{ lp.get('description', '') }}</small>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">Maturity Scale Reference</div>
             <div class="card-body">
