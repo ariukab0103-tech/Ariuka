@@ -278,10 +278,10 @@ Respond ONLY with valid JSON array, no other text. Example format:
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse AI response as JSON: {e}")
-        return None
+        raise RuntimeError(f"AI returned invalid response. Please try again.") from e
     except Exception as e:
         logger.error(f"AI assessment failed: {e}")
-        return None
+        raise RuntimeError(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -532,17 +532,29 @@ def auto_assess_all(combined_text):
     Run auto-assessment on all SSBJ criteria.
 
     Tries AI-powered assessment first (if ANTHROPIC_API_KEY is set).
-    Falls back to keyword matching if AI is unavailable.
+    Falls back to keyword matching ONLY if no API key is configured.
+    If AI fails (errors), raises the error so the user sees what went wrong.
 
-    Returns (results_dict, method_used).
+    Returns (results_dict, method_used, error_message).
     - results_dict: {criterion_id: (score, evidence, notes)}
     - method_used: "ai" or "keyword"
+    - error_message: None if success, or string describing AI failure
     """
-    # Try AI assessment first
-    ai_results = ai_assess_all(combined_text)
-    if ai_results:
-        return ai_results, "ai"
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
 
-    # Fall back to keyword matching
+    if api_key:
+        # API key is set — try AI assessment, report errors clearly
+        try:
+            ai_results = ai_assess_all(combined_text)
+            if ai_results:
+                return ai_results, "ai", None
+        except RuntimeError as e:
+            error_msg = str(e)
+            logger.warning(f"AI assessment failed, falling back to keyword: {error_msg}")
+            # Fall back to keyword but tell the user AI failed
+            keyword_results = keyword_assess_all(combined_text)
+            return keyword_results, "keyword", error_msg
+
+    # No API key — use keyword matching
     keyword_results = keyword_assess_all(combined_text)
-    return keyword_results, "keyword"
+    return keyword_results, "keyword", None
