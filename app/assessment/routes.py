@@ -302,7 +302,7 @@ def bulk_upload(assessment_id):
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
-@assessment_bp.route("/<int:assessment_id>/auto-assess", methods=["POST"])
+@assessment_bp.route("/<int:assessment_id>/auto-assess", methods=["GET", "POST"])
 @login_required
 def auto_assess(assessment_id):
     """Run auto-assessment on all uploaded documents."""
@@ -313,6 +313,10 @@ def auto_assess(assessment_id):
     if not current_user.is_admin and assessment.user_id != current_user.id:
         flash("Access denied.", "danger")
         return redirect(url_for("assessment.list_assessments"))
+
+    # GET requests redirect back to assessment view
+    if request.method == "GET":
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     from app.analyzer import auto_assess_all
 
