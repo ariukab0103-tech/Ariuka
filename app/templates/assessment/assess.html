@@ -129,7 +129,7 @@
                 <form method="POST" enctype="multipart/form-data"
                       action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
                     <div class="mb-3">
-                        <label for="file" class="form-label">Upload file (PDF, Word, Excel, Image, CSV — max 16 MB)</label>
+                        <label for="file" class="form-label">Upload file (PDF, Word, Excel, Image, CSV — max 100 MB)</label>
                         <input class="form-control" type="file" id="file" name="file" required
                                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt">
                     </div>
