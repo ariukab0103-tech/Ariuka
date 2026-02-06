@@ -37,6 +37,11 @@
             <i class="bi bi-calendar3 me-1"></i>Roadmap
         </a>
         {% endif %}
+        {% if can_manage %}
+        <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">
+            <i class="bi bi-people me-1"></i>Share
+        </a>
+        {% endif %}
         {% if current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
         <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
             <button type="submit" class="btn btn-info text-white">
@@ -203,15 +208,15 @@
 
 <!-- Team Sharing -->
 {% if can_manage %}
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center" role="button"
-         data-bs-toggle="collapse" data-bs-target="#teamPanel">
-        <span><i class="bi bi-people me-2"></i>Team Access
-            {% if team_members %}<span class="badge bg-primary ms-1">{{ team_members|length }}</span>{% endif %}
+<div class="card mb-4 border-primary" id="teamPanel">
+    <div class="card-header bg-primary bg-opacity-10 d-flex justify-content-between align-items-center" role="button"
+         data-bs-toggle="collapse" data-bs-target="#teamCollapse">
+        <span><i class="bi bi-people me-2"></i><strong>Team Access</strong>
+            {% if team_members %}<span class="badge bg-primary ms-1">{{ team_members|length }} member{{ 's' if team_members|length != 1 }}</span>{% endif %}
         </span>
         <i class="bi bi-chevron-down"></i>
     </div>
-    <div class="collapse {% if team_members %}show{% endif %}" id="teamPanel">
+    <div class="collapse show" id="teamCollapse">
         <div class="card-body">
             <!-- Add team member form -->
             <form method="POST" action="{{ url_for('assessment.share_assessment', assessment_id=assessment.id) }}"
