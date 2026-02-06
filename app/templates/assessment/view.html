@@ -70,13 +70,22 @@
             <div class="col-md-5">
                 {% if documents %}
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong><i class="bi bi-files me-1"></i>Uploaded Documents ({{ documents|length }})</strong>
+                    <strong><i class="bi bi-files me-1"></i>Uploaded ({{ documents|length }})</strong>
                     <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}">
                         <button type="submit" class="btn btn-success btn-sm">
-                            <i class="bi bi-magic me-1"></i>Auto-Assess All Criteria
+                            {% if ai_enabled %}
+                            <i class="bi bi-robot me-1"></i>AI Assess
+                            {% else %}
+                            <i class="bi bi-magic me-1"></i>Auto-Assess
+                            {% endif %}
                         </button>
                     </form>
                 </div>
+                {% if ai_enabled %}
+                <small class="text-success d-block mb-1"><i class="bi bi-check-circle me-1"></i>AI-powered analysis (Claude) enabled</small>
+                {% else %}
+                <small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Keyword mode. Set ANTHROPIC_API_KEY for AI analysis.</small>
+                {% endif %}
                 <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
                     {% for doc in documents %}
                     <div class="list-group-item d-flex justify-content-between align-items-center py-1 px-0">

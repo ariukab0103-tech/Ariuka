@@ -1,21 +1,23 @@
 """
 Auto-Assessment Analyzer
 
-Extracts text from uploaded documents and automatically scores each SSBJ
-criterion based on keyword/concept matching against the document content.
+Two modes:
+1. AI-powered (Claude API): Sends document text + each criterion to Claude for
+   contextual analysis with proper understanding of SSBJ requirements.
+2. Keyword fallback: Simple keyword matching when no API key is configured.
 
-Scoring logic:
-- Scans all uploaded documents for keywords relevant to each criterion
-- Assigns maturity scores (0-5) based on depth of coverage
-- Provides evidence excerpts showing which parts of documents matched
+Text extraction supports PDF, DOCX, XLSX, CSV, TXT.
 """
 
 import os
 import csv
-import io
+import json
+import logging
 import re
 
-from app.ssbj_criteria import SSBJ_CRITERIA
+from app.ssbj_criteria import SSBJ_CRITERIA, MATURITY_LEVELS
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +41,8 @@ def extract_text_from_file(filepath):
             return _extract_txt(filepath)
         else:
             return ""
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to extract text from {filepath}: {e}")
         return ""
 
 
@@ -88,13 +91,137 @@ def _extract_txt(filepath):
 
 
 # ---------------------------------------------------------------------------
-# Criterion keyword definitions
+# AI-powered assessment (Claude API)
 # ---------------------------------------------------------------------------
 
-# Each criterion maps to keyword groups at different maturity levels.
-# level_keywords[level] = list of keywords/phrases.
-# Score = highest level where at least one keyword matches.
-# If no keywords match at all, score = 0.
+def _get_anthropic_client():
+    """Get Anthropic client if API key is configured."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+    try:
+        import anthropic
+        return anthropic.Anthropic(api_key=api_key)
+    except Exception as e:
+        logger.warning(f"Failed to create Anthropic client: {e}")
+        return None
+
+
+def _truncate_text(text, max_chars=80000):
+    """Truncate text to fit within API limits while keeping meaningful content."""
+    if len(text) <= max_chars:
+        return text
+    # Keep beginning and end (most reports have summary at start, data at end)
+    half = max_chars // 2
+    return text[:half] + "\n\n[... content truncated for length ...]\n\n" + text[-half:]
+
+
+def ai_assess_all(combined_text):
+    """
+    Use Claude to assess all SSBJ criteria against the document text.
+
+    Sends the document text + all criteria in a single call for efficiency.
+    Returns dict: {criterion_id: (score, evidence, notes)}
+    """
+    client = _get_anthropic_client()
+    if not client:
+        return None
+
+    truncated = _truncate_text(combined_text)
+
+    # Build criteria descriptions for the prompt
+    criteria_list = []
+    for c in SSBJ_CRITERIA:
+        criteria_list.append(
+            f"- {c['id']} ({c['pillar']} / {c['category']}): {c['requirement']}\n"
+            f"  Obligation: {c['obligation']} | LA Scope: {c['la_scope']}\n"
+            f"  Guidance: {c['guidance']}"
+        )
+    criteria_text = "\n\n".join(criteria_list)
+
+    maturity_desc = "\n".join(
+        f"  {level}: {info['label']} - {info['description']}"
+        for level, info in MATURITY_LEVELS.items()
+    )
+
+    prompt = f"""You are an expert sustainability auditor specializing in Japanese SSBJ (Sustainability Standards Board of Japan) standards and limited assurance under ISAE 3000/3410/ISSA 5000.
+
+Analyze the following documents against each SSBJ criterion and assess the organization's maturity level.
+
+MATURITY SCALE:
+{maturity_desc}
+
+SCORING GUIDELINES:
+- Score 0: No evidence at all in the documents
+- Score 1: Topic is mentioned but no formal process or structure
+- Score 2: Some processes exist but incomplete or inconsistent documentation
+- Score 3: Formal documented processes with clear ownership (minimum for limited assurance)
+- Score 4: Monitored, measured processes with regular review cycles
+- Score 5: Continuous improvement, leading practice, fully assurance-ready
+
+SSBJ CRITERIA TO ASSESS:
+{criteria_text}
+
+DOCUMENTS TO ANALYZE:
+{truncated}
+
+INSTRUCTIONS:
+For each criterion, provide your assessment as a JSON array. Each element should have:
+- "id": the criterion ID (e.g., "GOV-01")
+- "score": integer 0-5
+- "evidence": specific quotes or references from the documents that support your score (2-3 sentences)
+- "notes": what the organization needs to improve to reach score 3+ for limited assurance readiness (2-3 sentences)
+
+Be strict and objective. Only give high scores when you see clear, specific evidence.
+If a document mentions a topic vaguely without specifics, that's score 1-2, not 3+.
+For score 3+, you need to see formal processes, specific methodologies, named responsibilities, or concrete data.
+
+Respond ONLY with valid JSON array, no other text. Example format:
+[
+  {{"id": "GOV-01", "score": 3, "evidence": "The report states...", "notes": "To improve..."}},
+  ...
+]"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=8000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        # Parse the response
+        response_text = response.content[0].text.strip()
+
+        # Extract JSON from response (handle potential markdown code blocks)
+        if response_text.startswith("```"):
+            # Remove markdown code block markers
+            response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
+            response_text = re.sub(r'\n?```\s*$', '', response_text)
+
+        results_list = json.loads(response_text)
+
+        results = {}
+        for item in results_list:
+            cid = item.get("id", "")
+            score = int(item.get("score", 0))
+            score = max(0, min(5, score))  # Clamp to 0-5
+            evidence = f"[AI Assessment] {item.get('evidence', '')}"
+            notes = item.get("notes", "")
+            results[cid] = (score, evidence, notes)
+
+        return results
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse AI response as JSON: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"AI assessment failed: {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Keyword-based fallback assessment
+# ---------------------------------------------------------------------------
 
 CRITERION_KEYWORDS = {
     "GOV-01": {
@@ -264,10 +391,6 @@ CRITERION_KEYWORDS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Scoring engine
-# ---------------------------------------------------------------------------
-
 def _find_excerpts(text, keywords, max_excerpts=3):
     """Find text excerpts around keyword matches."""
     excerpts = []
@@ -287,62 +410,74 @@ def _find_excerpts(text, keywords, max_excerpts=3):
     return excerpts
 
 
-def score_criterion(criterion_id, combined_text):
+def keyword_assess_all(combined_text):
     """
-    Score a single criterion against the combined document text.
+    Keyword-based fallback assessment for all SSBJ criteria.
 
-    Returns (score, evidence_text, notes).
+    Returns dict: {criterion_id: (score, evidence, notes)}
     """
-    keywords_by_level = CRITERION_KEYWORDS.get(criterion_id, {})
-    if not keywords_by_level:
-        return (0, "", "No auto-assessment keywords defined for this criterion.")
-
+    results = {}
     text_lower = combined_text.lower()
-    best_level = 0
-    all_matched = []
-    all_excerpts = []
 
-    for level in sorted(keywords_by_level.keys()):
-        kws = keywords_by_level[level]
-        matched = [kw for kw in kws if kw.lower() in text_lower]
-        if matched:
-            best_level = level
-            all_matched.extend(matched)
-            excerpts = _find_excerpts(combined_text, matched, max_excerpts=2)
-            all_excerpts.extend(excerpts)
+    for criterion in SSBJ_CRITERIA:
+        cid = criterion["id"]
+        keywords_by_level = CRITERION_KEYWORDS.get(cid, {})
 
-    if best_level == 0:
-        return (0, "", "No relevant content found in uploaded documents.")
+        if not keywords_by_level:
+            results[cid] = (0, "", "No assessment keywords defined for this criterion.")
+            continue
 
-    # Find the criterion for context
-    criterion = None
-    for c in SSBJ_CRITERIA:
-        if c["id"] == criterion_id:
-            criterion = c
-            break
+        best_level = 0
+        all_matched = []
+        all_excerpts = []
 
-    unique_matched = list(dict.fromkeys(all_matched))
-    evidence = f"[Auto-assessed] Keywords found: {', '.join(unique_matched[:10])}"
-    if all_excerpts:
-        unique_excerpts = list(dict.fromkeys(all_excerpts))
-        evidence += "\n\nRelevant excerpts:\n" + "\n".join(unique_excerpts[:4])
+        for level in sorted(keywords_by_level.keys()):
+            kws = keywords_by_level[level]
+            matched = [kw for kw in kws if kw.lower() in text_lower]
+            if matched:
+                best_level = level
+                all_matched.extend(matched)
+                excerpts = _find_excerpts(combined_text, matched, max_excerpts=2)
+                all_excerpts.extend(excerpts)
 
-    notes = f"[Auto-assessed] Maturity level {best_level} based on document analysis."
-    if criterion:
+        if best_level == 0:
+            results[cid] = (0, "", "No relevant content found in uploaded documents.")
+            continue
+
+        unique_matched = list(dict.fromkeys(all_matched))
+        evidence = f"[Keyword match] Keywords found: {', '.join(unique_matched[:10])}"
+        if all_excerpts:
+            unique_excerpts = list(dict.fromkeys(all_excerpts))
+            evidence += "\n\nRelevant excerpts:\n" + "\n".join(unique_excerpts[:4])
+
+        notes = f"Maturity level {best_level} based on keyword matching (not AI analysis)."
         notes += f"\nGuidance: {criterion['guidance']}"
 
-    return (best_level, evidence, notes)
+        results[cid] = (best_level, evidence, notes)
 
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
 
 def auto_assess_all(combined_text):
     """
     Run auto-assessment on all SSBJ criteria.
 
-    Returns dict: {criterion_id: (score, evidence, notes)}
+    Tries AI-powered assessment first (if ANTHROPIC_API_KEY is set).
+    Falls back to keyword matching if AI is unavailable.
+
+    Returns (results_dict, method_used).
+    - results_dict: {criterion_id: (score, evidence, notes)}
+    - method_used: "ai" or "keyword"
     """
-    results = {}
-    for criterion in SSBJ_CRITERIA:
-        cid = criterion["id"]
-        score, evidence, notes = score_criterion(cid, combined_text)
-        results[cid] = (score, evidence, notes)
-    return results
+    # Try AI assessment first
+    ai_results = ai_assess_all(combined_text)
+    if ai_results:
+        return ai_results, "ai"
+
+    # Fall back to keyword matching
+    keyword_results = keyword_assess_all(combined_text)
+    return keyword_results, "keyword"
