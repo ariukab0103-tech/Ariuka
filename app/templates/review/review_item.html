@@ -100,7 +100,7 @@
 
     <div class="col-md-4">
         <!-- Related Assessment Data -->
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">Assessment Data (Reference)</div>
             <div class="card-body">
                 <p class="text-muted small">Below are the entity's self-assessment responses for reference:</p>
@@ -117,8 +117,49 @@
                     {% if resp.evidence %}
                     <small class="text-muted">{{ resp.evidence[:100] }}{% if resp.evidence|length > 100 %}...{% endif %}</small>
                     {% endif %}
+                    {% set files = resp.attachments.all() %}
+                    {% if files %}
+                    <div class="mt-1">
+                        {% for file in files %}
+                        <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="badge bg-light text-dark text-decoration-none me-1">
+                            <i class="bi bi-file-earmark me-1"></i>{{ file.original_name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
+            </div>
+        </div>
+
+        <!-- Uploaded Documents -->
+        <div class="card">
+            <div class="card-header"><i class="bi bi-file-earmark-check me-2"></i>Uploaded Documents</div>
+            <div class="card-body">
+                {% set all_files = [] %}
+                {% for resp in related_responses %}
+                    {% for file in resp.attachments.all() %}
+                        {% if all_files.append(file) %}{% endif %}
+                    {% endfor %}
+                {% endfor %}
+                {% if all_files %}
+                <div class="list-group list-group-flush">
+                    {% for file in all_files %}
+                    <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="list-group-item list-group-item-action px-0">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-file-earmark me-1"></i>
+                                <small>{{ file.original_name }}</small>
+                            </div>
+                            <i class="bi bi-download text-muted"></i>
+                        </div>
+                        <small class="text-muted">{{ file.response.criterion_id }} — {{ (file.file_size / 1024) | round(1) }} KB</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">No documents uploaded by the assessor.</p>
+                {% endif %}
             </div>
         </div>
     </div>

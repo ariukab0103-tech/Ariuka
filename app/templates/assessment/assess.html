@@ -81,6 +81,64 @@
                 </form>
             </div>
         </div>
+
+        <!-- File Upload Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents
+            </div>
+            <div class="card-body">
+                {% if assessment.status in ('draft', 'in_progress') %}
+                <form method="POST" enctype="multipart/form-data"
+                      action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Upload file (PDF, Word, Excel, Image, CSV — max 16 MB)</label>
+                        <input class="form-control" type="file" id="file" name="file" required
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt">
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                </form>
+                <hr>
+                {% endif %}
+
+                {% set files = response.attachments.all() %}
+                {% if files %}
+                <div class="list-group list-group-flush">
+                    {% for file in files %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="text-decoration-none">
+                                <i class="bi bi-file-earmark me-1"></i>{{ file.original_name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">
+                                {{ (file.file_size / 1024) | round(1) }} KB
+                                — {{ file.uploaded_at.strftime('%Y-%m-%d %H:%M') if file.uploaded_at else '' }}
+                            </small>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="btn btn-sm btn-outline-success" title="Download">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            {% if assessment.status in ('draft', 'in_progress') %}
+                            <form method="POST" action="{{ url_for('assessment.delete_file', assessment_id=assessment.id, attachment_id=file.id) }}"
+                                  onsubmit="return confirm('Delete this file?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0"><small>No files uploaded yet.</small></p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="col-md-4">

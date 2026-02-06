@@ -1,9 +1,18 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+import os
+import uuid
+
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
 
 from app import db
-from app.models import Assessment, Response
+from app.models import Assessment, Response, Attachment
 from app.ssbj_criteria import SSBJ_CRITERIA, MATURITY_LEVELS, get_criteria_by_pillar
+
+
+def _allowed_file(filename):
+    return "." in filename and \
+        filename.rsplit(".", 1)[1].lower() in current_app.config["ALLOWED_EXTENSIONS"]
 
 assessment_bp = Blueprint("assessment", __name__, url_prefix="/assessments")
 
@@ -203,6 +212,102 @@ def report(assessment_id):
         gaps=gaps,
         maturity_levels=MATURITY_LEVELS,
     )
+
+
+@assessment_bp.route("/<int:assessment_id>/upload/<string:criterion_id>", methods=["POST"])
+@login_required
+def upload_file(assessment_id, criterion_id):
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    response = Response.query.filter_by(
+        assessment_id=assessment_id, criterion_id=criterion_id
+    ).first()
+    if not response:
+        flash("Criterion not found.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    if "file" not in request.files:
+        flash("No file selected.", "warning")
+        return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+    file = request.files["file"]
+    if file.filename == "":
+        flash("No file selected.", "warning")
+        return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+    if not _allowed_file(file.filename):
+        allowed = ", ".join(current_app.config["ALLOWED_EXTENSIONS"])
+        flash(f"File type not allowed. Accepted: {allowed}", "danger")
+        return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(upload_dir, exist_ok=True)
+
+    original_name = secure_filename(file.filename)
+    ext = original_name.rsplit(".", 1)[1].lower() if "." in original_name else ""
+    stored_name = f"{uuid.uuid4().hex}.{ext}"
+
+    file.save(os.path.join(upload_dir, stored_name))
+    file_size = os.path.getsize(os.path.join(upload_dir, stored_name))
+
+    attachment = Attachment(
+        response_id=response.id,
+        filename=stored_name,
+        original_name=original_name,
+        file_size=file_size,
+        uploaded_by=current_user.id,
+    )
+    db.session.add(attachment)
+    db.session.commit()
+
+    flash(f"File '{original_name}' uploaded.", "success")
+    return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+
+@assessment_bp.route("/download/<int:attachment_id>")
+@login_required
+def download_file(attachment_id):
+    attachment = db.session.get(Attachment, attachment_id)
+    if not attachment:
+        flash("File not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    return send_from_directory(
+        upload_dir, attachment.filename, download_name=attachment.original_name
+    )
+
+
+@assessment_bp.route("/<int:assessment_id>/delete-file/<int:attachment_id>", methods=["POST"])
+@login_required
+def delete_file(assessment_id, attachment_id):
+    attachment = db.session.get(Attachment, attachment_id)
+    if not attachment:
+        flash("File not found.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    assessment = db.session.get(Assessment, assessment_id)
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    criterion_id = attachment.response.criterion_id
+
+    # Delete physical file
+    filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], attachment.filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    db.session.delete(attachment)
+    db.session.commit()
+    flash("File deleted.", "success")
+    return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
 
 
 def _get_next_criterion(current_id):
