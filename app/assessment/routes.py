@@ -107,6 +107,7 @@ def view(assessment_id):
     total_count = assessment.responses.count()
     scored_count = assessment.responses.filter(Response.score.isnot(None)).count()
     unanswered_count = total_count - scored_count
+    ai_enabled = bool(os.environ.get("ANTHROPIC_API_KEY", ""))
 
     return render_template(
         "assessment/view.html",
@@ -117,6 +118,7 @@ def view(assessment_id):
         total_count=total_count,
         scored_count=scored_count,
         unanswered_count=unanswered_count,
+        ai_enabled=ai_enabled,
         maturity_levels=MATURITY_LEVELS,
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
@@ -325,8 +327,8 @@ def auto_assess(assessment_id):
         flash("Could not extract text from uploaded documents. Try PDF, DOCX, XLSX, CSV, or TXT files.", "warning")
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-    # Run auto-assessment
-    results = auto_assess_all(combined_text)
+    # Run auto-assessment (AI if API key set, otherwise keyword fallback)
+    results, method = auto_assess_all(combined_text)
 
     # Update responses
     updated = 0
@@ -343,7 +345,12 @@ def auto_assess(assessment_id):
         assessment.status = "in_progress"
 
     db.session.commit()
-    flash(f"Auto-assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored based on document analysis. You can review and adjust each score.", "success")
+
+    if method == "ai":
+        flash(f"AI assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored by Claude AI. Review and adjust scores as needed.", "success")
+    else:
+        flash(f"Keyword-based assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Set ANTHROPIC_API_KEY for AI-powered analysis.", "warning")
+
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
