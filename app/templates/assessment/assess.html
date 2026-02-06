@@ -14,13 +14,38 @@
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between align-items-start">
                     <span>
                         <code class="me-2">{{ criterion.id }}</code>
                         <span class="badge bg-secondary">{{ criterion.pillar }}</span>
                         <span class="badge bg-info text-dark">{{ criterion.standard }}</span>
                     </span>
                     <span class="text-muted">{{ criterion.category }}</span>
+                </div>
+                <!-- Classification Badges -->
+                <div class="mt-2">
+                    {% set ob = obligation_labels.get(criterion.obligation, {}) %}
+                    <span class="badge bg-{{ ob.get('badge', 'secondary') }}" title="{{ ob.get('description', '') }}">
+                        {{ ob.get('label', criterion.obligation) }}
+                    </span>
+                    {% set la = la_scope_labels.get(criterion.la_scope, {}) %}
+                    {% if criterion.la_scope == 'in_scope' %}
+                    <span class="badge bg-danger bg-opacity-75" title="{{ la.get('description', '') }}">
+                        <i class="bi bi-shield-check me-1"></i>{{ la.get('label', '') }}
+                    </span>
+                    {% elif criterion.la_scope == 'supporting' %}
+                    <span class="badge bg-warning text-dark bg-opacity-75" title="{{ la.get('description', '') }}">
+                        <i class="bi bi-shield me-1"></i>{{ la.get('label', '') }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary bg-opacity-50" title="{{ la.get('description', '') }}">
+                        {{ la.get('label', '') }}
+                    </span>
+                    {% endif %}
+                    {% set lp = la_priority_labels.get(criterion.la_priority, {}) %}
+                    <span class="badge bg-{{ lp.get('badge', 'secondary') }} bg-opacity-75" title="{{ lp.get('description', '') }}">
+                        Priority: {{ lp.get('label', criterion.la_priority) }}
+                    </span>
                 </div>
             </div>
             <div class="card-body">
@@ -32,6 +57,13 @@
 
                 <h5>Limited Assurance Focus</h5>
                 <p class="text-muted"><i class="bi bi-search me-1"></i>{{ criterion.assurance_focus }}</p>
+
+                {% if criterion.internal_controls %}
+                <div class="alert alert-danger mt-3">
+                    <h6 class="alert-heading"><i class="bi bi-shield-lock me-1"></i>Internal Controls Required for Limited Assurance</h6>
+                    <p class="mb-0" style="white-space: pre-line;">{{ criterion.internal_controls }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -81,9 +113,98 @@
                 </form>
             </div>
         </div>
+
+        <!-- File Upload Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents
+            </div>
+            <div class="card-body">
+                {% if assessment.status in ('draft', 'in_progress') %}
+                <form method="POST" enctype="multipart/form-data"
+                      action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Upload file (PDF, Word, Excel, Image, CSV — max 16 MB)</label>
+                        <input class="form-control" type="file" id="file" name="file" required
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt">
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                </form>
+                <hr>
+                {% endif %}
+
+                {% set files = response.attachments.all() %}
+                {% if files %}
+                <div class="list-group list-group-flush">
+                    {% for file in files %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div>
+                            <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="text-decoration-none">
+                                <i class="bi bi-file-earmark me-1"></i>{{ file.original_name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">
+                                {{ (file.file_size / 1024) | round(1) }} KB
+                                — {{ file.uploaded_at.strftime('%Y-%m-%d %H:%M') if file.uploaded_at else '' }}
+                            </small>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="btn btn-sm btn-outline-success" title="Download">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            {% if assessment.status in ('draft', 'in_progress') %}
+                            <form method="POST" action="{{ url_for('assessment.delete_file', assessment_id=assessment.id, attachment_id=file.id) }}"
+                                  onsubmit="return confirm('Delete this file?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0"><small>No files uploaded yet.</small></p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="col-md-4">
+        <!-- Classification Card -->
+        <div class="card mb-4">
+            <div class="card-header"><i class="bi bi-tag me-2"></i>Requirement Classification</div>
+            <div class="card-body">
+                {% set ob = obligation_labels.get(criterion.obligation, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Obligation</small>
+                    <span class="badge bg-{{ ob.get('badge', 'secondary') }}">{{ ob.get('label', criterion.obligation) }}</span>
+                    <small class="text-muted d-block mt-1">{{ ob.get('description', '') }}</small>
+                </div>
+                {% set la = la_scope_labels.get(criterion.la_scope, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Limited Assurance Scope</small>
+                    {% if criterion.la_scope == 'in_scope' %}
+                    <span class="badge bg-danger bg-opacity-75"><i class="bi bi-shield-check me-1"></i>{{ la.get('label', '') }}</span>
+                    {% elif criterion.la_scope == 'supporting' %}
+                    <span class="badge bg-warning text-dark bg-opacity-75"><i class="bi bi-shield me-1"></i>{{ la.get('label', '') }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary bg-opacity-50">{{ la.get('label', '') }}</span>
+                    {% endif %}
+                    <small class="text-muted d-block mt-1">{{ la.get('description', '') }}</small>
+                </div>
+                {% set lp = la_priority_labels.get(criterion.la_priority, {}) %}
+                <div class="mb-3">
+                    <small class="text-muted d-block">Minimum Compliance Priority</small>
+                    <span class="badge bg-{{ lp.get('badge', 'secondary') }}">{{ lp.get('label', criterion.la_priority) }}</span>
+                    <small class="text-muted d-block mt-1">{{ lp.get('description', '') }}</small>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">Maturity Scale Reference</div>
             <div class="card-body">

@@ -74,7 +74,8 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Pillar</th>
+                    <th>Obligation</th>
+                    <th>LA Priority</th>
                     <th>Category</th>
                     <th>Score</th>
                     <th>Gap</th>
@@ -84,9 +85,25 @@
             </thead>
             <tbody>
                 {% for gap in gaps %}
-                <tr class="{% if gap.response.score <= 1 %}table-danger{% else %}table-warning{% endif %}">
-                    <td><code>{{ gap.criterion.id }}</code></td>
-                    <td>{{ gap.criterion.pillar }}</td>
+                <tr class="{% if gap.criterion.la_scope == 'in_scope' %}table-danger{% elif gap.response.score <= 1 %}table-danger{% else %}table-warning{% endif %}">
+                    <td>
+                        <code>{{ gap.criterion.id }}</code>
+                        {% if gap.criterion.la_scope == 'in_scope' %}
+                        <br><span class="badge bg-danger bg-opacity-75" style="font-size: 0.6em;"><i class="bi bi-shield-check"></i> LA</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set ob = obligation_labels.get(gap.criterion.obligation, {}) %}
+                        <span class="badge bg-{{ ob.get('badge', 'secondary') }}" style="font-size: 0.7em;">
+                            {{ ob.get('label', gap.criterion.obligation) }}
+                        </span>
+                    </td>
+                    <td>
+                        {% set lp = la_priority_labels.get(gap.criterion.la_priority, {}) %}
+                        <span class="badge bg-{{ lp.get('badge', 'secondary') }}" style="font-size: 0.7em;">
+                            {{ lp.get('label', gap.criterion.la_priority) }}
+                        </span>
+                    </td>
                     <td>{{ gap.criterion.category }}</td>
                     <td>
                         <span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span>
@@ -104,6 +121,26 @@
         </table>
     </div>
 </div>
+
+<!-- LA-Critical Gaps -->
+{% set la_gaps = [] %}
+{% for gap in gaps %}
+    {% if gap.criterion.la_scope == 'in_scope' %}
+        {% if la_gaps.append(gap) %}{% endif %}
+    {% endif %}
+{% endfor %}
+{% if la_gaps %}
+<div class="alert alert-danger mb-4">
+    <h6 class="alert-heading"><i class="bi bi-shield-exclamation me-2"></i>Limited Assurance Critical Gaps</h6>
+    <p class="mb-2">The following items are <strong>directly in scope for limited assurance</strong> and scored below the threshold. These must be prioritized:</p>
+    <ul class="mb-0">
+        {% for gap in la_gaps %}
+        <li><code>{{ gap.criterion.id }}</code> — {{ gap.criterion.category }} (Score: {{ gap.response.score }}/5, need 3+)</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 {% else %}
 <div class="alert alert-success">
     <i class="bi bi-check-circle me-2"></i>
@@ -122,8 +159,8 @@
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Obligation</th>
                     <th>Category</th>
-                    <th>Standard</th>
                     <th>Score</th>
                     <th>Maturity Level</th>
                     <th>Evidence Summary</th>
@@ -132,10 +169,20 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr>
-                    <td><code>{{ c.id }}</code></td>
+                <tr{% if c.la_scope == 'in_scope' %} class="table-danger"{% endif %}>
+                    <td>
+                        <code>{{ c.id }}</code>
+                        {% if c.la_scope == 'in_scope' %}
+                        <br><span class="badge bg-danger bg-opacity-75" style="font-size: 0.55em;"><i class="bi bi-shield-check"></i></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set ob = obligation_labels.get(c.obligation, {}) %}
+                        <span class="badge bg-{{ ob.get('badge', 'secondary') }}" style="font-size: 0.65em;">
+                            {{ ob.get('label', c.obligation)|replace(' (SHALL)', '')|replace(' (SHOULD)', '') }}
+                        </span>
+                    </td>
                     <td>{{ c.category }}</td>
-                    <td><small>{{ c.standard }}</small></td>
                     <td>
                         {% if resp and resp.score is not none %}
                         <span class="score-badge score-{{ resp.score }}">{{ resp.score }}</span>

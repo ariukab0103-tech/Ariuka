@@ -175,3 +175,25 @@ class ReviewItem(db.Model):
     finding = db.Column(db.Text, default="")
     recommendation = db.Column(db.Text, default="")
     evidence_adequate = db.Column(db.Boolean, default=False)
+
+
+class Attachment(db.Model):
+    __tablename__ = "attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    response_id = db.Column(
+        db.Integer, db.ForeignKey("responses.id"), nullable=False
+    )
+    filename = db.Column(db.String(256), nullable=False)
+    original_name = db.Column(db.String(256), nullable=False)
+    file_size = db.Column(db.Integer, default=0)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    uploaded_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    response = db.relationship(
+        "Response",
+        backref=db.backref("attachments", lazy="dynamic", cascade="all, delete-orphan"),
+    )
+    uploader = db.relationship("User")

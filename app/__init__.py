@@ -17,6 +17,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     os.makedirs(app.instance_path, exist_ok=True)
+    os.makedirs(app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads")), exist_ok=True)
 
     db.init_app(app)
     login_manager.init_app(app)
