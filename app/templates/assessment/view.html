@@ -71,7 +71,8 @@
                 {% if documents %}
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <strong><i class="bi bi-files me-1"></i>Uploaded ({{ documents|length }})</strong>
-                    <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}">
+                    <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}"
+                          onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'bi bi-hourglass-split me-1\'></i>Analyzing...';">
                         <button type="submit" class="btn btn-success btn-sm">
                             {% if ai_enabled %}
                             <i class="bi bi-robot me-1"></i>AI Assess
@@ -120,11 +121,21 @@
     </div>
 </div>
 {% else %}
-<!-- Show documents read-only when not in draft/in_progress -->
+<!-- Show documents + Redo AI Assessment when not in draft/in_progress -->
 {% if documents %}
 <div class="card mb-4">
-    <div class="card-header">
-        <i class="bi bi-files me-2"></i>Uploaded Documents ({{ documents|length }})
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-files me-2"></i>Uploaded Documents ({{ documents|length }})</span>
+        <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}"
+              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'bi bi-hourglass-split me-1\'></i>Re-analyzing...';">
+            <button type="submit" class="btn btn-outline-success btn-sm">
+                {% if ai_enabled %}
+                <i class="bi bi-arrow-repeat me-1"></i>Redo AI Assessment
+                {% else %}
+                <i class="bi bi-arrow-repeat me-1"></i>Redo Auto-Assess
+                {% endif %}
+            </button>
+        </form>
     </div>
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
@@ -183,7 +194,9 @@
     </div>
 </div>
 
-<!-- Criteria by Pillar -->
+<!-- Criteria by Pillar (with inline editing) -->
+<form method="POST" action="{{ url_for('assessment.bulk_save', assessment_id=assessment.id) }}" id="bulkSaveForm">
+
 {% for pillar, criteria in criteria_by_pillar.items() %}
 <div class="pillar-header">
     <h5 class="mb-0">
@@ -205,7 +218,7 @@
                     <th style="width: 130px;">Classification</th>
                     <th>Category</th>
                     <th>Requirement</th>
-                    <th style="width: 80px;">Score</th>
+                    <th style="width: 100px;">Score</th>
                     <th style="width: 60px;">Files</th>
                     <th style="width: 100px;">Action</th>
                 </tr>
@@ -243,10 +256,20 @@
                     </td>
                     <td><small>{{ c.requirement[:120] }}{% if c.requirement|length > 120 %}...{% endif %}</small></td>
                     <td>
+                        {% if assessment.status in ('draft', 'in_progress') %}
+                        <select name="score_{{ c.id }}" class="form-select form-select-sm score-select"
+                                onchange="markChanged(this)" style="width: 75px;">
+                            <option value="">—</option>
+                            {% for i in range(6) %}
+                            <option value="{{ i }}" {% if resp and resp.score is not none and resp.score == i %}selected{% endif %}>{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
                         {% if resp and resp.score is not none %}
                         <span class="score-badge score-{{ resp.score }}">{{ resp.score }}</span>
                         {% else %}
                         <span class="score-badge score-0">—</span>
+                        {% endif %}
                         {% endif %}
                     </td>
                     <td class="text-center">
@@ -268,15 +291,14 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if assessment.status in ('draft', 'in_progress') %}
                         <a href="{{ url_for('assessment.assess_criterion', assessment_id=assessment.id, criterion_id=c.id) }}"
-                           class="btn btn-sm {% if resp and resp.score is not none %}btn-outline-primary{% else %}btn-primary{% endif %}">
-                            {% if resp and resp.score is not none %}Edit{% else %}Assess{% endif %}
+                           class="btn btn-sm {% if assessment.status in ('draft', 'in_progress') %}{% if resp and resp.score is not none %}btn-outline-primary{% else %}btn-primary{% endif %}{% else %}btn-outline-secondary{% endif %}">
+                            {% if assessment.status in ('draft', 'in_progress') %}
+                                {% if resp and resp.score is not none %}Edit{% else %}Assess{% endif %}
+                            {% else %}
+                                View
+                            {% endif %}
                         </a>
-                        {% else %}
-                        <a href="{{ url_for('assessment.assess_criterion', assessment_id=assessment.id, criterion_id=c.id) }}"
-                           class="btn btn-sm btn-outline-secondary">View</a>
-                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -285,4 +307,80 @@
     </div>
 </div>
 {% endfor %}
+
+<!-- Sticky Save Bar -->
+{% if assessment.status in ('draft', 'in_progress') %}
+<div id="saveBar" class="position-fixed bottom-0 start-0 end-0 bg-white border-top shadow-lg py-3 px-4 d-none" style="z-index: 1050;">
+    <div class="container d-flex justify-content-between align-items-center">
+        <span class="text-warning fw-bold"><i class="bi bi-exclamation-circle me-1"></i>You have unsaved score changes</span>
+        <div>
+            <button type="button" class="btn btn-outline-secondary me-2" onclick="resetScores()">
+                <i class="bi bi-x-circle me-1"></i>Discard
+            </button>
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i>Save All Scores
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const originalValues = {};
+let hasChanges = false;
+
+// Store original values on page load
+document.querySelectorAll('.score-select').forEach(sel => {
+    originalValues[sel.name] = sel.value;
+});
+
+function markChanged(sel) {
+    // Highlight changed rows
+    const row = sel.closest('tr');
+    if (sel.value !== originalValues[sel.name]) {
+        row.classList.add('table-info');
+        sel.classList.add('border-primary');
+    } else {
+        row.classList.remove('table-info');
+        sel.classList.remove('border-primary');
+    }
+
+    // Check if any values changed
+    hasChanges = false;
+    document.querySelectorAll('.score-select').forEach(s => {
+        if (s.value !== originalValues[s.name]) hasChanges = true;
+    });
+
+    const bar = document.getElementById('saveBar');
+    if (bar) {
+        if (hasChanges) {
+            bar.classList.remove('d-none');
+        } else {
+            bar.classList.add('d-none');
+        }
+    }
+}
+
+function resetScores() {
+    document.querySelectorAll('.score-select').forEach(sel => {
+        sel.value = originalValues[sel.name];
+        sel.classList.remove('border-primary');
+        sel.closest('tr').classList.remove('table-info');
+    });
+    hasChanges = false;
+    const bar = document.getElementById('saveBar');
+    if (bar) bar.classList.add('d-none');
+}
+
+// Warn before leaving with unsaved changes
+window.addEventListener('beforeunload', function(e) {
+    if (hasChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+</script>
 {% endblock %}

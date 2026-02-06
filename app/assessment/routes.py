@@ -187,6 +187,42 @@ def assess_criterion(assessment_id, criterion_id):
     )
 
 
+@assessment_bp.route("/<int:assessment_id>/bulk-save", methods=["POST"])
+@login_required
+def bulk_save(assessment_id):
+    """Save all inline score changes from the assessment view."""
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    updated = 0
+    for resp in assessment.responses.all():
+        form_key = f"score_{resp.criterion_id}"
+        score_val = request.form.get(form_key, "")
+        if score_val.isdigit():
+            new_score = int(score_val)
+            if resp.score != new_score:
+                resp.score = new_score
+                updated += 1
+        elif score_val == "" and resp.score is not None:
+            resp.score = None
+            updated += 1
+
+    if assessment.status == "draft" and updated > 0:
+        assessment.status = "in_progress"
+
+    db.session.commit()
+    if updated > 0:
+        flash(f"Saved {updated} score change(s).", "success")
+    else:
+        flash("No changes to save.", "info")
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
 @assessment_bp.route("/<int:assessment_id>/complete", methods=["POST"])
 @login_required
 def complete(assessment_id):
@@ -346,7 +382,7 @@ def auto_assess(assessment_id):
                     resp.notes = notes
                     updated += 1
 
-        if assessment.status == "draft":
+        if assessment.status in ("draft", "completed", "under_review", "reviewed"):
             assessment.status = "in_progress"
 
         db.session.commit()
