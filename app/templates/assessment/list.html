@@ -87,4 +87,84 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Shared with me -->
+{% if shared_assessments %}
+<h4 class="mt-4 mb-3"><i class="bi bi-people me-2"></i>Shared with Me</h4>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Entity</th>
+                    <th>Owner</th>
+                    <th>My Access</th>
+                    <th>Status</th>
+                    <th>Completion</th>
+                    <th>Overall Score</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in shared_assessments %}
+                <tr>
+                    <td><strong>{{ a.title }}</strong></td>
+                    <td>{{ a.entity_name }}</td>
+                    <td><small>{{ a.author.full_name }}</small></td>
+                    <td>
+                        {% set my_perm = a.user_permission(current_user) %}
+                        {% if my_perm == 'manage' %}
+                        <span class="badge bg-primary">Manage</span>
+                        {% elif my_perm == 'edit' %}
+                        <span class="badge bg-success">Edit</span>
+                        {% else %}
+                        <span class="badge bg-secondary">View</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if a.status == 'draft' %}
+                        <span class="status-badge bg-secondary text-white">Draft</span>
+                        {% elif a.status == 'in_progress' %}
+                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        {% elif a.status == 'completed' %}
+                        <span class="status-badge bg-success text-white">Completed</span>
+                        {% elif a.status == 'under_review' %}
+                        <span class="status-badge bg-info text-white">Under Review</span>
+                        {% elif a.status == 'reviewed' %}
+                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="width: 80px;">
+                                <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                            </div>
+                            <small>{{ a.completion_pct }}%</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="score-badge score-{{ (a.overall_score | round | int) if a.overall_score else 0 }}">
+                            {{ a.overall_score }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if a.status in ('completed', 'under_review', 'reviewed') %}
+                            <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

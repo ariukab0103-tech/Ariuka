@@ -70,6 +70,35 @@ class Assessment(db.Model):
     reviews = db.relationship(
         "Review", backref="assessment", lazy="dynamic", cascade="all, delete-orphan"
     )
+    team_access = db.relationship(
+        "AssessmentAccess", backref="assessment", lazy="dynamic", cascade="all, delete-orphan"
+    )
+
+    # Permission levels: view < edit < manage < owner
+    PERMISSION_LEVELS = {"view": 1, "edit": 2, "manage": 3}
+
+    def user_permission(self, user):
+        """Return the user's permission level for this assessment.
+        Returns: 'owner', 'manage', 'edit', 'view', or None (no access).
+        """
+        if user.is_admin or user.id == self.user_id:
+            return "owner"
+        access = AssessmentAccess.query.filter_by(
+            assessment_id=self.id, user_id=user.id
+        ).first()
+        return access.permission if access else None
+
+    def user_can(self, user, required):
+        """Check if user has at least the required permission level.
+        required: 'view', 'edit', or 'manage'
+        """
+        perm = self.user_permission(user)
+        if perm is None:
+            return False
+        if perm == "owner":
+            return True
+        levels = self.PERMISSION_LEVELS
+        return levels.get(perm, 0) >= levels.get(required, 99)
 
     @property
     def completion_pct(self):
@@ -198,6 +227,30 @@ class Attachment(db.Model):
         backref=db.backref("attachments", lazy="dynamic", cascade="all, delete-orphan"),
     )
     uploader = db.relationship("User")
+
+
+class AssessmentAccess(db.Model):
+    """Team sharing — grants per-user access to specific assessments."""
+    __tablename__ = "assessment_access"
+
+    id = db.Column(db.Integer, primary_key=True)
+    assessment_id = db.Column(
+        db.Integer, db.ForeignKey("assessments.id"), nullable=False
+    )
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    permission = db.Column(db.String(20), nullable=False, default="view")
+    # Permission: view, edit, manage
+    granted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    granted_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+    user = db.relationship("User", foreign_keys=[user_id])
+    grantor = db.relationship("User", foreign_keys=[granted_by])
+
+    __table_args__ = (
+        db.UniqueConstraint("assessment_id", "user_id", name="uq_assessment_user"),
+    )
 
 
 class AssessmentDocument(db.Model):
