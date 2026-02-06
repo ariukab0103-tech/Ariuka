@@ -12,3 +12,12 @@ class Config:
     UPLOAD_FOLDER = os.path.join(basedir, "instance", "uploads")
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MB max upload
     ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "csv", "png", "jpg", "jpeg", "txt"}
+
+    # Session security
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 hour session timeout
+
+    # In production (Render), these are set via HTTPS proxy
+    SESSION_COOKIE_SECURE = os.environ.get("RENDER", "") != ""  # True on Render
+    PREFERRED_URL_SCHEME = "https" if os.environ.get("RENDER", "") else "http"

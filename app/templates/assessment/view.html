@@ -83,8 +83,13 @@
                 </div>
                 {% if ai_enabled %}
                 <small class="text-success d-block mb-1"><i class="bi bi-check-circle me-1"></i>AI-powered analysis (Claude) enabled</small>
+                <small class="text-warning d-block mb-1">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    <strong>Data notice:</strong> AI Assess sends document text to Anthropic's API for analysis.
+                    <a href="{{ url_for('auth.data_security') }}" class="text-warning">Learn more</a>
+                </small>
                 {% else %}
-                <small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Keyword mode. Set ANTHROPIC_API_KEY for AI analysis.</small>
+                <small class="text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>Keyword mode (offline, no data sent externally). Set ANTHROPIC_API_KEY for AI analysis.</small>
                 {% endif %}
                 <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
                     {% for doc in documents %}

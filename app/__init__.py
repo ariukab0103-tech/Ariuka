@@ -1,8 +1,8 @@
 import os
 
-from flask import Flask
+from flask import Flask, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 
 from config import Config
 
@@ -19,6 +19,11 @@ def create_app(config_class=Config):
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads")), exist_ok=True)
 
+    # HTTPS support behind Render's proxy
+    if os.environ.get("RENDER"):
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     db.init_app(app)
     login_manager.init_app(app)
 
@@ -33,6 +38,16 @@ def create_app(config_class=Config):
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(review_bp)
     app.register_blueprint(chat_bp)
+
+    # Force password change for users who still have default/temporary passwords
+    @app.before_request
+    def check_password_change():
+        if (
+            current_user.is_authenticated
+            and current_user.must_change_password
+            and request.endpoint not in ("auth.change_password", "auth.logout", "static")
+        ):
+            return redirect(url_for("auth.change_password"))
 
     with app.app_context():
         db.create_all()
@@ -51,6 +66,7 @@ def _seed_admin():
             email="admin@example.com",
             role="admin",
             full_name="Administrator",
+            must_change_password=True,
         )
         admin.set_password("admin123")
         db.session.add(admin)

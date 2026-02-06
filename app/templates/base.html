@@ -63,6 +63,9 @@
                         </span>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('auth.change_password') }}"><i class="bi bi-key me-1"></i>Password</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Logout</a>
                     </li>
                 </ul>
@@ -100,6 +103,11 @@
                         </a>
                     </li>
                     {% endif %}
+                    <li class="nav-item mt-3">
+                        <a class="nav-link {% if request.endpoint == 'auth.data_security' %}active{% endif %}" href="{{ url_for('auth.data_security') }}">
+                            <i class="bi bi-shield-lock me-2"></i>Data Security
+                        </a>
+                    </li>
                 </ul>
             </nav>
             {% endif %}
@@ -144,6 +152,7 @@
                     <p class="mb-1 mt-2"><strong>SSBJ Expert Advisor</strong></p>
                     <small>Ask about SSBJ requirements, limited assurance, GHG reporting, internal controls, compliance priorities, and more.</small>
                     <br><small class="text-muted">日本語でも質問できます</small>
+                    <br><small class="text-warning mt-2 d-block"><i class="bi bi-shield-exclamation me-1"></i>Messages are sent to Anthropic's API. Do not share passwords or PII. <a href="/data-security" class="text-warning">Data policy</a></small>
                 </div>
             </div>
             <div class="card-footer p-2">
