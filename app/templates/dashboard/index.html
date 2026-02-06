@@ -40,50 +40,131 @@
     </div>
 </div>
 
-<div class="row">
-    <!-- Pillar Scores Chart -->
-    <div class="col-md-6 mb-4">
+<!-- Per-Assessment Scores -->
+{% if assessment_details %}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-bar-chart me-2"></i>Pillar Scores by Assessment
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Entity</th>
+                    <th>FY</th>
+                    <th>Status</th>
+                    <th class="text-center">Overall</th>
+                    {% for pillar in all_pillars %}
+                    <th class="text-center">{{ pillar }}</th>
+                    {% endfor %}
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in assessment_details %}
+                <tr>
+                    <td><strong>{{ a.title }}</strong></td>
+                    <td><small>{{ a.entity_name }}</small></td>
+                    <td><small>{{ a.fiscal_year }}</small></td>
+                    <td>
+                        {% if a.status == 'draft' %}
+                        <span class="status-badge bg-secondary text-white">Draft</span>
+                        {% elif a.status == 'in_progress' %}
+                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        {% elif a.status == 'completed' %}
+                        <span class="status-badge bg-success text-white">Completed</span>
+                        {% elif a.status == 'under_review' %}
+                        <span class="status-badge bg-info text-white">Under Review</span>
+                        {% elif a.status == 'reviewed' %}
+                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <span class="score-badge score-{{ (a.overall_score | round | int) }}">
+                            {{ a.overall_score }}
+                        </span>
+                    </td>
+                    {% for pillar in all_pillars %}
+                    {% set ps = a.pillar_scores.get(pillar, 0) %}
+                    <td class="text-center">
+                        {% if ps %}
+                        <span class="score-badge score-{{ (ps | round | int) }}">{{ ps }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td>
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Per-assessment bar chart comparison -->
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">
-                <i class="bi bi-bar-chart me-2"></i>Average Gap Scores by Pillar
+                <i class="bi bi-bar-chart me-2"></i>Pillar Scores Comparison
             </div>
             <div class="card-body">
-                {% if pillar_averages %}
-                <canvas id="pillarChart" height="250"></canvas>
-                {% else %}
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
-                    <p class="mt-2">No completed assessments yet. Complete an assessment to see gap analysis.</p>
-                </div>
-                {% endif %}
+                <canvas id="comparisonChart" height="280"></canvas>
             </div>
         </div>
     </div>
-
-    <!-- Maturity Overview -->
-    <div class="col-md-6 mb-4">
+    <!-- Radar chart for each assessment -->
+    <div class="col-md-6">
         <div class="card h-100">
-            <div class="card-header">
-                <i class="bi bi-bullseye me-2"></i>Maturity Target Overview
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bullseye me-2"></i>Maturity vs. Target</span>
+                {% if assessment_details | length > 1 %}
+                <select id="radarSelect" class="form-select form-select-sm" style="width: auto;">
+                    {% for a in assessment_details %}
+                    <option value="{{ loop.index0 }}">{{ a.title }} ({{ a.fiscal_year }})</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
             </div>
             <div class="card-body">
-                {% if pillar_averages %}
-                <canvas id="radarChart" height="250"></canvas>
-                {% else %}
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-bullseye" style="font-size: 3rem;"></i>
-                    <p class="mt-2">Complete assessments to see the maturity radar.</p>
-                </div>
-                {% endif %}
+                <canvas id="radarChart" height="280"></canvas>
             </div>
         </div>
     </div>
 </div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Pillar Scores</div>
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
+                <p class="mt-2">No scored assessments yet. Upload documents and run auto-assess to see results.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-bullseye me-2"></i>Maturity Target</div>
+            <div class="card-body text-center text-muted py-5">
+                <i class="bi bi-bullseye" style="font-size: 3rem;"></i>
+                <p class="mt-2">Complete an assessment to see the maturity radar.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Recent Assessments -->
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-clock-history me-2"></i>Recent Assessments</span>
+        <span><i class="bi bi-clock-history me-2"></i>All Assessments</span>
         <a href="{{ url_for('assessment.create') }}" class="btn btn-sm btn-primary">
             <i class="bi bi-plus-lg me-1"></i>New Assessment
         </a>
@@ -157,74 +238,98 @@
 {% endblock %}
 
 {% block extra_scripts %}
-{% if pillar_averages %}
+{% if assessment_details %}
 <script>
-const pillarData = {{ pillar_averages | tojson }};
-const labels = Object.keys(pillarData);
-const values = Object.values(pillarData);
-const colors = ['#2b6cb0', '#38a169', '#d69e2e', '#e53e3e'];
+const assessmentDetails = {{ assessment_details | tojson }};
+const allPillars = {{ all_pillars | tojson }};
+const chartColors = [
+    '#2b6cb0', '#38a169', '#d69e2e', '#e53e3e', '#805ad5',
+    '#dd6b20', '#319795', '#d53f8c', '#3182ce', '#48bb78'
+];
 
-// Bar Chart
-new Chart(document.getElementById('pillarChart'), {
+// ---- Grouped Bar Chart: each assessment's pillar scores side by side ----
+const datasets = assessmentDetails.map((a, i) => ({
+    label: a.title + ' (' + a.fiscal_year + ')',
+    data: allPillars.map(p => a.pillar_scores[p] || 0),
+    backgroundColor: chartColors[i % chartColors.length],
+    borderRadius: 4
+}));
+
+// Add target line
+datasets.push({
+    label: 'Target (3.0)',
+    data: allPillars.map(() => 3),
+    type: 'line',
+    borderColor: '#e53e3e',
+    borderDash: [5, 5],
+    pointRadius: 0,
+    fill: false,
+    order: 0
+});
+
+new Chart(document.getElementById('comparisonChart'), {
     type: 'bar',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'Average Score',
-            data: values,
-            backgroundColor: colors.slice(0, labels.length),
-            borderRadius: 6
-        }, {
-            label: 'Target (Defined)',
-            data: labels.map(() => 3),
-            type: 'line',
-            borderColor: '#e53e3e',
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false
-        }]
-    },
+    data: { labels: allPillars, datasets: datasets },
     options: {
         responsive: true,
         scales: {
             y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
         },
         plugins: {
-            legend: { position: 'bottom' }
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
         }
     }
 });
 
-// Radar Chart
-new Chart(document.getElementById('radarChart'), {
-    type: 'radar',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'Current',
-            data: values,
-            borderColor: '#2b6cb0',
-            backgroundColor: 'rgba(43, 108, 176, 0.2)',
-            pointBackgroundColor: '#2b6cb0'
-        }, {
-            label: 'Target (Limited Assurance Ready)',
-            data: labels.map(() => 3),
-            borderColor: '#e53e3e',
-            backgroundColor: 'rgba(229, 62, 62, 0.1)',
-            borderDash: [5, 5],
-            pointBackgroundColor: '#e53e3e'
-        }]
-    },
-    options: {
-        responsive: true,
-        scales: {
-            r: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+// ---- Radar Chart: switchable per assessment ----
+let radarChart;
+
+function renderRadar(idx) {
+    const a = assessmentDetails[idx];
+    const data = allPillars.map(p => a.pillar_scores[p] || 0);
+
+    if (radarChart) radarChart.destroy();
+    radarChart = new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+            labels: allPillars,
+            datasets: [{
+                label: a.title + ' (' + a.fiscal_year + ')',
+                data: data,
+                borderColor: chartColors[idx % chartColors.length],
+                backgroundColor: chartColors[idx % chartColors.length] + '33',
+                pointBackgroundColor: chartColors[idx % chartColors.length]
+            }, {
+                label: 'Target (Limited Assurance Ready)',
+                data: allPillars.map(() => 3),
+                borderColor: '#e53e3e',
+                backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                borderDash: [5, 5],
+                pointBackgroundColor: '#e53e3e'
+            }]
         },
-        plugins: {
-            legend: { position: 'bottom' }
+        options: {
+            responsive: true,
+            scales: {
+                r: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+            },
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            }
         }
-    }
-});
+    });
+}
+
+// Initial render
+renderRadar(0);
+
+// Dropdown switcher
+const radarSelect = document.getElementById('radarSelect');
+if (radarSelect) {
+    radarSelect.addEventListener('change', function() {
+        renderRadar(parseInt(this.value));
+    });
+}
 </script>
 {% endif %}
 {% endblock %}
