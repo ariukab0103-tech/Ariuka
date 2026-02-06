@@ -328,7 +328,7 @@ def auto_assess(assessment_id):
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     # Run auto-assessment (AI if API key set, otherwise keyword fallback)
-    results, method = auto_assess_all(combined_text)
+    results, method, ai_error = auto_assess_all(combined_text)
 
     # Update responses
     updated = 0
@@ -348,6 +348,10 @@ def auto_assess(assessment_id):
 
     if method == "ai":
         flash(f"AI assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored by Claude AI. Review and adjust scores as needed.", "success")
+    elif ai_error:
+        # AI was attempted but failed — show the error clearly
+        flash(f"AI assessment FAILED: {ai_error}", "danger")
+        flash(f"Fell back to keyword-based scoring. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Fix the API issue and try again for accurate AI analysis.", "warning")
     else:
         flash(f"Keyword-based assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Set ANTHROPIC_API_KEY for AI-powered analysis.", "warning")
 
