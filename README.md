@@ -88,9 +88,41 @@ The app starts at `http://localhost:5000`.
 | 4 | Managed | Processes monitored and measured |
 | 5 | Optimized | Continuous improvement, leading practice |
 
+## Deployment
+
+### Option 1: Docker (Recommended)
+
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) then run:
+
+```bash
+git clone https://github.com/ariukab0103-tech/Ariuka.git
+cd Ariuka
+docker compose up --build
+```
+
+Open `http://localhost:5000` in your browser. Works on Mac, Windows, and Linux.
+
+To access from iPhone/iPad on the same Wi-Fi network, find your computer's IP address and open `http://<your-ip>:5000` in Safari.
+
+### Option 2: Render (Free Cloud Hosting)
+
+1. Fork this repo on GitHub
+2. Go to [render.com](https://render.com) and sign up
+3. Click **New > Web Service**
+4. Connect your GitHub repo
+5. Render auto-detects `render.yaml` — click **Deploy**
+6. Access your app at the provided `https://....onrender.com` URL from any device
+
+### Option 3: Railway
+
+1. Go to [railway.app](https://railway.app) and sign up
+2. Click **New Project > Deploy from GitHub Repo**
+3. Select this repo — Railway auto-detects `railway.json`
+4. Access your app at the provided URL
+
 ## Tech Stack
 
-- **Backend:** Python, Flask, SQLAlchemy
+- **Backend:** Python, Flask, SQLAlchemy, Gunicorn
 - **Database:** SQLite (default, swappable to PostgreSQL)
 - **Frontend:** Bootstrap 5, Chart.js
 - **Auth:** Flask-Login with role-based access control
