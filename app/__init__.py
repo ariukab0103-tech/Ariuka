@@ -39,11 +39,42 @@ def create_app(config_class=Config):
     app.register_blueprint(review_bp)
     app.register_blueprint(chat_bp)
 
+    @app.route("/health")
+    def health():
+        """Health check — shows app status and config for debugging."""
+        import json
+        ai_key = bool(os.environ.get("ANTHROPIC_API_KEY", ""))
+        try:
+            import anthropic
+            anthropic_installed = True
+        except ImportError:
+            anthropic_installed = False
+        return json.dumps({
+            "status": "ok",
+            "ai_key_set": ai_key,
+            "anthropic_installed": anthropic_installed,
+            "database": app.config["SQLALCHEMY_DATABASE_URI"].split("://")[0] if "://" in app.config["SQLALCHEMY_DATABASE_URI"] else "sqlite",
+        }), 200, {"Content-Type": "application/json"}
+
     with app.app_context():
         db.create_all()
+        _safe_migrate()
         _seed_admin()
 
     return app
+
+
+def _safe_migrate():
+    """Add any missing columns to existing tables (SQLAlchemy create_all doesn't do this)."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(db.engine)
+
+    # Add must_change_password column if missing
+    if "users" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("users")]
+        if "must_change_password" not in columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT 0"))
+            db.session.commit()
 
 
 def _seed_admin():
