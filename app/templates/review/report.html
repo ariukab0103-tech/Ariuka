@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Review Report: {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-file-earmark-medical me-2"></i>Limited Assurance Review Report</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
+    </div>
+    <a href="{{ url_for('review.list_reviews') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<!-- Opinion Banner -->
+<div class="alert {% if review.overall_opinion == 'unqualified' %}alert-success{% elif review.overall_opinion == 'qualified' %}alert-warning{% elif review.overall_opinion == 'adverse' %}alert-danger{% else %}alert-dark{% endif %} mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi {% if review.overall_opinion == 'unqualified' %}bi-check-circle-fill{% elif review.overall_opinion == 'qualified' %}bi-exclamation-triangle-fill{% elif review.overall_opinion == 'adverse' %}bi-x-circle-fill{% else %}bi-question-circle-fill{% endif %} me-3" style="font-size: 2rem;"></i>
+        <div>
+            <h4 class="mb-1">
+                {% if review.overall_opinion == 'unqualified' %}Unqualified Opinion
+                {% elif review.overall_opinion == 'qualified' %}Qualified Opinion
+                {% elif review.overall_opinion == 'adverse' %}Adverse Opinion
+                {% else %}Disclaimer of Opinion
+                {% endif %}
+            </h4>
+            <p class="mb-0">
+                Reviewed by <strong>{{ review.reviewer.full_name }}</strong>
+                on {{ review.updated_at.strftime('%Y-%m-%d') if review.updated_at else '—' }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-success">{{ stats.satisfactory }}</div>
+                <small class="text-muted">Satisfactory</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-warning">{{ stats.needs_improvement }}</div>
+                <small class="text-muted">Needs Improvement</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-danger">{{ stats.unsatisfactory }}</div>
+                <small class="text-muted">Unsatisfactory</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="fs-2 fw-bold text-primary">{{ stats.evidence_adequate }}/{{ stats.total }}</div>
+                <small class="text-muted">Evidence Adequate</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Assessment Pillar Scores</div>
+            <div class="card-body">
+                <canvas id="pillarChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Review Results Distribution</div>
+            <div class="card-body">
+                <canvas id="reviewPieChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Findings & Recommendations -->
+{% if review.findings %}
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Key Findings</div>
+    <div class="card-body">
+        <p style="white-space: pre-wrap;">{{ review.findings }}</p>
+    </div>
+</div>
+{% endif %}
+
+{% if review.recommendations %}
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Recommendations</div>
+    <div class="card-body">
+        <p style="white-space: pre-wrap;">{{ review.recommendations }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Detailed Review Items -->
+<div class="card">
+    <div class="card-header">Detailed Review Items</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Evidence</th>
+                    <th>Finding</th>
+                    <th>Recommendation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for criterion in la_criteria %}
+                {% set item = review_items.get(criterion.id) %}
+                {% if item %}
+                <tr class="{% if item.status == 'unsatisfactory' %}table-danger{% elif item.status == 'needs_improvement' %}table-warning{% endif %}">
+                    <td><code>{{ criterion.id }}</code></td>
+                    <td>{{ criterion.category }}</td>
+                    <td>
+                        {% if item.status == 'satisfactory' %}
+                        <span class="badge bg-success">Satisfactory</span>
+                        {% elif item.status == 'needs_improvement' %}
+                        <span class="badge bg-warning text-dark">Needs Improvement</span>
+                        {% elif item.status == 'unsatisfactory' %}
+                        <span class="badge bg-danger">Unsatisfactory</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.evidence_adequate %}
+                        <i class="bi bi-check-circle-fill text-success"></i> Adequate
+                        {% else %}
+                        <i class="bi bi-x-circle-fill text-danger"></i> Inadequate
+                        {% endif %}
+                    </td>
+                    <td><small>{{ item.finding or '—' }}</small></td>
+                    <td><small>{{ item.recommendation or '—' }}</small></td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const pillarScores = {{ pillar_scores | tojson }};
+
+new Chart(document.getElementById('pillarChart'), {
+    type: 'bar',
+    data: {
+        labels: Object.keys(pillarScores),
+        datasets: [{
+            label: 'Score',
+            data: Object.values(pillarScores),
+            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            borderRadius: 6
+        }, {
+            label: 'Threshold (3.0)',
+            data: Object.keys(pillarScores).map(() => 3),
+            type: 'line',
+            borderColor: '#e53e3e',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, max: 5 } },
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+const stats = {{ stats | tojson }};
+new Chart(document.getElementById('reviewPieChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Satisfactory', 'Needs Improvement', 'Unsatisfactory'],
+        datasets: [{
+            data: [stats.satisfactory, stats.needs_improvement, stats.unsatisfactory],
+            backgroundColor: ['#38a169', '#d69e2e', '#e53e3e']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+</script>
+{% endblock %}

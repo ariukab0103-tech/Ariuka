@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Reviews - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-search me-2"></i>Limited Assurance Reviews</h2>
+
+{% if reviews %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Entity</th>
+                    <th>Reviewer</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Opinion</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reviews %}
+                <tr>
+                    <td><strong>{{ r.assessment.title }}</strong></td>
+                    <td>{{ r.assessment.entity_name }}</td>
+                    <td>{{ r.reviewer.full_name }}</td>
+                    <td><span class="badge bg-info text-dark">Limited Assurance</span></td>
+                    <td>
+                        {% if r.status == 'pending' %}
+                        <span class="status-badge bg-secondary text-white">Pending</span>
+                        {% elif r.status == 'in_progress' %}
+                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        {% elif r.status == 'completed' %}
+                        <span class="status-badge bg-success text-white">Completed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if r.overall_opinion %}
+                        {% if r.overall_opinion == 'unqualified' %}
+                        <span class="badge bg-success">Unqualified</span>
+                        {% elif r.overall_opinion == 'qualified' %}
+                        <span class="badge bg-warning text-dark">Qualified</span>
+                        {% elif r.overall_opinion == 'adverse' %}
+                        <span class="badge bg-danger">Adverse</span>
+                        {% elif r.overall_opinion == 'disclaimer' %}
+                        <span class="badge bg-dark">Disclaimer</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r.created_at.strftime('%Y-%m-%d') if r.created_at else '—' }}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            {% if r.status == 'in_progress' %}
+                            <a href="{{ url_for('review.conduct', review_id=r.id) }}" class="btn btn-outline-primary">Continue</a>
+                            {% elif r.status == 'completed' %}
+                            <a href="{{ url_for('review.report', review_id=r.id) }}" class="btn btn-outline-success">Report</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-search" style="font-size: 3rem;"></i>
+        <p class="mt-2">No reviews yet. Start a review from a completed assessment.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- How to Start a Review -->
+<h4 class="mt-5 mb-3">How to Start a Review</h4>
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted">Completed assessments can be reviewed from the <a href="{{ url_for('assessment.list_assessments') }}">Assessments</a> page. Open a completed assessment and click "Start Review".</p>
+    </div>
+</div>
+{% endblock %}

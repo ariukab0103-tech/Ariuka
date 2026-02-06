@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ criterion.id }} - Assessment{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('assessment.list_assessments') }}">Assessments</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}">{{ assessment.title }}</a></li>
+        <li class="breadcrumb-item active">{{ criterion.id }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between">
+                    <span>
+                        <code class="me-2">{{ criterion.id }}</code>
+                        <span class="badge bg-secondary">{{ criterion.pillar }}</span>
+                        <span class="badge bg-info text-dark">{{ criterion.standard }}</span>
+                    </span>
+                    <span class="text-muted">{{ criterion.category }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5>Requirement</h5>
+                <p>{{ criterion.requirement }}</p>
+
+                <h5>Guidance</h5>
+                <p class="text-muted">{{ criterion.guidance }}</p>
+
+                <h5>Limited Assurance Focus</h5>
+                <p class="text-muted"><i class="bi bi-search me-1"></i>{{ criterion.assurance_focus }}</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Assessment Response</div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Maturity Score *</label>
+                        {% for level, info in maturity_levels.items() %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="score" id="score_{{ level }}"
+                                   value="{{ level }}" {% if response.score == level %}checked{% endif %}>
+                            <label class="form-check-label" for="score_{{ level }}">
+                                <span class="score-badge score-{{ level }} me-2">{{ level }}</span>
+                                <strong>{{ info.label }}</strong>
+                                <small class="text-muted d-block ms-5">{{ info.description }}</small>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="evidence" class="form-label fw-bold">
+                            <i class="bi bi-paperclip me-1"></i>Evidence / Documentation
+                        </label>
+                        <textarea class="form-control" id="evidence" name="evidence" rows="4"
+                                  placeholder="Describe the evidence supporting the maturity score (e.g., policies, procedures, reports, meeting minutes)...">{{ response.evidence or '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label fw-bold">
+                            <i class="bi bi-chat-left-text me-1"></i>Notes / Action Items
+                        </label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"
+                                  placeholder="Additional notes, observations, or action items for improvement...">{{ response.notes or '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Back to Assessment
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Save &amp; Next
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Maturity Scale Reference</div>
+            <div class="card-body">
+                {% for level, info in maturity_levels.items() %}
+                <div class="d-flex align-items-start mb-3">
+                    <span class="score-badge score-{{ level }} me-2 flex-shrink-0">{{ level }}</span>
+                    <div>
+                        <strong>{{ info.label }}</strong>
+                        <small class="text-muted d-block">{{ info.description }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+                <hr>
+                <div class="alert alert-warning mb-0">
+                    <small>
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Limited Assurance Threshold:</strong>
+                        Score of <strong>3 (Defined)</strong> or above is typically needed for limited assurance readiness.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

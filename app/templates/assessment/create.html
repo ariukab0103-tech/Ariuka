@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}New Assessment - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <h2 class="mb-4"><i class="bi bi-plus-circle me-2"></i>New SSBJ Gap Assessment</h2>
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Assessment Title *</label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               placeholder="e.g., FY2026 SSBJ Readiness Assessment" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="entity_name" class="form-label">Entity Name *</label>
+                        <input type="text" class="form-control" id="entity_name" name="entity_name"
+                               placeholder="e.g., Company Name Co., Ltd." required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fiscal_year" class="form-label">Fiscal Year *</label>
+                        <select class="form-select" id="fiscal_year" name="fiscal_year" required>
+                            <option value="FY2025 (ending March 2026)">FY2025 (ending March 2026) — Voluntary</option>
+                            <option value="FY2026 (ending March 2027)">FY2026 (ending March 2027) — Mandatory Phase 1</option>
+                            <option value="FY2027 (ending March 2028)">FY2027 (ending March 2028) — Mandatory Phase 2</option>
+                            <option value="FY2028 (ending March 2029)">FY2028 (ending March 2029) — Mandatory Phase 3</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        This assessment covers <strong>22 criteria</strong> across the 4 SSBJ pillars:
+                        Governance, Strategy, Risk Management, and Metrics &amp; Targets.
+                        Each criterion is scored on a 0-5 maturity scale.
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('assessment.list_assessments') }}" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg me-1"></i>Create Assessment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

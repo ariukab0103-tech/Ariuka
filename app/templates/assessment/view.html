@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ assessment.title }} - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>{{ assessment.title }}</h2>
+        <p class="text-muted mb-0">
+            {{ assessment.entity_name }} | {{ assessment.fiscal_year }} |
+            {% if assessment.status == 'draft' %}
+            <span class="status-badge bg-secondary text-white">Draft</span>
+            {% elif assessment.status == 'in_progress' %}
+            <span class="status-badge bg-warning text-dark">In Progress</span>
+            {% elif assessment.status == 'completed' %}
+            <span class="status-badge bg-success text-white">Completed</span>
+            {% elif assessment.status == 'under_review' %}
+            <span class="status-badge bg-info text-white">Under Review</span>
+            {% elif assessment.status == 'reviewed' %}
+            <span class="status-badge bg-primary text-white">Reviewed</span>
+            {% endif %}
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if assessment.status in ('completed', 'under_review', 'reviewed') %}
+        <a href="{{ url_for('assessment.report', assessment_id=assessment.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-file-earmark-text me-1"></i>View Report
+        </a>
+        {% endif %}
+        {% if assessment.status == 'in_progress' and assessment.completion_pct == 100 %}
+        <form method="POST" action="{{ url_for('assessment.complete', assessment_id=assessment.id) }}">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-1"></i>Mark Complete
+            </button>
+        </form>
+        {% endif %}
+        {% if current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
+        <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
+            <button type="submit" class="btn btn-info text-white">
+                <i class="bi bi-search me-1"></i>Start Review
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Progress Overview -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Overall Progress</strong>
+            <span>{{ assessment.completion_pct }}% complete</span>
+        </div>
+        <div class="progress" style="height: 12px;">
+            <div class="progress-bar {% if assessment.completion_pct == 100 %}bg-success{% elif assessment.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}"
+                 style="width: {{ assessment.completion_pct }}%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Criteria by Pillar -->
+{% for pillar, criteria in criteria_by_pillar.items() %}
+<div class="pillar-header">
+    <h5 class="mb-0">
+        {% if pillar == 'Governance' %}<i class="bi bi-building me-2"></i>
+        {% elif pillar == 'Strategy' %}<i class="bi bi-compass me-2"></i>
+        {% elif pillar == 'Risk Management' %}<i class="bi bi-shield-exclamation me-2"></i>
+        {% elif pillar == 'Metrics & Targets' %}<i class="bi bi-graph-up me-2"></i>
+        {% endif %}
+        {{ pillar }}
+    </h5>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">ID</th>
+                    <th>Category</th>
+                    <th>Standard</th>
+                    <th>Requirement</th>
+                    <th style="width: 80px;">Score</th>
+                    <th style="width: 100px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in criteria %}
+                {% set resp = responses.get(c.id) %}
+                <tr>
+                    <td><code>{{ c.id }}</code></td>
+                    <td>{{ c.category }}</td>
+                    <td><small class="text-muted">{{ c.standard }}</small></td>
+                    <td><small>{{ c.requirement[:120] }}{% if c.requirement|length > 120 %}...{% endif %}</small></td>
+                    <td>
+                        {% if resp and resp.score is not none %}
+                        <span class="score-badge score-{{ resp.score }}">{{ resp.score }}</span>
+                        {% else %}
+                        <span class="score-badge score-0">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if assessment.status in ('draft', 'in_progress') %}
+                        <a href="{{ url_for('assessment.assess_criterion', assessment_id=assessment.id, criterion_id=c.id) }}"
+                           class="btn btn-sm {% if resp and resp.score is not none %}btn-outline-primary{% else %}btn-primary{% endif %}">
+                            {% if resp and resp.score is not none %}Edit{% else %}Assess{% endif %}
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('assessment.assess_criterion', assessment_id=assessment.id, criterion_id=c.id) }}"
+                           class="btn btn-sm btn-outline-secondary">View</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
