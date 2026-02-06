@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}Compliance Roadmap: {{ assessment.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 40px;
+    }
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 18px;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(to bottom, #2b6cb0, #e53e3e, #1a365d);
+    }
+    .timeline-phase {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -32px;
+        top: 8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.75rem;
+        z-index: 1;
+    }
+    .task-category {
+        border-left: 3px solid;
+        padding-left: 12px;
+        margin-bottom: 12px;
+    }
+    .task-category.management { border-color: #2b6cb0; }
+    .task-category.technical { border-color: #38a169; }
+    .task-category.assurance { border-color: #d69e2e; }
+    .task-category ul { margin-bottom: 0; padding-left: 1.2rem; }
+    .task-category li { font-size: 0.875rem; margin-bottom: 4px; }
+    .urgency-critical { background: linear-gradient(135deg, #fff5f5, #fed7d7); border-color: #fc8181; }
+    .urgency-tight { background: linear-gradient(135deg, #fffff0, #fefcbf); border-color: #f6e05e; }
+    .urgency-adequate { background: linear-gradient(135deg, #f0fff4, #c6f6d5); border-color: #68d391; }
+    .urgency-comfortable { background: linear-gradient(135deg, #ebf8ff, #bee3f8); border-color: #63b3ed; }
+    .current-marker {
+        position: absolute;
+        left: -46px;
+        top: 6px;
+        font-size: 1.2rem;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    @media print {
+        .timeline::before { background: #333 !important; }
+        .timeline-dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .task-category { break-inside: avoid; }
+        .timeline-phase { break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-calendar3 me-2"></i>Compliance Roadmap</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | Target: FY{{ roadmap.compliance_year }}</p>
+    </div>
+    <div>
+        <button onclick="window.print()" class="btn btn-danger me-2">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+        </button>
+        <a href="{{ url_for('assessment.report', assessment_id=assessment.id) }}" class="btn btn-outline-success me-2">
+            <i class="bi bi-file-earmark-text me-1"></i>Gap Report
+        </a>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Timeline Overview Card -->
+<div class="card mb-4 border-2 urgency-{{ roadmap.urgency }}">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                <div style="font-size: 3rem; font-weight: 700; color: {% if roadmap.urgency == 'critical' %}#e53e3e{% elif roadmap.urgency == 'tight' %}#d69e2e{% else %}#2b6cb0{% endif %};">
+                    {{ roadmap.months_remaining }}
+                </div>
+                <div class="text-muted fw-bold">months to disclosure</div>
+                <div class="mt-1">
+                    <span class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}success{% else %}info{% endif %} fs-6">
+                        {% if roadmap.urgency == 'critical' %}CRITICAL{% elif roadmap.urgency == 'tight' %}TIGHT{% elif roadmap.urgency == 'adequate' %}ADEQUATE{% else %}COMFORTABLE{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-3 text-center border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: #1a365d;">
+                    {{ roadmap.months_to_assurance }}
+                </div>
+                <div class="text-muted fw-bold">months to 1st assurance</div>
+            </div>
+            <div class="col-md-3 text-center border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: {% if roadmap.gaps.total_gaps > 10 %}#e53e3e{% elif roadmap.gaps.total_gaps > 5 %}#d69e2e{% else %}#38a169{% endif %};">
+                    {{ roadmap.gaps.total_gaps }}
+                </div>
+                <div class="text-muted fw-bold">gaps to close</div>
+                <small class="text-danger">{{ roadmap.gaps.la_critical|length }} in LA scope</small>
+            </div>
+            <div class="col-md-3 text-center border-start">
+                <div style="font-size: 2rem; font-weight: 700;">
+                    {{ roadmap.gaps.avg_score }}<small class="text-muted">/5</small>
+                </div>
+                <div class="text-muted fw-bold">average score</div>
+                <small class="{% if roadmap.gaps.avg_score < 3 %}text-danger{% else %}text-success{% endif %}">
+                    {% if roadmap.gaps.avg_score < 3 %}Below threshold{% else %}Above threshold{% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Key Milestones Bar -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-signpost me-2"></i>Key Milestones</div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col">
+                <div class="badge bg-primary rounded-pill px-3 py-2 mb-1">TODAY</div>
+                <div class="small text-muted">{{ roadmap.today.strftime('%b %Y') }}</div>
+            </div>
+            <div class="col">
+                <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+            <div class="col">
+                <div class="badge bg-info rounded-pill px-3 py-2 mb-1">Assurance Provider Selected</div>
+                <div class="small text-muted">~6 months</div>
+            </div>
+            <div class="col">
+                <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+            <div class="col">
+                <div class="badge bg-warning text-dark rounded-pill px-3 py-2 mb-1">Dry Run Complete</div>
+                <div class="small text-muted">~12-18 months</div>
+            </div>
+            <div class="col">
+                <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+            <div class="col">
+                <div class="badge bg-danger rounded-pill px-3 py-2 mb-1">1st Disclosure</div>
+                <div class="small text-muted">FY{{ roadmap.compliance_year }} ({{ roadmap.compliance_date.strftime('%b %Y') }})</div>
+            </div>
+            <div class="col">
+                <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+            <div class="col">
+                <div class="badge bg-dark rounded-pill px-3 py-2 mb-1">1st Assurance</div>
+                <div class="small text-muted">FY{{ roadmap.assurance_year }} ({{ roadmap.assurance_date.strftime('%b %Y') }})</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Findings -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Readiness Summary</div>
+    <div class="card-body">
+        {% for line in roadmap.summary %}
+        <p class="mb-2 {% if 'CRITICAL' in line %}text-danger fw-bold{% elif 'tight' in line %}text-warning{% endif %}">
+            <i class="bi bi-{% if 'CRITICAL' in line or 'tight' in line %}exclamation-triangle{% elif 'IT system' in line %}pc-display{% else %}info-circle{% endif %} me-1"></i>
+            {{ line }}
+        </p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- IT Integration Decision Box -->
+{% if roadmap.gaps.it_needed %}
+<div class="card mb-4 border-success">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-pc-display me-2"></i>IT Integration Recommendation
+    </div>
+    <div class="card-body">
+        <p class="fw-bold mb-2">Your metrics/GHG scores suggest IT system investment would significantly help:</p>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="text-success"><i class="bi bi-1-circle me-1"></i>GHG Calculation Tool</h6>
+                        <small>
+                            Dedicated software for Scope 1 & 2 calculations with built-in emission factors.
+                            Options: Zeroboard, booost, Persefoni, or custom spreadsheets with controls.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="text-success"><i class="bi bi-2-circle me-1"></i>Data Collection Pipeline</h6>
+                        <small>
+                            Automate activity data collection from sites. Connect to ERP/utility systems
+                            or use standardized collection templates with validation.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="text-success"><i class="bi bi-3-circle me-1"></i>Audit Trail System</h6>
+                        <small>
+                            Document management with version control for evidence filing.
+                            Must track who entered data, when, and what changed — essential for assurance.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="alert alert-info mt-3 mb-0">
+            <small>
+                <i class="bi bi-info-circle me-1"></i>
+                <strong>Minimum viable approach:</strong> If budget is limited, well-controlled Excel workbooks
+                with access controls, change logs, and formal review sign-off can satisfy assurance requirements.
+                Dedicated software is better for scale and auditability but is not strictly required.
+            </small>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card mb-4">
+    <div class="card-body">
+        <p class="mb-0">
+            <i class="bi bi-check-circle text-success me-1"></i>
+            <strong>IT Integration:</strong> No major IT investment appears required at this time.
+            Focus on formalizing existing processes, documentation, and evidence management.
+            Controlled spreadsheets with proper review procedures should be sufficient.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Phased Timeline -->
+<h4 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>Implementation Phases (Backcasting)</h4>
+
+<div class="timeline">
+{% for phase in roadmap.phases %}
+    <div class="timeline-phase">
+        <div class="timeline-dot bg-{{ phase.color }}">{{ phase.number }}</div>
+        <div class="card {% if phase.number == 1 %}border-primary{% endif %}">
+            <div class="card-header d-flex justify-content-between align-items-center {% if phase.number == 5 %}bg-danger text-white{% elif phase.number == 6 %}bg-dark text-white{% endif %}">
+                <span>
+                    <strong>Phase {{ phase.number }}: {{ phase.title }}</strong>
+                    <br><small {% if phase.number in (5, 6) %}class="text-white-50"{% else %}class="text-muted"{% endif %}>{{ phase.subtitle }}</small>
+                </span>
+                <span class="badge bg-{% if phase.number in (5, 6) %}light text-dark{% else %}{{ phase.color }}{% endif %}">{{ phase.duration }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Management & Governance -->
+                    <div class="col-md-4">
+                        <div class="task-category management">
+                            <h6 class="mb-2" style="color: #2b6cb0;">
+                                <i class="bi bi-people me-1"></i>Management & Governance
+                            </h6>
+                            <ul>
+                                {% for task in phase.tasks.management %}
+                                <li {% if 'URGENT' in task or 'CRITICAL' in task %}class="text-danger fw-bold"{% elif 'Fix ' in task %}class="text-warning"{% endif %}>
+                                    {{ task }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Technical & IT -->
+                    <div class="col-md-4">
+                        <div class="task-category technical">
+                            <h6 class="mb-2" style="color: #38a169;">
+                                <i class="bi bi-gear me-1"></i>Technical & IT
+                            </h6>
+                            <ul>
+                                {% for task in phase.tasks.technical %}
+                                <li {% if 'CRITICAL' in task %}class="text-danger fw-bold"{% endif %}>
+                                    {{ task }}
+                                </li>
+                                {% endfor %}
+                                {% if not phase.tasks.technical %}
+                                <li class="text-muted">No specific technical tasks this phase</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Assurance -->
+                    <div class="col-md-4">
+                        <div class="task-category assurance">
+                            <h6 class="mb-2" style="color: #d69e2e;">
+                                <i class="bi bi-shield-check me-1"></i>Assurance Readiness
+                            </h6>
+                            <ul>
+                                {% for task in phase.tasks.assurance %}
+                                <li>{{ task }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+<!-- Assurance Provider Discussion Guide -->
+<div class="card mt-4 mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <i class="bi bi-chat-left-text me-2"></i>Assurance Provider Discussion Guide
+    </div>
+    <div class="card-body">
+        <p class="mb-3">When engaging with potential assurance providers, discuss these key topics:</p>
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="bi bi-1-circle-fill text-warning me-1"></i> Scope & Standards</h6>
+                <ul class="small">
+                    <li>Confirm they will perform limited assurance under ISAE 3000 (Revised) and ISAE 3410</li>
+                    <li>Or ISSA 5000 (new standard from IAASB) — clarify which framework</li>
+                    <li>Scope: Scope 1 and Scope 2 GHG emissions only (initial phase)</li>
+                    <li>Ask about their experience with Japanese SSBJ standards specifically</li>
+                </ul>
+                <h6 class="mt-3"><i class="bi bi-2-circle-fill text-warning me-1"></i> Timeline & Fees</h6>
+                <ul class="small">
+                    <li>Engagement timing: when do they need to start fieldwork?</li>
+                    <li>Duration of the engagement (typically 4-8 weeks for limited assurance)</li>
+                    <li>Fee structure: fixed fee vs. hourly (expect $50K-$200K+ depending on complexity)</li>
+                    <li>Pre-engagement advisory: will they do a readiness review first?</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="bi bi-3-circle-fill text-warning me-1"></i> Evidence Requirements</h6>
+                <ul class="small">
+                    <li>What evidence format do they expect? (organized files, system exports, etc.)</li>
+                    <li>Do they need access to source systems or are document exports sufficient?</li>
+                    <li>Management representation letter requirements</li>
+                    <li>Site visit expectations (physical offices, factories, etc.)</li>
+                </ul>
+                <h6 class="mt-3"><i class="bi bi-4-circle-fill text-warning me-1"></i> Internal Controls</h6>
+                <ul class="small">
+                    <li>Minimum internal controls they expect for Scope 1 & 2 data</li>
+                    <li>Do they require formal ICSR (Internal Control over Sustainability Reporting)?</li>
+                    <li>Acceptable calculation methodologies and emission factor sources</li>
+                    <li>How do they handle estimation and uncertainty in GHG data?</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

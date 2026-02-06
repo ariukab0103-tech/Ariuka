@@ -245,6 +245,34 @@ def complete(assessment_id):
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
+@assessment_bp.route("/<int:assessment_id>/roadmap")
+@login_required
+def roadmap(assessment_id):
+    """Generate backcasting compliance roadmap."""
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+    if not current_user.is_admin and assessment.user_id != current_user.id:
+        flash("Access denied.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    from app.roadmap import generate_roadmap
+    responses_list = assessment.responses.filter(Response.score.isnot(None)).all()
+
+    if not responses_list:
+        flash("No scored criteria yet. Complete the assessment first to generate a roadmap.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    roadmap_data = generate_roadmap(assessment, responses_list)
+
+    return render_template(
+        "assessment/roadmap.html",
+        assessment=assessment,
+        roadmap=roadmap_data,
+    )
+
+
 @assessment_bp.route("/<int:assessment_id>/report")
 @login_required
 def report(assessment_id):

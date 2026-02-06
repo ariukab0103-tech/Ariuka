@@ -32,6 +32,11 @@
             <i class="bi bi-file-earmark-text me-1"></i>View Report
         </a>
         {% endif %}
+        {% if scored_count > 0 %}
+        <a href="{{ url_for('assessment.roadmap', assessment_id=assessment.id) }}" class="btn btn-outline-warning">
+            <i class="bi bi-calendar3 me-1"></i>Roadmap
+        </a>
+        {% endif %}
         {% if current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
         <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
             <button type="submit" class="btn btn-info text-white">
