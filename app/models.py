@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     department = db.Column(db.String(128), default="")
     role = db.Column(db.String(20), nullable=False, default="assessor")
     # Roles: admin, assessor, reviewer
+    must_change_password = db.Column(db.Boolean, default=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc)
     )

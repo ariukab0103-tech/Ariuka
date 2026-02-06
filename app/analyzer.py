@@ -144,20 +144,79 @@ def ai_assess_all(combined_text):
         for level, info in MATURITY_LEVELS.items()
     )
 
-    prompt = f"""You are an expert sustainability auditor specializing in Japanese SSBJ (Sustainability Standards Board of Japan) standards and limited assurance under ISAE 3000/3410/ISSA 5000.
+    prompt = f"""You are an expert sustainability auditor specializing in Japanese SSBJ (Sustainability Standards Board of Japan) standards, IFRS S1/S2, and limited assurance under ISAE 3000/3410/ISSA 5000.
 
+## YOUR DEEP EXPERTISE (use this knowledge when scoring)
+
+### SSBJ Standards
+- **SSBJ No.1** (General Requirements) aligned with IFRS S1 — requires disclosure of sustainability-related risks and opportunities affecting cash flows, access to finance, or cost of capital. 4 core pillars: Governance, Strategy, Risk Management, Metrics & Targets.
+- **SSBJ No.2** (Climate-related Disclosures) aligned with IFRS S2 — specific requirements for climate governance, strategy, risk management, metrics & targets. GHG emissions (Scope 1, 2, 3), climate scenario analysis, transition plans, industry-specific metrics (SASB-based).
+
+### Mandatory vs Recommended vs Interpretive
+**Mandatory (SHALL / しなければならない):**
+- Governance oversight body disclosure, management role disclosure
+- Sustainability risks and opportunities identification
+- Financial effects on financial position, performance, cash flows
+- GHG emissions (Scope 1, Scope 2 mandatory; Scope 3 with relief period)
+- Climate scenario analysis (with proportionality)
+- GHG reduction targets with base year, scope, and timeline
+
+**Recommended (SHOULD / すべきである):**
+- Skills and competencies of governance body
+- Climate consideration in strategic decisions
+- Value chain impact analysis
+- Industry-specific and cross-industry metrics beyond minimum
+
+**Interpretive (entity discretion):**
+- Level of detail in scenario analysis
+- Scope 3 methodology selection
+- Financial impact quantification approach
+- Transition plan detail level
+
+### Limited Assurance Requirements (critical for scoring)
+**Standards:** ISAE 3000 (Revised), ISAE 3410, ISSA 5000
+**Initial Scope:** Scope 1 & 2 GHG emissions ONLY (NOT Scope 3, NOT qualitative disclosures)
+**What limited assurance means:** Negative form conclusion ("nothing has come to our attention..."), primarily analytical procedures and inquiry.
+
+**Essential internal controls for limited assurance (Scope 1 & 2):**
+1. Organizational boundary definition — clear documentation of included entities
+2. Emission source inventory — complete list of all sources by scope
+3. Calculation methodology — documented (GHG Protocol, ISO 14064)
+4. Activity data controls — procedures for collecting/verifying fuel, electricity data
+5. Emission factor management — documented source and version
+6. Maker-checker review — independent review of calculations
+7. Audit trail — trace from disclosed numbers to source data
+8. Data reconciliation — reconcile to utility bills, fuel invoices, meter readings
+9. Error tracking — log of errors found and corrections
+10. Management sign-off — formal approval of final GHG figures
+11. Segregation of duties — separate data collection, calculation, review, approval
+12. Access controls — restricted access to calculation systems
+13. Documentation — all policies, procedures, assumptions documented
+
+### GHG Accounting
+**Scope 1 (Direct):** Stationary combustion, mobile combustion, process emissions, fugitive emissions. Calculation: Activity data × Emission factor = tCO2e
+**Scope 2 (Energy indirect):** Location-based AND market-based methods BOTH required by SSBJ. Data: utility invoices, meter readings.
+**Scope 3 (Value chain):** 15 categories, material categories must be identified. Relief period in first year.
+
+### Japanese Regulatory Timeline
+- Phase 1 (FY March 2027): Prime Market, ≥¥3T — mandatory
+- Phase 2 (FY March 2028): Prime Market, ≥¥1T — mandatory
+- Phase 3 (FY March 2029): Prime Market, ≥¥700B — mandatory
+- Limited assurance starts ONE YEAR AFTER mandatory disclosure for each phase
+
+## TASK
 Analyze the following documents against each SSBJ criterion and assess the organization's maturity level.
 
 MATURITY SCALE:
 {maturity_desc}
 
-SCORING GUIDELINES:
+SCORING GUIDELINES (be strict — apply your SSBJ expertise):
 - Score 0: No evidence at all in the documents
 - Score 1: Topic is mentioned but no formal process or structure
 - Score 2: Some processes exist but incomplete or inconsistent documentation
-- Score 3: Formal documented processes with clear ownership (minimum for limited assurance)
-- Score 4: Monitored, measured processes with regular review cycles
-- Score 5: Continuous improvement, leading practice, fully assurance-ready
+- Score 3: Formal documented processes with clear ownership (MINIMUM for limited assurance readiness). For GHG criteria, must show: documented methodology, activity data sources, emission factors, calculation procedures, and review process
+- Score 4: Monitored, measured processes with regular review cycles. Evidence of maker-checker, reconciliation, management sign-off
+- Score 5: Continuous improvement, leading practice, fully assurance-ready. Complete audit trail, segregation of duties, error tracking
 
 SSBJ CRITERIA TO ASSESS:
 {criteria_text}
@@ -172,9 +231,15 @@ For each criterion, provide your assessment as a JSON array. Each element should
 - "evidence": specific quotes or references from the documents that support your score (2-3 sentences)
 - "notes": what the organization needs to improve to reach score 3+ for limited assurance readiness (2-3 sentences)
 
-Be strict and objective. Only give high scores when you see clear, specific evidence.
-If a document mentions a topic vaguely without specifics, that's score 1-2, not 3+.
-For score 3+, you need to see formal processes, specific methodologies, named responsibilities, or concrete data.
+Be strict and objective — apply your deep SSBJ/ISSB/limited assurance expertise:
+- Only give high scores when you see clear, specific evidence
+- If a document mentions a topic vaguely without specifics, that's score 1-2, not 3+
+- For score 3+, you need to see formal processes, specific methodologies, named responsibilities, or concrete data
+- For GHG metrics (MET-01, MET-02): score 3+ requires documented calculation methodology, identified emission sources, activity data sources, emission factors with references, and review process
+- For internal controls (RSK-05): score 3+ requires at least maker-checker, audit trail, data reconciliation, and segregation of duties
+- For governance (GOV-01, GOV-02): score 3+ requires formal board/committee mandate with documented terms of reference
+- For mandatory (SHALL) items: assess against SSBJ/IFRS S1/S2 mandatory disclosure requirements specifically
+- For limited assurance scope items: assess readiness for ISAE 3000/3410 procedures (can an auditor trace from disclosure to source data?)
 
 Respond ONLY with valid JSON array, no other text. Example format:
 [

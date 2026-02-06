@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Data Security - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-9 col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-shield-lock me-2"></i>Data Security & Privacy</h2>
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-house me-1"></i>Dashboard
+            </a>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="card mb-4 border-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-info-circle me-2"></i>How Your Data is Handled</h5>
+                <p>This tool processes confidential sustainability documents. Here is exactly what happens with your data:</p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-success">
+                            <div class="card-body">
+                                <h6 class="text-success"><i class="bi bi-check-circle me-1"></i>Stays Within This Application</h6>
+                                <ul class="mb-0 small">
+                                    <li>Uploaded document files (stored on server)</li>
+                                    <li>Assessment scores, evidence, notes</li>
+                                    <li>User accounts and passwords (hashed)</li>
+                                    <li>Review findings and recommendations</li>
+                                    <li>All data in the database</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-warning">
+                            <div class="card-body">
+                                <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Sent to Anthropic API (External)</h6>
+                                <ul class="mb-0 small">
+                                    <li><strong>AI Assess:</strong> Extracted text from uploaded documents</li>
+                                    <li><strong>Expert Chat:</strong> Your chat messages + assessment context (scores, entity name)</li>
+                                    <li>SSBJ criteria descriptions (not confidential)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Anthropic API Data Policy -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-cloud me-2"></i>Anthropic API Data Policy
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold" style="width: 40%;">Does Anthropic train on your data?</td>
+                            <td><span class="badge bg-success">No</span> — API data is NOT used for model training (per Anthropic's commercial API terms)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">How long does Anthropic retain data?</td>
+                            <td>API inputs/outputs may be retained for up to 30 days for trust & safety purposes, then deleted</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Is data encrypted in transit?</td>
+                            <td><span class="badge bg-success">Yes</span> — All API calls use HTTPS/TLS encryption</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Where is data processed?</td>
+                            <td>Anthropic's cloud infrastructure (United States)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Can you opt out of external AI?</td>
+                            <td><span class="badge bg-success">Yes</span> — Remove ANTHROPIC_API_KEY to use offline keyword-only mode. No data leaves the server.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-toggles me-2"></i>Current Configuration
+            </div>
+            <div class="card-body">
+                {% if ai_enabled %}
+                <div class="alert alert-warning mb-3">
+                    <i class="bi bi-cloud-arrow-up me-2"></i>
+                    <strong>AI Mode Active:</strong> Document text and chat messages are sent to Anthropic's API for analysis.
+                </div>
+                <p class="mb-0"><strong>To switch to offline mode:</strong> Remove the <code>ANTHROPIC_API_KEY</code> environment variable in Render. The tool will use keyword-based assessment only — no data leaves your server.</p>
+                {% else %}
+                <div class="alert alert-success mb-3">
+                    <i class="bi bi-shield-check me-2"></i>
+                    <strong>Offline Mode:</strong> No data is sent to any external API. All processing happens locally using keyword matching.
+                </div>
+                <p class="mb-0"><strong>To enable AI:</strong> Set the <code>ANTHROPIC_API_KEY</code> environment variable in Render. This enables more accurate AI analysis but sends document text to Anthropic.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-check2-square me-2"></i>Security Recommendations for Internal Use
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Measure</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Set unique SECRET_KEY</td>
+                                <td><i class="bi bi-exclamation-circle text-warning"></i></td>
+                                <td><small>Set <code>SECRET_KEY</code> env var in Render (random 32+ character string)</small></td>
+                            </tr>
+                            <tr>
+                                <td>HTTPS enabled</td>
+                                <td><i class="bi bi-check-circle text-success"></i></td>
+                                <td><small>Render provides HTTPS by default on all deployments</small></td>
+                            </tr>
+                            <tr>
+                                <td>Change default admin password</td>
+                                <td><i class="bi bi-exclamation-circle text-warning"></i></td>
+                                <td><small>System prompts password change on first login</small></td>
+                            </tr>
+                            <tr>
+                                <td>Password strength requirements</td>
+                                <td><i class="bi bi-check-circle text-success"></i></td>
+                                <td><small>Min 8 chars, letters + numbers required</small></td>
+                            </tr>
+                            <tr>
+                                <td>Secure session cookies</td>
+                                <td><i class="bi bi-check-circle text-success"></i></td>
+                                <td><small>HttpOnly, SameSite, Secure flags enabled in production</small></td>
+                            </tr>
+                            <tr>
+                                <td>Session timeout</td>
+                                <td><i class="bi bi-check-circle text-success"></i></td>
+                                <td><small>Sessions expire after 1 hour of inactivity</small></td>
+                            </tr>
+                            <tr>
+                                <td>Role-based access control</td>
+                                <td><i class="bi bi-check-circle text-success"></i></td>
+                                <td><small>Admin, Assessor, Reviewer roles with appropriate restrictions</small></td>
+                            </tr>
+                            <tr>
+                                <td>Use PostgreSQL (not SQLite)</td>
+                                <td><i class="bi bi-exclamation-circle text-warning"></i></td>
+                                <td><small>Add a PostgreSQL database in Render for production use with proper backups</small></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- What NOT to upload -->
+        <div class="card mb-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <i class="bi bi-exclamation-octagon me-2"></i>What NOT to Upload (when AI mode is active)
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="fw-bold mb-2 text-danger">Avoid uploading:</p>
+                        <ul class="small">
+                            <li>Documents with personal employee information (PII)</li>
+                            <li>Financial statements with non-public figures</li>
+                            <li>Trade secrets or proprietary formulas</li>
+                            <li>Legal privileged documents</li>
+                            <li>Passwords, API keys, or access credentials</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="fw-bold mb-2 text-success">Safe to upload:</p>
+                        <ul class="small">
+                            <li>Published sustainability reports</li>
+                            <li>GHG inventory spreadsheets (aggregated data)</li>
+                            <li>Environmental policies and procedures</li>
+                            <li>Governance charters and mandates</li>
+                            <li>Process documentation (redacted if needed)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="alert alert-info mb-0 mt-2">
+                    <i class="bi bi-lightbulb me-1"></i>
+                    <strong>Tip:</strong> If your documents contain sensitive data mixed with sustainability info, redact the sensitive parts before uploading, or use <strong>offline keyword mode</strong> (remove ANTHROPIC_API_KEY) so no data leaves the server.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
