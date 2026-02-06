@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Report: {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-file-earmark-text me-2"></i>Gap Analysis Report</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
+    </div>
+    <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="stat-value">{{ assessment.overall_score }}</div>
+                <div class="stat-label">Overall Score</div>
+                <small class="text-muted">out of 5.0</small>
+            </div>
+        </div>
+    </div>
+    {% for pillar, score in pillar_scores.items() %}
+    <div class="col-md-{{ 9 // (pillar_scores|length) if pillar_scores|length else 3 }}">
+        <div class="card {% if score < 2 %}gap-high{% elif score < 3 %}gap-medium{% else %}gap-low{% endif %}">
+            <div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.5rem;">{{ score }}</div>
+                <div class="stat-label">{{ pillar }}</div>
+                {% if score < 3 %}
+                <span class="badge bg-danger">Below Threshold</span>
+                {% else %}
+                <span class="badge bg-success">Assurance Ready</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row mb-4">
+    <!-- Pillar Chart -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Pillar Scores vs. Limited Assurance Threshold</div>
+            <div class="card-body">
+                <canvas id="pillarChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Category Chart -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Category Breakdown</div>
+            <div class="card-body">
+                <canvas id="categoryChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Identified Gaps -->
+{% if gaps %}
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
+        Identified Gaps (Below "Defined" Maturity)
+        <span class="badge bg-danger ms-2">{{ gaps|length }} items</span>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Pillar</th>
+                    <th>Category</th>
+                    <th>Score</th>
+                    <th>Gap</th>
+                    <th>Requirement</th>
+                    <th>Action Needed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gap in gaps %}
+                <tr class="{% if gap.response.score <= 1 %}table-danger{% else %}table-warning{% endif %}">
+                    <td><code>{{ gap.criterion.id }}</code></td>
+                    <td>{{ gap.criterion.pillar }}</td>
+                    <td>{{ gap.criterion.category }}</td>
+                    <td>
+                        <span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span>
+                    </td>
+                    <td>
+                        <span class="badge {% if gap.response.score <= 1 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
+                            {{ 3 - gap.response.score }} levels to close
+                        </span>
+                    </td>
+                    <td><small>{{ gap.criterion.requirement[:100] }}...</small></td>
+                    <td><small>{{ gap.response.notes or gap.criterion.guidance[:80] }}{% if not gap.response.notes and gap.criterion.guidance|length > 80 %}...{% endif %}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success">
+    <i class="bi bi-check-circle me-2"></i>
+    All criteria meet the minimum "Defined" maturity level. The entity appears ready for limited assurance.
+</div>
+{% endif %}
+
+<!-- Detailed Scores by Pillar -->
+{% for pillar, criteria in criteria_by_pillar.items() %}
+<div class="card mb-3">
+    <div class="card-header">
+        {{ pillar }} — Detailed Scores
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Category</th>
+                    <th>Standard</th>
+                    <th>Score</th>
+                    <th>Maturity Level</th>
+                    <th>Evidence Summary</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in criteria %}
+                {% set resp = responses.get(c.id) %}
+                <tr>
+                    <td><code>{{ c.id }}</code></td>
+                    <td>{{ c.category }}</td>
+                    <td><small>{{ c.standard }}</small></td>
+                    <td>
+                        {% if resp and resp.score is not none %}
+                        <span class="score-badge score-{{ resp.score }}">{{ resp.score }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if resp and resp.score is not none %}
+                        {{ maturity_levels[resp.score].label }}
+                        {% else %}
+                        Not assessed
+                        {% endif %}
+                    </td>
+                    <td><small>{{ (resp.evidence[:80] + '...') if resp and resp.evidence and resp.evidence|length > 80 else (resp.evidence if resp and resp.evidence else '—') }}</small></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const pillarScores = {{ pillar_scores | tojson }};
+const categoryScores = {{ category_scores | tojson }};
+
+// Pillar bar chart
+new Chart(document.getElementById('pillarChart'), {
+    type: 'bar',
+    data: {
+        labels: Object.keys(pillarScores),
+        datasets: [{
+            label: 'Current Score',
+            data: Object.values(pillarScores),
+            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            borderRadius: 6
+        }, {
+            label: 'Limited Assurance Threshold (3.0)',
+            data: Object.keys(pillarScores).map(() => 3),
+            type: 'line',
+            borderColor: '#e53e3e',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } },
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// Category horizontal bar chart
+const catLabels = Object.keys(categoryScores);
+const catValues = Object.values(categoryScores);
+new Chart(document.getElementById('categoryChart'), {
+    type: 'bar',
+    data: {
+        labels: catLabels,
+        datasets: [{
+            label: 'Score',
+            data: catValues,
+            backgroundColor: catValues.map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            borderRadius: 4
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        scales: { x: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } },
+        plugins: { legend: { display: false } }
+    }
+});
+</script>
+{% endblock %}

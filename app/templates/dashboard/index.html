@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-value">{{ stats.total_assessments }}</div>
+                <div class="stat-label">Total Assessments</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: var(--warning);">
+            <div class="card-body">
+                <div class="stat-value" style="color: var(--warning);">{{ stats.in_progress }}</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: var(--success);">
+            <div class="card-body">
+                <div class="stat-value" style="color: var(--success);">{{ stats.completed }}</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card" style="border-left-color: var(--accent);">
+            <div class="card-body">
+                <div class="stat-value" style="color: var(--accent);">{{ stats.reviewed }}</div>
+                <div class="stat-label">Reviewed</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Pillar Scores Chart -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-bar-chart me-2"></i>Average Gap Scores by Pillar
+            </div>
+            <div class="card-body">
+                {% if pillar_averages %}
+                <canvas id="pillarChart" height="250"></canvas>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
+                    <p class="mt-2">No completed assessments yet. Complete an assessment to see gap analysis.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Maturity Overview -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-bullseye me-2"></i>Maturity Target Overview
+            </div>
+            <div class="card-body">
+                {% if pillar_averages %}
+                <canvas id="radarChart" height="250"></canvas>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-bullseye" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Complete assessments to see the maturity radar.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Assessments -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-2"></i>Recent Assessments</span>
+        <a href="{{ url_for('assessment.create') }}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>New Assessment
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if assessments %}
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Entity</th>
+                    <th>Fiscal Year</th>
+                    <th>Status</th>
+                    <th>Completion</th>
+                    <th>Score</th>
+                    <th>Updated</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in assessments[:10] %}
+                <tr>
+                    <td><strong>{{ a.title }}</strong></td>
+                    <td>{{ a.entity_name }}</td>
+                    <td>{{ a.fiscal_year }}</td>
+                    <td>
+                        {% if a.status == 'draft' %}
+                        <span class="status-badge bg-secondary text-white">Draft</span>
+                        {% elif a.status == 'in_progress' %}
+                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        {% elif a.status == 'completed' %}
+                        <span class="status-badge bg-success text-white">Completed</span>
+                        {% elif a.status == 'under_review' %}
+                        <span class="status-badge bg-info text-white">Under Review</span>
+                        {% elif a.status == 'reviewed' %}
+                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="progress" style="width: 80px;">
+                            <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                        </div>
+                        <small class="text-muted">{{ a.completion_pct }}%</small>
+                    </td>
+                    <td>
+                        <span class="score-badge score-{{ (a.overall_score | round | int) if a.overall_score else 0 }}">
+                            {{ a.overall_score }}
+                        </span>
+                    </td>
+                    <td>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-clipboard-check" style="font-size: 3rem;"></i>
+            <p class="mt-2">No assessments yet. Create your first SSBJ gap assessment.</p>
+            <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>New Assessment
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if pillar_averages %}
+<script>
+const pillarData = {{ pillar_averages | tojson }};
+const labels = Object.keys(pillarData);
+const values = Object.values(pillarData);
+const colors = ['#2b6cb0', '#38a169', '#d69e2e', '#e53e3e'];
+
+// Bar Chart
+new Chart(document.getElementById('pillarChart'), {
+    type: 'bar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Average Score',
+            data: values,
+            backgroundColor: colors.slice(0, labels.length),
+            borderRadius: 6
+        }, {
+            label: 'Target (Defined)',
+            data: labels.map(() => 3),
+            type: 'line',
+            borderColor: '#e53e3e',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+        },
+        plugins: {
+            legend: { position: 'bottom' }
+        }
+    }
+});
+
+// Radar Chart
+new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Current',
+            data: values,
+            borderColor: '#2b6cb0',
+            backgroundColor: 'rgba(43, 108, 176, 0.2)',
+            pointBackgroundColor: '#2b6cb0'
+        }, {
+            label: 'Target (Limited Assurance Ready)',
+            data: labels.map(() => 3),
+            borderColor: '#e53e3e',
+            backgroundColor: 'rgba(229, 62, 62, 0.1)',
+            borderDash: [5, 5],
+            pointBackgroundColor: '#e53e3e'
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            r: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+        },
+        plugins: {
+            legend: { position: 'bottom' }
+        }
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Assessments - SSBJ Gap Analysis{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clipboard-check me-2"></i>Assessments</h2>
+    <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Assessment
+    </a>
+</div>
+
+{% if assessments %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Entity</th>
+                    <th>Fiscal Year</th>
+                    <th>Status</th>
+                    <th>Completion</th>
+                    <th>Overall Score</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in assessments %}
+                <tr>
+                    <td><strong>{{ a.title }}</strong></td>
+                    <td>{{ a.entity_name }}</td>
+                    <td>{{ a.fiscal_year }}</td>
+                    <td>
+                        {% if a.status == 'draft' %}
+                        <span class="status-badge bg-secondary text-white">Draft</span>
+                        {% elif a.status == 'in_progress' %}
+                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        {% elif a.status == 'completed' %}
+                        <span class="status-badge bg-success text-white">Completed</span>
+                        {% elif a.status == 'under_review' %}
+                        <span class="status-badge bg-info text-white">Under Review</span>
+                        {% elif a.status == 'reviewed' %}
+                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="width: 80px;">
+                                <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                            </div>
+                            <small>{{ a.completion_pct }}%</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="score-badge score-{{ (a.overall_score | round | int) if a.overall_score else 0 }}">
+                            {{ a.overall_score }}
+                        </span>
+                    </td>
+                    <td>{{ a.created_at.strftime('%Y-%m-%d') if a.created_at else '—' }}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if a.status in ('completed', 'under_review', 'reviewed') %}
+                            <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-clipboard-check" style="font-size: 3rem;"></i>
+        <p class="mt-2">No assessments found. Create your first SSBJ gap analysis.</p>
+        <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>New Assessment
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

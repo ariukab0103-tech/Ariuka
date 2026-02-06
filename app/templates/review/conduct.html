@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Review: {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-search me-2"></i>Limited Assurance Review</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }}</p>
+    </div>
+    <div>
+        {% set not_reviewed_count = review.review_items.filter_by(status='not_reviewed').count() %}
+        {% if not_reviewed_count == 0 %}
+        <a href="{{ url_for('review.complete_review', review_id=review.id) }}" class="btn btn-success">
+            <i class="bi bi-check-circle me-1"></i>Complete Review
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Assessment Summary -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Assessment Summary</div>
+            <div class="card-body">
+                <div class="row text-center">
+                    {% for pillar, score in pillar_scores.items() %}
+                    <div class="col">
+                        <div class="fw-bold fs-4 {% if score < 3 %}text-danger{% else %}text-success{% endif %}">{{ score }}</div>
+                        <small class="text-muted">{{ pillar }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Review Progress</div>
+            <div class="card-body text-center">
+                {% set total_items = review.review_items.count() %}
+                {% set reviewed_items = total_items - not_reviewed_count %}
+                <div class="fs-2 fw-bold text-primary">{{ reviewed_items }}/{{ total_items }}</div>
+                <small class="text-muted">Items Reviewed</small>
+                <div class="progress mt-2">
+                    <div class="progress-bar" style="width: {{ (reviewed_items / total_items * 100) if total_items else 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Limited Assurance Checklist -->
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-list-check me-2"></i>Limited Assurance Criteria
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Category</th>
+                    <th>Requirement</th>
+                    <th>Status</th>
+                    <th>Evidence</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for criterion in la_criteria %}
+                {% set item = review_items.get(criterion.id) %}
+                <tr>
+                    <td><code>{{ criterion.id }}</code></td>
+                    <td>{{ criterion.category }}</td>
+                    <td><small>{{ criterion.requirement[:100] }}{% if criterion.requirement|length > 100 %}...{% endif %}</small></td>
+                    <td>
+                        {% if item %}
+                        {% if item.status == 'satisfactory' %}
+                        <span class="badge bg-success">Satisfactory</span>
+                        {% elif item.status == 'needs_improvement' %}
+                        <span class="badge bg-warning text-dark">Needs Improvement</span>
+                        {% elif item.status == 'unsatisfactory' %}
+                        <span class="badge bg-danger">Unsatisfactory</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Not Reviewed</span>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item and item.evidence_adequate %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <i class="bi bi-dash-circle text-muted"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('review.review_item', review_id=review.id, criterion_id=criterion.id) }}"
+                           class="btn btn-sm {% if item and item.status != 'not_reviewed' %}btn-outline-primary{% else %}btn-primary{% endif %}">
+                            {% if item and item.status != 'not_reviewed' %}Edit{% else %}Review{% endif %}
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
