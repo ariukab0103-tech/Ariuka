@@ -68,11 +68,72 @@
 
 <!-- Identified Gaps -->
 {% if gaps %}
+
+<!-- LA-Critical Gaps First -->
+{% set la_gaps = [] %}
+{% for gap in gaps %}
+    {% if gap.criterion.la_scope == 'in_scope' %}
+        {% if la_gaps.append(gap) %}{% endif %}
+    {% endif %}
+{% endfor %}
+{% if la_gaps %}
+<div class="card mb-4 border-danger">
+    <div class="card-header bg-danger text-white">
+        <i class="bi bi-shield-exclamation me-2"></i>
+        PRIORITY 1: Limited Assurance Critical Gaps — Must Fix First
+        <span class="badge bg-light text-danger ms-2">{{ la_gaps|length }} items</span>
+    </div>
+    <div class="card-body">
+        <p class="text-danger fw-bold mb-3">These items are directly in scope for limited assurance (Scope 1 & 2 GHG). An auditor WILL examine these. Fix these before anything else.</p>
+        {% for gap in la_gaps %}
+        <div class="card mb-3 border-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <code class="fs-6">{{ gap.criterion.id }}</code> — <strong>{{ gap.criterion.category }}</strong>
+                        <span class="badge bg-danger ms-2">Score: {{ gap.response.score }}/5 (need 3+)</span>
+                    </div>
+                    <span class="badge bg-danger">{{ 3 - gap.response.score }} levels to close</span>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="bg-light p-3 rounded h-100">
+                            <h6 class="text-success mb-2"><i class="bi bi-check-circle me-1"></i>Minimum to Comply (Target: Score 3)</h6>
+                            <small>{{ gap.criterion.minimum_action }}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="bg-light p-3 rounded h-100">
+                            <h6 class="text-primary mb-2"><i class="bi bi-star me-1"></i>Best Practice (Score 4-5)</h6>
+                            <small>{{ gap.criterion.best_practice }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% if gap.criterion.internal_controls %}
+                <div class="alert alert-warning mt-2 mb-0 py-2">
+                    <small><i class="bi bi-gear me-1"></i><strong>Internal Controls Required:</strong> {{ gap.criterion.internal_controls }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Other Gaps (supporting + not in scope) -->
+{% set other_gaps = [] %}
+{% for gap in gaps %}
+    {% if gap.criterion.la_scope != 'in_scope' %}
+        {% if other_gaps.append(gap) %}{% endif %}
+    {% endif %}
+{% endfor %}
+{% if other_gaps %}
 <div class="card mb-4">
     <div class="card-header">
         <i class="bi bi-exclamation-triangle me-2 text-warning"></i>
-        Identified Gaps (Below "Defined" Maturity)
-        <span class="badge bg-danger ms-2">{{ gaps|length }} items</span>
+        PRIORITY 2: Other Gaps Below Threshold
+        <span class="badge bg-warning text-dark ms-2">{{ other_gaps|length }} items</span>
     </div>
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
@@ -80,27 +141,23 @@
                 <tr>
                     <th>ID</th>
                     <th>Obligation</th>
-                    <th>LA Priority</th>
-                    <th>Category</th>
+                    <th>Priority</th>
                     <th>Score</th>
-                    <th>Gap</th>
-                    <th>Requirement</th>
-                    <th>Action Needed</th>
+                    <th>Minimum to Comply</th>
+                    <th>Best Practice</th>
                 </tr>
             </thead>
             <tbody>
-                {% for gap in gaps %}
-                <tr class="{% if gap.criterion.la_scope == 'in_scope' %}table-danger{% elif gap.response.score <= 1 %}table-danger{% else %}table-warning{% endif %}">
+                {% for gap in other_gaps %}
+                <tr>
                     <td>
                         <code>{{ gap.criterion.id }}</code>
-                        {% if gap.criterion.la_scope == 'in_scope' %}
-                        <br><span class="badge bg-danger bg-opacity-75" style="font-size: 0.6em;"><i class="bi bi-shield-check"></i> LA</span>
-                        {% endif %}
+                        <br><small class="text-muted">{{ gap.criterion.category }}</small>
                     </td>
                     <td>
                         {% set ob = obligation_labels.get(gap.criterion.obligation, {}) %}
                         <span class="badge bg-{{ ob.get('badge', 'secondary') }}" style="font-size: 0.7em;">
-                            {{ ob.get('label', gap.criterion.obligation) }}
+                            {{ ob.get('label', gap.criterion.obligation)|replace(' (SHALL)', '')|replace(' (SHOULD)', '') }}
                         </span>
                     </td>
                     <td>
@@ -109,40 +166,14 @@
                             {{ lp.get('label', gap.criterion.la_priority) }}
                         </span>
                     </td>
-                    <td>{{ gap.criterion.category }}</td>
-                    <td>
-                        <span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span>
-                    </td>
-                    <td>
-                        <span class="badge {% if gap.response.score <= 1 %}bg-danger{% else %}bg-warning text-dark{% endif %}">
-                            {{ 3 - gap.response.score }} levels to close
-                        </span>
-                    </td>
-                    <td><small>{{ gap.criterion.requirement[:100] }}...</small></td>
-                    <td><small>{{ gap.response.notes or gap.criterion.guidance[:80] }}{% if not gap.response.notes and gap.criterion.guidance|length > 80 %}...{% endif %}</small></td>
+                    <td><span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span></td>
+                    <td><small>{{ gap.criterion.minimum_action }}</small></td>
+                    <td><small>{{ gap.criterion.best_practice[:120] }}{% if gap.criterion.best_practice|length > 120 %}...{% endif %}</small></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-</div>
-
-<!-- LA-Critical Gaps -->
-{% set la_gaps = [] %}
-{% for gap in gaps %}
-    {% if gap.criterion.la_scope == 'in_scope' %}
-        {% if la_gaps.append(gap) %}{% endif %}
-    {% endif %}
-{% endfor %}
-{% if la_gaps %}
-<div class="alert alert-danger mb-4">
-    <h6 class="alert-heading"><i class="bi bi-shield-exclamation me-2"></i>Limited Assurance Critical Gaps</h6>
-    <p class="mb-2">The following items are <strong>directly in scope for limited assurance</strong> and scored below the threshold. These must be prioritized:</p>
-    <ul class="mb-0">
-        {% for gap in la_gaps %}
-        <li><code>{{ gap.criterion.id }}</code> — {{ gap.criterion.category }} (Score: {{ gap.response.score }}/5, need 3+)</li>
-        {% endfor %}
-    </ul>
 </div>
 {% endif %}
 
