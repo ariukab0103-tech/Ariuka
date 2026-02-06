@@ -26,11 +26,13 @@ def create_app(config_class=Config):
     from app.assessment.routes import assessment_bp
     from app.dashboard.routes import dashboard_bp
     from app.review.routes import review_bp
+    from app.chat.routes import chat_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(assessment_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(review_bp)
+    app.register_blueprint(chat_bp)
 
     with app.app_context():
         db.create_all()
