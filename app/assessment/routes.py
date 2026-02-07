@@ -760,9 +760,14 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
     """Use Claude AI to analyze consultant report against SSBJ requirements and our assessment.
 
     Returns (results, all_matched_ids, comparison) or None if AI unavailable.
+    Runs the API call in a separate thread to prevent Gunicorn worker crashes.
     """
     import json as _json
     import re
+    import logging
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+    logger = logging.getLogger(__name__)
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
@@ -770,24 +775,19 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
 
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
-    except Exception:
+    except ImportError:
         return None
 
-    # Build context: criteria + our scores
+    # Build context: criteria + our scores (compact format to reduce token count)
     criteria_context = []
     for c in SSBJ_CRITERIA:
         resp = responses_map.get(c["id"])
         score = resp.score if resp and resp.score is not None else None
-        score_str = f"{score}/5" if score is not None else "Not scored"
+        score_str = f"{score}/5" if score is not None else "N/A"
         criteria_context.append(
-            f"{c['id']} | {c['pillar']} | {c['category']} | "
-            f"Obligation: {c['obligation']} | LA Scope: {c['la_scope']} | "
-            f"Our Score: {score_str}\n"
-            f"  Requirement: {c['requirement']}\n"
-            f"  Minimum Action: {c.get('minimum_action', 'N/A')}"
+            f"{c['id']}|{c['pillar']}|{c['category']}|{c['obligation']}|{c['la_scope']}|Score:{score_str}"
         )
-    criteria_text = "\n\n".join(criteria_context)
+    criteria_text = "\n".join(criteria_context)
 
     # Build roadmap context
     roadmap_context = ""
@@ -801,91 +801,47 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
             f"LA-critical gaps: {len(la_critical)} ({', '.join(la_ids)})"
         )
 
-    # Truncate consultant text if needed (keep short to avoid API timeout)
+    # Truncate consultant text if needed
     max_chars = 15000
     truncated = consultant_text[:max_chars] if len(consultant_text) > max_chars else consultant_text
 
-    system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You are comparing an external consultant's report/proposal against:
-1. Our own SSBJ gap assessment tool results (scores per criterion)
-2. Our compliance roadmap (phases, timeline, urgency)
-3. SSBJ minimum compliance requirements
+    system_prompt = """You are an expert SSBJ/ISSB sustainability auditor comparing a consultant's report against our SSBJ gap assessment results.
 
-You know:
-- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
-- 25 SSBJ criteria across 4 pillars: Governance (5), Strategy (6), Risk Management (5), Metrics & Targets (9)
-- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive requirements
-- Limited assurance scope (first 2 years): Scope 1 & 2 GHG, Governance, and Risk Management (ISSA 5000)
-- Value chain analysis (STR-01, STR-02) and Scope 3 all 15 categories (MET-03) are MANDATORY
-- GHG Intensity (MET-08) and Climate Remuneration (MET-09) are mandatory under IFRS S2
-- Carbon offsets do NOT reduce reported Scope 1/2 emissions — they are NOT part of SSBJ compliance
-- Reasonable assurance is NOT being considered — limited assurance only
-- ISSA 5000 replaces ISAE 3000/3410 from Dec 2026
+Key SSBJ facts:
+- 25 criteria: Governance(5), Strategy(6), Risk Management(5), Metrics & Targets(9)
+- Mandatory(SHALL) vs Recommended(SHOULD) vs Interpretive
+- Limited assurance scope (first 2 yrs): Scope 1&2, Governance, Risk Management (ISSA 5000)
+- Value chain (STR-01,02), Scope 3 all 15 categories (MET-03), GHG Intensity (MET-08), Climate Remuneration (MET-09) = MANDATORY
+- Carbon offsets ≠ emission reductions. ISSA 5000 replaces ISAE 3000/3410 from Dec 2026
 
-Your task: Compare the consultant's report against OUR assessment results and roadmap. For each distinct suggestion/recommendation/finding in the consultant's report:
-1. Does it MATCH our tool's findings? If our score is low for that criterion, the consultant is aligned.
-2. Does it DEVIATE from our results? If our score is already >=3 but consultant flags it, it may be redundant.
-3. Is it BEYOND minimum SSBJ compliance? Flag anything that goes beyond what SSBJ actually requires.
-4. Is it UNNECESSARY for SSBJ? (e.g., carbon offsets, blockchain, ESG ratings, real-time dashboards)
-5. Does the consultant MISS something our tool identified as a gap?
+Classify each consultant suggestion: essential (mandatory + our gap), recommended (useful beyond minimum), already_covered (score>=3), out_of_scope, unnecessary (misleading for SSBJ)."""
 
-Classify each: essential (matches SSBJ mandatory + our gap), recommended (useful but beyond minimum), already_covered (our score already >=3), out_of_scope (not SSBJ related), unnecessary (actively wrong or misleading for SSBJ).
-
-Also compare the consultant's overall approach with our roadmap — timeline, priorities, scope."""
-
-    user_prompt = f"""OUR TOOL'S ASSESSMENT RESULTS (scores per SSBJ criterion):
+    user_prompt = f"""ASSESSMENT SCORES:
 {criteria_text}
 
-OUR ROADMAP STATUS:
-{roadmap_context}
+ROADMAP: {roadmap_context}
 
-CONSULTANT'S REPORT/PROPOSAL TO REVIEW:
+CONSULTANT REPORT:
 {truncated}
 
-Compare the consultant's report against our assessment results and SSBJ requirements. For each distinct recommendation/finding in the consultant's report, determine if it:
-- Aligns with our gaps (score < 3 on relevant criterion) = essential
-- Goes beyond minimum SSBJ compliance = recommended
-- Targets something we already cover (score >= 3) = already_covered
-- Is not related to any SSBJ requirement = out_of_scope
-- Is misleading or unnecessary for SSBJ (e.g., carbon offsets, ESG ratings) = unnecessary
+Return ONLY JSON:
+{{"suggestions":[{{"text":"summary","verdict":"essential|recommended|already_covered|out_of_scope|unnecessary","matched_criteria":["GOV-01"],"explanation":"comparison"}}],"overall_comparison":{{"critical_observations":[{{"type":"danger|warning|success|info","title":"title","detail":"detail"}}],"differences":[{{"area":"area","our_approach":"ours","consultant_note":"theirs"}}],"missing_from_consultant":["IDs"]}}}}"""
 
-Return ONLY a JSON object:
-{{
-  "suggestions": [
-    {{
-      "text": "Brief summary of this suggestion (max 2 sentences)",
-      "verdict": "essential|recommended|already_covered|out_of_scope|unnecessary",
-      "matched_criteria": ["GOV-01", "GOV-02"],
-      "explanation": "How this compares to our assessment score and SSBJ minimum requirements. Reference specific criterion scores."
-    }}
-  ],
-  "overall_comparison": {{
-    "critical_observations": [
-      {{
-        "type": "danger|warning|success|info",
-        "title": "Short title",
-        "detail": "Explanation comparing consultant vs our tool results"
-      }}
-    ],
-    "differences": [
-      {{
-        "area": "Area name (e.g., Timeline, Scope, Prioritization)",
-        "our_approach": "What our tool/roadmap identifies",
-        "consultant_note": "How the consultant's approach differs and whether the deviation is justified"
-      }}
-    ],
-    "missing_from_consultant": ["SSBJ criterion IDs the consultant does NOT address but our tool flags as gaps"]
-  }}
-}}
-
-IMPORTANT: Return ONLY valid JSON. No markdown, no commentary outside JSON."""
-
-    try:
-        response = client.messages.create(
+    def _call_api():
+        """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
+        client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+        return client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=4000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
+
+    try:
+        # Run in separate thread with hard 60s timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_api)
+            response = future.result(timeout=60)
 
         response_text = response.content[0].text.strip()
 
@@ -944,9 +900,12 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no commentary outside JSON."""
 
         return results, all_matched_ids, comparison
 
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning(f"AI consultant analysis failed: {e}")
+    except FuturesTimeout:
+        logger.warning("AI consultant analysis timed out (60s), falling back to keyword matching")
+        return None
+    except BaseException as e:
+        # Catch BaseException to handle SystemExit from Gunicorn SIGABRT
+        logger.warning(f"AI consultant analysis failed: {type(e).__name__}: {e}")
         return None
 
 
