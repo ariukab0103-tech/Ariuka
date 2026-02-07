@@ -153,54 +153,93 @@
 <div class="page-break-before" id="sec-roadmap">
     <h3 class="mb-3"><i class="bi bi-calendar3 me-2"></i>Compliance Roadmap</h3>
 
+    <!-- Overview Cards -->
     <div class="row mb-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
                     <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.months_remaining }} months</div>
-                    <div class="stat-label">To Compliance Deadline</div>
+                    <div class="stat-label">To Compliance</div>
+                    <small class="text-muted">by March {{ roadmap.compliance_year }}</small>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.total_tasks }}</div>
-                    <div class="stat-label">Total Tasks</div>
+                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.months_to_assurance }} months</div>
+                    <div class="stat-label">To 1st Assurance</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.gaps.total_gaps }}</div>
+                    <div class="stat-label">Gaps to Close</div>
+                    <small class="text-danger">{{ roadmap.gaps.la_critical|length }} in LA scope</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
                     <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.phases | length }}</div>
                     <div class="stat-label">Phases</div>
+                    <small class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}info{% else %}success{% endif %}">{{ roadmap.urgency|upper }}</small>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Summary -->
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Readiness Summary</div>
+        <div class="card-body py-2">
+            {% for line in roadmap.summary %}
+            <p class="mb-1 small {% if 'CRITICAL' in line %}text-danger fw-bold{% endif %}">{{ line }}</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Phases -->
     {% for phase in roadmap.phases %}
     <div class="card mb-3">
-        <div class="card-header">
-            <strong>{{ phase.name }}</strong>
-            <small class="text-muted ms-2">{{ phase.start }} — {{ phase.end }} ({{ phase.duration_months }} months)</small>
+        <div class="card-header {% if phase.number == 6 %}bg-danger text-white{% elif phase.number == 7 %}bg-dark text-white{% endif %}">
+            <strong>Phase {{ phase.number }}: {{ phase.title }}</strong>
+            <small class="{% if phase.number in (6, 7) %}text-white-50{% else %}text-muted{% endif %} ms-2">{{ phase.subtitle }}</small>
+            <span class="badge bg-{% if phase.number in (6, 7) %}light text-dark{% else %}{{ phase.color }}{% endif %} float-end">{{ phase.duration }}</span>
         </div>
-        <div class="card-body p-0">
-            <table class="table table-sm mb-0">
-                <thead><tr><th>Criterion</th><th>Category</th><th>Current</th><th>Target</th><th>Action</th></tr></thead>
-                <tbody>
-                    {% for task in phase.tasks %}
-                    <tr>
-                        <td><code>{{ task.criterion_id }}</code></td>
-                        <td><small>{{ task.category }}</small></td>
-                        <td><span class="score-badge score-{{ task.current_score }}">{{ task.current_score }}</span></td>
-                        <td><span class="score-badge score-{{ task.target_score }}">{{ task.target_score }}</span></td>
-                        <td><small>{{ task.action }}</small></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <h6 class="small fw-bold" style="color: var(--accent-blue);"><i class="bi bi-people me-1"></i>Management & Governance</h6>
+                    <ul class="ps-3 mb-0" style="font-size: 0.8em;">
+                        {% for task in phase.tasks.management %}
+                        <li {% if 'URGENT' in task or 'CRITICAL' in task or 'ACCELERATED' in task %}class="text-danger fw-bold"{% endif %}>{{ task }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="small fw-bold" style="color: var(--accent-green);"><i class="bi bi-gear me-1"></i>Technical & IT</h6>
+                    <ul class="ps-3 mb-0" style="font-size: 0.8em;">
+                        {% for task in phase.tasks.technical %}
+                        <li {% if 'CRITICAL' in task or 'FAST-TRACK' in task %}class="text-danger fw-bold"{% endif %}>{{ task }}</li>
+                        {% endfor %}
+                        {% if not phase.tasks.technical %}
+                        <li class="text-muted">No specific technical tasks this phase</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="small fw-bold" style="color: var(--accent-yellow);"><i class="bi bi-shield-check me-1"></i>Assurance Readiness</h6>
+                    <ul class="ps-3 mb-0" style="font-size: 0.8em;">
+                        {% for task in phase.tasks.assurance %}
+                        <li {% if 'IMMEDIATE' in task or 'FAST-TRACK' in task %}class="text-danger fw-bold"{% endif %}>{{ task }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
     {% endfor %}
