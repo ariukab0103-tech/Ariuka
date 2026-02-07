@@ -51,7 +51,7 @@ class Assessment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(256), nullable=False)
     entity_name = db.Column(db.String(256), nullable=False)
-    fiscal_year = db.Column(db.String(20), nullable=False)
+    fiscal_year = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(20), default="draft")
     # Status: draft, in_progress, completed, under_review, reviewed
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)

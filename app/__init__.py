@@ -140,16 +140,27 @@ def create_app(config_class=Config):
 
 
 def _safe_migrate():
-    """Add any missing columns to existing tables (SQLAlchemy create_all doesn't do this)."""
+    """Add any missing columns / fix column sizes for existing tables."""
     from sqlalchemy import inspect, text
     inspector = inspect(db.engine)
+    table_names = inspector.get_table_names()
+    is_postgres = "postgresql" in str(db.engine.url)
 
     # Add must_change_password column if missing
-    if "users" in inspector.get_table_names():
+    if "users" in table_names:
         columns = [c["name"] for c in inspector.get_columns("users")]
         if "must_change_password" not in columns:
-            # Use DEFAULT FALSE for PostgreSQL compatibility (also works on SQLite)
             db.session.execute(text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE"))
+            db.session.commit()
+
+    # Widen fiscal_year from varchar(20) to varchar(100) — values like
+    # "FY2025 (ending March 2026)" are 26 chars, exceeding the old limit.
+    # SQLite ignores length constraints so only PostgreSQL needs this.
+    if is_postgres and "assessments" in table_names:
+        cols = {c["name"]: c for c in inspector.get_columns("assessments")}
+        fy_col = cols.get("fiscal_year")
+        if fy_col and hasattr(fy_col["type"], "length") and (fy_col["type"].length or 0) < 100:
+            db.session.execute(text("ALTER TABLE assessments ALTER COLUMN fiscal_year TYPE VARCHAR(100)"))
             db.session.commit()
 
 
