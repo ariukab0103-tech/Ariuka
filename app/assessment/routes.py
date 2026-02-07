@@ -565,6 +565,152 @@ def delete_document(assessment_id, doc_id):
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
+@assessment_bp.route("/<int:assessment_id>/ai-assess/<string:criterion_id>", methods=["POST"])
+@login_required
+def ai_assess_criterion(assessment_id, criterion_id):
+    """AI re-assess a single criterion using its attached docs + evidence text."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
+
+    response = Response.query.filter_by(
+        assessment_id=assessment_id, criterion_id=criterion_id
+    ).first()
+    if not response:
+        flash("Criterion not found.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    criterion = next((c for c in SSBJ_CRITERIA if c["id"] == criterion_id), None)
+    if not criterion:
+        flash("Unknown criterion.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        flash("AI assessment requires ANTHROPIC_API_KEY. Using keyword fallback is not supported for per-criterion assessment.", "warning")
+        return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+    # Gather evidence: criterion attachments + evidence text + assessment-level docs
+    evidence_parts = []
+
+    # 1. User-typed evidence
+    if response.evidence:
+        evidence_parts.append(f"USER EVIDENCE:\n{response.evidence}")
+
+    # 2. Per-criterion attached files
+    from app.analyzer import extract_text_from_file
+    for att in response.attachments.all():
+        filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], att.filename)
+        if os.path.exists(filepath):
+            text = extract_text_from_file(filepath)
+            if text:
+                evidence_parts.append(f"ATTACHED FILE ({att.original_name}):\n{text[:5000]}")
+
+    # 3. Assessment-level documents (for broader context)
+    for doc in assessment.documents.all():
+        if doc.extracted_text:
+            evidence_parts.append(f"ASSESSMENT DOC ({doc.original_name}):\n{doc.extracted_text[:3000]}")
+
+    combined_evidence = "\n\n---\n\n".join(evidence_parts)
+    if not combined_evidence.strip():
+        flash("No evidence found. Upload documents or type evidence in the documentation box first.", "warning")
+        return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+    # Truncate to reasonable size
+    combined_evidence = combined_evidence[:12000]
+
+    try:
+        import anthropic
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+        system_prompt = f"""You are an SSBJ/ISSB sustainability auditor assessing ONE specific criterion.
+
+Criterion: {criterion['id']} — {criterion['category']}
+Pillar: {criterion['pillar']}
+Obligation: {criterion['obligation']}
+LA Scope: {criterion['la_scope']}
+
+REQUIREMENT:
+{criterion['requirement']}
+
+MINIMUM COMPLIANCE ACTION:
+{criterion.get('minimum_action', 'N/A')}
+
+MATURITY SCALE:
+0 = No evidence at all
+1 = Mentioned only, no formal processes
+2 = Basic/partial processes, inconsistent
+3 = Formal documented processes, consistently applied (LIMITED ASSURANCE THRESHOLD)
+4 = Monitored, measured, reviewed regularly
+5 = Continuous improvement, leading practice
+
+Be STRICT: Score 3+ requires formal documented processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
+
+Assess the provided evidence ONLY against this specific criterion. Return JSON:
+{{"score": 0-5, "evidence_summary": "What the evidence shows for this criterion", "gaps": "What is missing to reach score 3+", "action_items": "Specific next steps to improve"}}
+Return ONLY valid JSON."""
+
+        user_prompt = f"""EVIDENCE FOR {criterion['id']}:
+
+{combined_evidence}
+
+Assess this evidence against the criterion requirement. Be specific about what the evidence demonstrates and what's missing."""
+
+        def _call_api():
+            client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+            return client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=1500,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_api)
+            api_response = future.result(timeout=60)
+
+        import json as _json
+        response_text = api_response.content[0].text.strip()
+        if response_text.startswith("```"):
+            import re
+            response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
+            response_text = re.sub(r'\n?```\s*$', '', response_text)
+
+        result = _json.loads(response_text)
+
+        new_score = int(result.get("score", 0))
+        evidence_summary = result.get("evidence_summary", "")
+        gaps = result.get("gaps", "")
+        action_items = result.get("action_items", "")
+
+        # Update response — prepend AI assessment, keep user evidence
+        old_evidence = response.evidence or ""
+        ai_section = f"[AI Assessment — {criterion_id}]\nScore: {new_score}/5\n{evidence_summary}"
+        if old_evidence and not old_evidence.startswith("[AI Assessment"):
+            response.evidence = f"{ai_section}\n\n--- User Evidence ---\n{old_evidence}"
+        else:
+            response.evidence = ai_section
+
+        response.score = new_score
+        response.notes = f"{gaps}\n\nAction Items:\n{action_items}" if gaps or action_items else response.notes
+
+        if assessment.status == "draft":
+            assessment.status = "in_progress"
+        db.session.commit()
+
+        flash(f"AI assessed {criterion_id}: Score {new_score}/5. Review and adjust if needed.", "success")
+
+    except FuturesTimeout:
+        flash("AI assessment timed out. Please try again.", "warning")
+    except BaseException as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Per-criterion AI assess failed: {type(e).__name__}: {e}")
+        flash(f"AI assessment failed: {e}", "danger")
+
+    return redirect(url_for("assessment.assess_criterion", assessment_id=assessment_id, criterion_id=criterion_id))
+
+
 # =========================================================================
 # Per-criterion file upload
 # =========================================================================
