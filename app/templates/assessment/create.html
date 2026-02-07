@@ -18,19 +18,36 @@
                         <input type="text" class="form-control" id="entity_name" name="entity_name"
                                placeholder="e.g., Company Name Co., Ltd." required>
                     </div>
-                    <div class="mb-3">
-                        <label for="fiscal_year" class="form-label">Fiscal Year *</label>
-                        <select class="form-select" id="fiscal_year" name="fiscal_year" required>
-                            <option value="FY2025 (ending March 2026)">FY2025 (ending March 2026) — Voluntary</option>
-                            <option value="FY2026 (ending March 2027)">FY2026 (ending March 2027) — Phase 1 (¥3T+), assurance from March 2028</option>
-                            <option value="FY2027 (ending March 2028)">FY2027 (ending March 2028) — Phase 2 (¥1T+), assurance from March 2029</option>
-                            <option value="FY2028 (ending March 2029)">FY2028 (ending March 2029) — Phase 3 (¥500B+), assurance from March 2030</option>
-                            <option value="FY2029 (ending March 2030)">FY2029 (ending March 2030)</option>
-                        </select>
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="fiscal_year" class="form-label">First Reporting Fiscal Year *</label>
+                            <select class="form-select" id="fiscal_year" name="fiscal_year" required>
+                                <option value="FY2025 (ending March 2026)">FY2025 (ending March 2026) — Voluntary</option>
+                                <option value="FY2026 (ending March 2027)">FY2026 (ending March 2027) — Phase 1 (¥3T+)</option>
+                                <option value="FY2027 (ending March 2028)">FY2027 (ending March 2028) — Phase 2 (¥1T+)</option>
+                                <option value="FY2028 (ending March 2029)">FY2028 (ending March 2029) — Phase 3 (¥500B+)</option>
+                                <option value="FY2029 (ending March 2030)">FY2029 (ending March 2030)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fy_end_month" class="form-label">FY End Month *</label>
+                            <select class="form-select" id="fy_end_month" name="fy_end_month" required>
+                                <option value="3" selected>March (3月)</option>
+                                <option value="6">June (6月)</option>
+                                <option value="9">September (9月)</option>
+                                <option value="12">December (12月)</option>
+                            </select>
+                            <small class="text-muted">Most Japanese companies: March</small>
+                        </div>
+                    </div>
+                    <div id="timeline-info" class="alert alert-info mb-3">
+                        <i class="bi bi-calendar-check me-2"></i>
+                        <strong>Deadlines:</strong>
+                        <span id="deadline-text">Disclosure deadline and assurance deadline will be calculated based on your fiscal year selection.</span>
                     </div>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        This assessment covers <strong>25 criteria</strong> across the 4 SSBJ pillars:
+                        This assessment covers <strong>26 criteria</strong> across the 4 SSBJ pillars:
                         Governance, Strategy, Risk Management, and Metrics &amp; Targets.
                         Each criterion is scored on a 0-5 maturity scale.
                     </div>
@@ -45,4 +62,40 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateDeadline() {
+    const fy = document.getElementById('fiscal_year').value;
+    const month = parseInt(document.getElementById('fy_end_month').value);
+    const monthNames = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',
+                        7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'};
+    const m = fy.match(/ending\s+\w+\s+(20\d{2})/);
+    if (!m) return;
+    let endYear = parseInt(m[1]);
+    // Adjust year for non-March FY ends: March 2027 selection = FY ending March 2027
+    // For Dec FY: same selection means FY ends Dec 2026 (3 months earlier)
+    if (month !== 3) {
+        if (month < 3) endYear = endYear;
+        else endYear = endYear - 1;
+    }
+    const disclosure = monthNames[month] + ' ' + endYear;
+    const assurance = monthNames[month] + ' ' + (endYear + 1);
+    const now = new Date();
+    const endDate = new Date(endYear, month - 1, month === 2 ? 28 : 30);
+    const monthsLeft = Math.round((endDate - now) / (1000*60*60*24*30.44));
+    let urgency = '';
+    if (monthsLeft <= 6) urgency = ' <span class="badge bg-danger">Critical</span>';
+    else if (monthsLeft <= 12) urgency = ' <span class="badge bg-warning text-dark">Tight</span>';
+    else if (monthsLeft <= 24) urgency = ' <span class="badge bg-info">Adequate</span>';
+    else urgency = ' <span class="badge bg-success">Comfortable</span>';
+    document.getElementById('deadline-text').innerHTML =
+        'FY ends <strong>' + disclosure + '</strong> (~' + Math.max(0, monthsLeft) + ' months)' + urgency +
+        ' | Assurance deadline: <strong>' + assurance + '</strong>';
+}
+document.getElementById('fiscal_year').addEventListener('change', updateDeadline);
+document.getElementById('fy_end_month').addEventListener('change', updateDeadline);
+updateDeadline();
+</script>
 {% endblock %}

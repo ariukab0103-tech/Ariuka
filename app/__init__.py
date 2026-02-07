@@ -187,6 +187,13 @@ def _safe_migrate():
             db.session.execute(text("ALTER TABLE assessments ALTER COLUMN fiscal_year TYPE VARCHAR(100)"))
             db.session.commit()
 
+    # Add fy_end_month column if missing (A1: fiscal year end month detection)
+    if "assessments" in table_names:
+        cols = [c["name"] for c in inspector.get_columns("assessments")]
+        if "fy_end_month" not in cols:
+            db.session.execute(text("ALTER TABLE assessments ADD COLUMN fy_end_month INTEGER DEFAULT 3"))
+            db.session.commit()
+
 
 def _seed_admin():
     """Create default admin user if none exists."""

@@ -573,7 +573,63 @@ SSBJ_CRITERIA = [
             {"url": "https://www.jpx.co.jp/english/equities/listing/cg/tvdivq0000008jdy-att/nlsgeu000006gevo.pdf", "label": "JPX CG Code", "title": "Japan Corporate Governance Code - Executive Compensation", "type": "compliance", "for_scores": [0, 1, 2]},
         ],
     },
+    # =========================================================================
+    # STRATEGY — Financial Connectivity (A3)
+    # =========================================================================
+    {
+        "id": "STR-07",
+        "pillar": "Strategy",
+        "category": "Financial Connectivity",
+        "standard": "General (S1)",
+        "obligation": "mandatory",
+        "la_scope": "supporting",
+        "la_priority": "important",
+        "requirement": "Disclose how sustainability-related risks and opportunities are connected to the entity's financial statements, including effects on financial position, performance, and cash flows (IFRS S1 para 21-22).",
+        "internal_controls": "",
+        "guidance": "Identify specific P&L, balance sheet, or cash flow line items affected by sustainability risks/opportunities. Show the connection between sustainability disclosures and financial reporting — this is a fundamental ISSB/SSBJ design principle.",
+        "assurance_focus": "Evidence of mapped connections between sustainability disclosures and specific financial statement line items. Cross-referencing between sustainability report and annual securities report.",
+        "minimum_action": "Create a simple mapping table showing which sustainability risks/opportunities affect which financial statement items (e.g., 'Physical risk → asset impairment provisions', 'Transition risk → R&D investment', 'Carbon pricing → operating costs'). Reference specific line items from your securities report.",
+        "best_practice": "Quantified financial impact analysis for each material risk/opportunity, integrated into management commentary, board-reviewed connectivity analysis, scenario-based P&L/BS impact estimates, external assurance of connectivity disclosures.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 para 21-22", "title": "IFRS S1 Connected Information Requirements", "type": "compliance", "for_scores": [0, 1, 2, 3]},
+        ],
+    },
 ]
+
+# ---------------------------------------------------------------------------
+# Transitional Relief & Japan-specific annotations (A2, A4)
+# ---------------------------------------------------------------------------
+
+# Transitional relief: what can be deferred or simplified in Year 1
+_TRANSITIONAL_RELIEF = {
+    "STR-01": "Proportionality relief: value chain risk/opportunity assessment can use qualitative analysis in first year.",
+    "STR-02": "Proportionality relief: entity need not assess entire value chain in first year if data is not available without undue cost or effort.",
+    "STR-04": "Qualitative scenario analysis is acceptable in first year. Quantitative analysis can be phased in from Year 2.",
+    "STR-05": "First-year transition plan disclosure can be high-level directional commitments. Detailed plans can be developed over subsequent years.",
+    "MET-01": "First-year Scope 1 may use simplified calculation methodology. Full GHG Protocol alignment can be achieved by Year 2.",
+    "MET-02": "First-year Scope 2 location-based calculation is sufficient. Market-based Scope 2 can be added in Year 2.",
+    "MET-03": "Scope 3 disclosure may be DEFERRED entirely in first reporting year (SSBJ transitional provision). When disclosed, all 15 categories must be addressed but estimates and proxies are acceptable.",
+    "MET-04": "Comparative information for targets is NOT required in first reporting year.",
+    "MET-05": "Comparative information for progress tracking is NOT required in first reporting year.",
+    "MET-07": "Detailed carbon credit methodology can be simplified in first year. Basic disclosure of credit type, volume, and standards used is sufficient.",
+    "MET-08": "GHG intensity calculation can use simplified denominators in first year. Consistency with future years should be planned.",
+}
+
+# Japan-specific alternatives: where SSBJ differs from ISSB or offers shortcuts
+_JAPAN_NOTES = {
+    "GOV-01": "Japan CG Code Principle 2-3 already requires ESG oversight — existing corporate governance reports can be leveraged.",
+    "STR-03": "SSBJ allows qualitative disclosure of financial effects of sustainability risks/opportunities on financial position, performance, and cash flows instead of quantitative amounts (二段階開示 two-stage disclosure).",
+    "STR-04": "SSBJ allows qualitative scenario analysis for physical and transition risks. Quantitative amounts for risk assets can be replaced with qualitative descriptions if quantification is not practicable.",
+    "MET-02": "SSBJ explicitly allows market-based Scope 2 method per GHG Protocol Scope 2 Guidance, in addition to location-based. Both methods are accepted.",
+    "MET-03": "SSBJ provides proportionality relief: Scope 3 data may use estimates, industry averages, and proxies where primary data is unavailable. All 15 categories must be disclosed but 'not material' is an acceptable finding per category.",
+    "MET-04": "Japan allows two-stage disclosure (二段階開示) for targets: initial qualitative targets in Year 1, quantified targets from Year 2.",
+    "STR-07": "SSBJ S1 para 21-22 connectivity requirement: Japan's FSA encourages cross-referencing between annual securities report (有価証券報告書) and sustainability disclosures to demonstrate connectivity.",
+}
+
+# Enrich criteria with transitional relief and Japan notes
+for _c in SSBJ_CRITERIA:
+    _c["transitional_relief"] = _TRANSITIONAL_RELIEF.get(_c["id"], "")
+    _c["japan_note"] = _JAPAN_NOTES.get(_c["id"], "")
 
 
 LIMITED_ASSURANCE_CRITERIA = [

@@ -85,6 +85,9 @@ def create():
         title = request.form.get("title", "").strip()
         entity_name = request.form.get("entity_name", "").strip()
         fiscal_year = request.form.get("fiscal_year", "").strip()
+        fy_end_month = int(request.form.get("fy_end_month", "3"))
+        if fy_end_month not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+            fy_end_month = 3
 
         if not title or not entity_name or not fiscal_year:
             flash("All fields are required.", "danger")
@@ -93,6 +96,7 @@ def create():
                 title=title,
                 entity_name=entity_name,
                 fiscal_year=fiscal_year,
+                fy_end_month=fy_end_month,
                 user_id=current_user.id,
                 status="draft",
             )
@@ -203,6 +207,11 @@ def edit_settings(assessment_id):
     title = request.form.get("title", "").strip()
     entity_name = request.form.get("entity_name", "").strip()
     fiscal_year = request.form.get("fiscal_year", "").strip()
+    fy_end_month_str = request.form.get("fy_end_month", "3").strip()
+    try:
+        fy_end_month = int(fy_end_month_str)
+    except (ValueError, TypeError):
+        fy_end_month = 3
 
     if not title or not entity_name or not fiscal_year:
         flash("Title, entity name, and fiscal year are required.", "danger")
@@ -218,6 +227,9 @@ def edit_settings(assessment_id):
     if assessment.fiscal_year != fiscal_year:
         assessment.fiscal_year = fiscal_year
         changed.append("fiscal year")
+    if getattr(assessment, "fy_end_month", 3) != fy_end_month:
+        assessment.fy_end_month = fy_end_month
+        changed.append("FY end month")
 
     if changed:
         db.session.commit()
@@ -1013,7 +1025,7 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
     system_prompt = """You are an expert SSBJ/ISSB sustainability auditor comparing a consultant's report against our SSBJ gap assessment results.
 
 Key SSBJ facts:
-- 25 criteria: Governance(5), Strategy(6), Risk Management(5), Metrics & Targets(9)
+- 26 criteria: Governance(5), Strategy(7), Risk Management(5), Metrics & Targets(9)
 - Mandatory(SHALL) vs Recommended(SHOULD) vs Interpretive
 - Limited assurance scope (first 2 yrs): Scope 1&2, Governance, Risk Management (ISSA 5000)
 - Value chain (STR-01,02), Scope 3 all 15 categories (MET-03), GHG Intensity (MET-08), Climate Remuneration (MET-09) = MANDATORY

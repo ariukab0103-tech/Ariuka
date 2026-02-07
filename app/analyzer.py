@@ -267,7 +267,7 @@ def ai_assess_all(combined_text):
 
     For large documents (>30K chars), uses a two-pass approach:
       Pass 1: Summarize document into structured sustainability content
-      Pass 2: Score 25 criteria against the summary
+      Pass 2: Score 26 criteria against the summary
 
     For smaller documents, scores directly in a single pass.
     Runs all API calls in separate threads to prevent Gunicorn worker kills.
@@ -332,7 +332,7 @@ CRITERIA:
 {doc_label}:
 {scoring_text}
 
-For each of the 25 criteria return: {{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 short sentence)", "notes": "improvement needed (1 short sentence)"}}
+For each of the 26 criteria return: {{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 short sentence)", "notes": "improvement needed (1 short sentence)"}}
 Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
     def _call_api():
