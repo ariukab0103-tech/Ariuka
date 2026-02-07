@@ -4,7 +4,11 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2>{{ assessment.title }}</h2>
+        <h2>{{ assessment.title }}
+            {% if can_edit %}
+            <a href="#" onclick="document.getElementById('settingsPanel').style.display=document.getElementById('settingsPanel').style.display==='none'?'block':'none'; return false;" class="text-muted" title="Edit settings" style="font-size: 0.5em; vertical-align: middle;"><i class="bi bi-pencil-square"></i></a>
+            {% endif %}
+        </h2>
         <p class="mb-0" style="color: var(--text-secondary);">
             {{ assessment.entity_name }} | {{ assessment.fiscal_year }} |
             {% if assessment.status == 'draft' %}
@@ -54,6 +58,47 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Settings Edit Panel (hidden by default) -->
+{% if can_edit %}
+<div id="settingsPanel" class="card mb-4" style="display: none; border: 1px solid rgba(59,130,246,0.3);">
+    <div class="card-header">
+        <i class="bi bi-gear me-2"></i>Assessment Settings
+        <a href="#" onclick="document.getElementById('settingsPanel').style.display='none'; return false;" class="float-end text-muted"><i class="bi bi-x-lg"></i></a>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('assessment.edit_settings', assessment_id=assessment.id) }}">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="edit_title" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="edit_title" name="title"
+                           value="{{ assessment.title }}" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="edit_entity" class="form-label">Entity Name</label>
+                    <input type="text" class="form-control" id="edit_entity" name="entity_name"
+                           value="{{ assessment.entity_name }}" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="edit_fiscal" class="form-label">Fiscal Year (affects roadmap timeline)</label>
+                    <select class="form-select" id="edit_fiscal" name="fiscal_year" required>
+                        <option value="FY2025 (ending March 2026)" {% if 'FY2025' in assessment.fiscal_year %}selected{% endif %}>FY2025 (ending March 2026) — Voluntary</option>
+                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 (ending March 2027) — Mandatory Phase 1</option>
+                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 (ending March 2028) — Mandatory Phase 2</option>
+                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 (ending March 2029) — Mandatory Phase 3</option>
+                        <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029 (ending March 2030)</option>
+                    </select>
+                    <div class="form-text">Changing the fiscal year recalculates the roadmap timeline and urgency level.</div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-check-lg me-1"></i>Save Settings
+            </button>
+            <a href="#" onclick="document.getElementById('settingsPanel').style.display='none'; return false;" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <!-- Document Upload & Auto-Assess Section -->
 {% if assessment.status in ('draft', 'in_progress') and can_edit %}
