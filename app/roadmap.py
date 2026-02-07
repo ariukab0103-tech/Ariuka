@@ -17,10 +17,38 @@ from app.ssbj_criteria import SSBJ_CRITERIA
 
 
 def _extract_year(fiscal_year_str):
-    """Extract a 4-digit year from fiscal_year string like '2027', 'FY2027', '2027年3月期'."""
+    """Extract the fiscal year END year from strings like 'FY2026 (ending March 2027)'.
+
+    Japanese fiscal years end March 31 of the FOLLOWING calendar year:
+    FY2026 = April 2026 to March 2027 → compliance date = March 2027 → returns 2027.
+
+    Supports formats:
+    - 'FY2026 (ending March 2027)' → 2027 (uses the ending year)
+    - '2027年3月期' → 2027
+    - '2027' → 2027
+    - 'FY2026' → 2027 (FY + 1 since Japanese FY ends in March of next year)
+    """
     import re
-    match = re.search(r"20\d{2}", str(fiscal_year_str))
-    return int(match.group()) if match else None
+    s = str(fiscal_year_str)
+
+    # First try: extract year from "ending March YYYY" or "March YYYY"
+    ending_match = re.search(r"(?:ending|March)\s*(20\d{2})", s)
+    if ending_match:
+        return int(ending_match.group(1))
+
+    # Second try: Japanese format "2027年3月期"
+    jp_match = re.search(r"(20\d{2})年", s)
+    if jp_match:
+        return int(jp_match.group(1))
+
+    # Third try: "FYYYYY" format — add 1 (FY2026 ends March 2027)
+    fy_match = re.search(r"FY\s*(20\d{2})", s)
+    if fy_match:
+        return int(fy_match.group(1)) + 1
+
+    # Fallback: bare year
+    bare_match = re.search(r"20\d{2}", s)
+    return int(bare_match.group()) if bare_match else None
 
 
 def _classify_gaps(responses):
@@ -413,7 +441,7 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         "management": [
             "Management sign-off on draft sustainability disclosure",
             "Board reviews draft disclosure before publication",
-            "Assess completeness: all 23 SSBJ criteria covered?",
+            "Assess completeness: all 25 SSBJ criteria covered?",
         ],
         "technical": [
             "Complete full GHG inventory calculation (Scope 1 & 2) using actual data",

@@ -191,6 +191,43 @@ def view(assessment_id):
     )
 
 
+@assessment_bp.route("/<int:assessment_id>/edit-settings", methods=["POST"])
+@login_required
+def edit_settings(assessment_id):
+    """Edit assessment settings: title, entity name, fiscal year."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "edit")
+    if denied:
+        return denied
+
+    title = request.form.get("title", "").strip()
+    entity_name = request.form.get("entity_name", "").strip()
+    fiscal_year = request.form.get("fiscal_year", "").strip()
+
+    if not title or not entity_name or not fiscal_year:
+        flash("Title, entity name, and fiscal year are required.", "danger")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    changed = []
+    if assessment.title != title:
+        assessment.title = title
+        changed.append("title")
+    if assessment.entity_name != entity_name:
+        assessment.entity_name = entity_name
+        changed.append("entity name")
+    if assessment.fiscal_year != fiscal_year:
+        assessment.fiscal_year = fiscal_year
+        changed.append("fiscal year")
+
+    if changed:
+        db.session.commit()
+        flash(f"Updated: {', '.join(changed)}. Roadmap will reflect the new fiscal year.", "success")
+    else:
+        flash("No changes made.", "info")
+
+    return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+
 @assessment_bp.route("/<int:assessment_id>/assess/<string:criterion_id>", methods=["GET", "POST"])
 @login_required
 def assess_criterion(assessment_id, criterion_id):

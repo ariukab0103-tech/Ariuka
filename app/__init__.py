@@ -87,6 +87,17 @@ def create_app(config_class=Config):
             "startup_errors": _startup_errors,
         }), 200, {"Content-Type": "application/json"}
 
+    # Error handler for file too large (413) — iPad/mobile friendly
+    @app.errorhandler(413)
+    def file_too_large(error):
+        max_mb = app.config.get("MAX_CONTENT_LENGTH", 0) // (1024 * 1024)
+        from flask import flash
+        flash(f"File too large. Maximum size is {max_mb} MB.", "danger")
+        referrer = request.referrer
+        if referrer:
+            return redirect(referrer)
+        return redirect(url_for("dashboard.index"))
+
     # Error handler for 500 errors — show useful info on Render
     @app.errorhandler(500)
     def internal_error(error):
