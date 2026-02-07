@@ -704,7 +704,12 @@ def _get_next_criterion(current_id):
 # =========================================================================
 
 def _build_keyword_index():
-    """Build keyword-to-criterion mapping for matching consultant suggestions."""
+    """Build keyword-to-criterion mapping for matching consultant suggestions.
+
+    IMPORTANT: SSBJ requires disclosure across ALL four pillars even for items
+    not in initial limited assurance scope. Value chain analysis, Scope 3, risk
+    and opportunity assessment, and scenario analysis are ALL mandatory.
+    """
     import re
     index = {}
     for c in SSBJ_CRITERIA:
@@ -714,21 +719,76 @@ def _build_keyword_index():
             text = c.get(field, "")
             words = re.findall(r"[a-zA-Z]{4,}", text.lower())
             keywords.update(words)
-        # Add specific domain keywords per pillar/topic
-        if "scope 1" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope1", "scope", "direct", "emissions", "ghg", "greenhouse"])
-        if "scope 2" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope2", "indirect", "electricity", "purchased"])
-        if "scope 3" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope3", "value", "chain", "supply"])
+
+        # Add specific domain keywords per criterion topic
+        cid = c["id"]
+        combined_text = (c.get("requirement", "") + " " + c.get("minimum_action", "")).lower()
+
+        # Scope 1 keywords
+        if "scope 1" in combined_text or cid == "MET-01":
+            keywords.update(["scope1", "scope", "direct", "emissions", "ghg", "greenhouse",
+                             "fuel", "combustion", "stationary", "mobile", "fugitive", "refrigerant"])
+        # Scope 2 keywords
+        if "scope 2" in combined_text or cid == "MET-02":
+            keywords.update(["scope2", "indirect", "electricity", "purchased", "grid",
+                             "energy", "utility", "location", "market"])
+        # Scope 3 / Value chain keywords (MET-03 and STR-02 are both mandatory)
+        if "scope 3" in combined_text or cid == "MET-03":
+            keywords.update(["scope3", "value", "chain", "supply", "upstream", "downstream",
+                             "supplier", "procurement", "logistics", "transport", "categories",
+                             "purchased", "goods", "services", "travel", "commuting"])
+        # Value chain analysis (STR-02 is mandatory)
+        if "value chain" in combined_text or cid == "STR-02":
+            keywords.update(["value", "chain", "supply", "upstream", "downstream",
+                             "business", "model", "impact", "dependency", "supplier",
+                             "procurement", "customer", "distribution"])
+        # Risk and opportunity analysis (STR-01, RSK-01, RSK-02 are all mandatory)
+        if cid in ("STR-01", "RSK-01", "RSK-02"):
+            keywords.update(["risk", "opportunity", "opportunities", "risks", "identify",
+                             "assessment", "materiality", "material", "register", "impact",
+                             "likelihood", "prioritize", "monitor"])
+        # Climate scenario analysis (STR-04 is mandatory)
+        if cid == "STR-04":
+            keywords.update(["scenario", "analysis", "resilience", "pathway",
+                             "transition", "physical", "temperature", "paris", "degrees"])
+        # Financial impact (STR-03 is mandatory)
+        if cid == "STR-03":
+            keywords.update(["financial", "impact", "position", "performance",
+                             "cashflow", "cash", "flows", "balance", "sheet"])
+        # Transition plan (STR-05)
+        if cid == "STR-05":
+            keywords.update(["transition", "plan", "decarbonization", "decarbonisation",
+                             "target", "pathway", "roadmap", "reduction"])
+        # Climate governance (GOV-05)
+        if cid == "GOV-05":
+            keywords.update(["climate", "decision", "investment", "capital", "carbon", "pricing"])
+        # Internal controls (RSK-05 is in LA scope)
+        if cid == "RSK-05":
+            keywords.update(["internal", "controls", "audit", "trail", "maker", "checker",
+                             "review", "segregation", "duties", "data", "quality", "icsr"])
+        # Climate risk (RSK-04 is mandatory)
+        if cid == "RSK-04":
+            keywords.update(["climate", "physical", "transition", "acute", "chronic",
+                             "flood", "heat", "policy", "technology", "reputation"])
+        # Data quality (MET-07 is in LA scope)
+        if cid == "MET-07":
+            keywords.update(["data", "quality", "completeness", "accuracy", "validation",
+                             "governance", "lineage", "reconciliation", "error"])
+        # Climate targets (MET-04 is mandatory)
+        if cid == "MET-04":
+            keywords.update(["target", "targets", "reduction", "base", "year",
+                             "milestone", "sbti", "science", "based", "netzero", "zero"])
+
+        # General pillar keywords
         if c["pillar"] == "Governance":
             keywords.update(["board", "governance", "oversight", "committee"])
         if c["pillar"] == "Strategy":
-            keywords.update(["strategy", "scenario", "transition", "climate"])
+            keywords.update(["strategy", "strategic"])
         if c["pillar"] == "Risk Management":
-            keywords.update(["risk", "controls", "internal", "management"])
+            keywords.update(["risk", "controls", "management"])
         if c["pillar"] == "Metrics & Targets":
             keywords.update(["metrics", "targets", "data", "calculation", "emissions"])
+
         index[c["id"]] = keywords
     return index
 
@@ -767,15 +827,15 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
     import re
     text_lower = suggestion_text.lower()
 
-    # Check for commonly unnecessary or over-engineered consultant suggestions
+    # Check for truly unnecessary items — only flag things NOT required by SSBJ
+    # IMPORTANT: Scope 3, value chain analysis, and risk/opportunity assessments
+    # are ALL mandatory under SSBJ even if not in initial limited assurance scope.
+    # Do NOT flag those as unnecessary.
     unnecessary_patterns = [
         (r"blockchain|nft|web3", "Blockchain/NFT technology is not required for SSBJ compliance. This is a common consultant upsell. Standard databases and spreadsheets with audit trails are fully sufficient for assurance purposes."),
         (r"real.?time\s+dashboard", "Real-time dashboards are nice-to-have but not required. SSBJ requires annual disclosure, not real-time monitoring. Consultants may suggest this to increase project scope and fees."),
-        (r"ai.?powered|machine\s+learning|artificial\s+intelligence", "AI/ML tools are not required for SSBJ compliance. Manual processes with proper controls are fully acceptable. This may be consultant-driven technology upselling."),
-        (r"carbon\s+offset|carbon\s+credit|offset\s+purchase", "Carbon offsets/credits are NOT part of Scope 1 & 2 reporting under SSBJ. Purchasing offsets does not reduce your reported emissions. If a consultant suggests this for compliance, they may be confusing emission reporting with carbon neutrality claims."),
-        (r"comprehensive\s+esg\s+platform|all.in.one\s+esg|esg\s+software\s+suite", "A comprehensive ESG platform is overkill for initial SSBJ compliance. Start with controlled spreadsheets for Scope 1 & 2, then upgrade later. Consultants often bundle expensive software into their proposals."),
-        (r"scope\s*3.*full|complete\s+scope\s*3|all.*scope\s*3\s+categories", "Full Scope 3 reporting across all 15 categories is NOT required in initial SSBJ compliance. Initial limited assurance covers only Scope 1 & 2. Consultants may push comprehensive Scope 3 to extend engagement duration."),
-        (r"cdp.*report|sustainability\s+rating|esg\s+rating|sustainalytics|msci\s+esg", "ESG ratings and CDP reporting are separate from SSBJ mandatory disclosure. While useful, they are NOT required for compliance. Consultants may bundle these to increase project scope."),
+        (r"carbon\s+offset|carbon\s+credit|offset\s+purchase", "Carbon offsets/credits are NOT part of Scope 1 & 2 emission reporting under SSBJ. Purchasing offsets does not reduce your reported emissions. If a consultant suggests this for SSBJ compliance, they are confusing emission reporting with carbon neutrality claims."),
+        (r"cdp.*report|sustainability\s+rating|esg\s+rating|sustainalytics|msci\s+esg", "ESG ratings and CDP reporting are separate from SSBJ mandatory disclosure. While useful, they are NOT required for SSBJ compliance. Consultants may bundle these to increase project scope."),
     ]
     for pattern, reason in unnecessary_patterns:
         if re.search(pattern, text_lower):
@@ -786,6 +846,21 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
                 "icon": "x-circle",
                 "color": "secondary",
             }
+
+    # Items that are legitimate SSBJ requirements but worth noting context
+    # These are NOT unnecessary — they map to mandatory criteria — but may need
+    # prioritization guidance relative to initial LA scope
+    context_patterns = [
+        (r"ai.?powered|machine\s+learning|artificial\s+intelligence",
+         "AI/ML tools are not required for SSBJ compliance but not harmful. Manual processes with proper controls are fully acceptable. Evaluate cost-benefit before committing."),
+        (r"comprehensive\s+esg\s+platform|all.in.one\s+esg|esg\s+software\s+suite",
+         "A comprehensive ESG platform may be useful but is not required. For initial compliance, controlled spreadsheets can satisfy assurance requirements. Consider phasing in software after first year."),
+    ]
+    for pattern, note in context_patterns:
+        if re.search(pattern, text_lower):
+            # Don't return "unnecessary" — continue to normal matching with added context
+            # This will be handled by normal matching below
+            break
 
     if not matched_criteria:
         return {
@@ -812,29 +887,63 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
         }
 
     # Determine necessity based on obligation and LA scope
-    if best_c.get("obligation") == "mandatory" and best_c.get("la_scope") == "in_scope":
+    # IMPORTANT: SSBJ mandates disclosure across all pillars. Items not in initial
+    # LA scope are still mandatory for disclosure — they just won't be assured in
+    # the first year. Value chain analysis, Scope 3, scenario analysis, etc. are
+    # all mandatory even though initial LA covers only Scope 1 & 2.
+    obligation = best_c.get("obligation", "")
+    la_scope = best_c.get("la_scope", "")
+
+    if obligation == "mandatory" and la_scope == "in_scope":
         verdict = "essential"
-        explanation = f"ESSENTIAL for compliance. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory AND in limited assurance scope. Your auditor will examine this."
+        explanation = (
+            f"ESSENTIAL — HIGHEST PRIORITY. This maps to {best_id} ({best_c.get('category', '')}) "
+            f"which is mandatory AND in limited assurance scope. Your auditor will directly examine this. "
+            f"Address this before anything else."
+        )
         color = "danger"
         icon = "exclamation-triangle-fill"
-    elif best_c.get("obligation") == "mandatory":
+    elif obligation == "mandatory" and la_scope == "supporting":
         verdict = "essential"
-        explanation = f"ESSENTIAL. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory under SSBJ. Must be addressed."
+        explanation = (
+            f"ESSENTIAL for compliance. This maps to {best_id} ({best_c.get('category', '')}) "
+            f"which is mandatory under SSBJ and supports assurance readiness. "
+            f"Not directly assured in year 1 but required for disclosure and may be assured later."
+        )
         color = "danger"
         icon = "exclamation-triangle"
-    elif best_c.get("la_scope") == "in_scope":
+    elif obligation == "mandatory":
+        # Mandatory but not_in_initial_scope — still required for disclosure!
         verdict = "essential"
-        explanation = f"ESSENTIAL. While the obligation level is '{best_c.get('obligation', '')}', this is in limited assurance scope. Auditors will look at it."
+        explanation = (
+            f"ESSENTIAL — mandatory disclosure requirement. This maps to {best_id} ({best_c.get('category', '')}). "
+            f"Not in initial limited assurance scope (Scope 1 & 2 only) but IS required for SSBJ-compliant disclosure. "
+            f"SSBJ allows proportionality in first year but you must address it."
+        )
         color = "danger"
         icon = "exclamation-triangle"
-    elif best_c.get("obligation") == "recommended":
+    elif la_scope == "in_scope":
+        verdict = "essential"
+        explanation = (
+            f"ESSENTIAL. While the obligation level is '{obligation}', this is in limited assurance scope. "
+            f"Auditors will look at it."
+        )
+        color = "danger"
+        icon = "exclamation-triangle"
+    elif obligation == "recommended":
         verdict = "recommended"
-        explanation = f"RECOMMENDED but not strictly required. Maps to {best_id} ({best_c.get('category', '')}). Good practice but you could defer this if budget/time is tight."
+        explanation = (
+            f"RECOMMENDED but not strictly required (SHOULD, not SHALL). Maps to {best_id} ({best_c.get('category', '')}). "
+            f"Good practice but you could defer this if budget/time is tight."
+        )
         color = "warning"
         icon = "info-circle"
     else:
         verdict = "recommended"
-        explanation = f"NICE TO HAVE. Maps to {best_id} ({best_c.get('category', '')}). Interpretive requirement — implement if resources allow."
+        explanation = (
+            f"NICE TO HAVE. Maps to {best_id} ({best_c.get('category', '')}). "
+            f"Interpretive requirement — implement if resources allow."
+        )
         color = "info"
         icon = "lightbulb"
 
@@ -1082,10 +1191,23 @@ def _compare_with_roadmap(our_roadmap, consultant_results, matched_ids, criteria
     # Prioritization comparison
     comparison["differences"].append({
         "area": "Prioritization",
-        "our_approach": f"Our roadmap prioritizes {our_roadmap['gaps']['total_gaps']} gaps with {len(our_roadmap['gaps']['la_critical'])} LA-critical items first. "
-                        f"Tasks are ordered by assurance impact.",
-        "consultant_note": "Check if the consultant's priority matches SSBJ requirements. LA-scope items (Scope 1 & 2 GHG) must come first. "
-                           "If the consultant prioritizes governance or strategy over metrics, they may not understand the limited assurance focus.",
+        "our_approach": f"Our roadmap prioritizes {our_roadmap['gaps']['total_gaps']} gaps with {len(our_roadmap['gaps']['la_critical'])} LA-critical items first for assurance readiness, "
+                        f"while ensuring ALL mandatory items across all four pillars are addressed for disclosure compliance.",
+        "consultant_note": "ALL four SSBJ pillars (Governance, Strategy, Risk Management, Metrics & Targets) are mandatory for disclosure. "
+                           "Check that the consultant covers all pillars, including value chain analysis (STR-02), Scope 3 (MET-03), scenario analysis (STR-04), "
+                           "and risk/opportunity assessment (STR-01, RSK-01-04). LA-scope items need earliest attention for assurance readiness, but "
+                           "no mandatory criterion should be skipped.",
+    })
+
+    # Value chain & Scope 3 comparison
+    comparison["differences"].append({
+        "area": "Value Chain & Scope 3",
+        "our_approach": "SSBJ mandates value chain analysis (STR-02) and Scope 3 disclosure (MET-03). "
+                        "These are NOT in initial limited assurance scope but ARE required for compliant disclosure. "
+                        "SSBJ provides proportionality relief for first-year Scope 3 reporting.",
+        "consultant_note": "If the consultant includes value chain analysis and Scope 3, this is CORRECT — it is mandatory under SSBJ/IFRS S1 & S2. "
+                           "However, verify the scope is proportionate: SSBJ allows phasing in Scope 3 categories over time. "
+                           "Full coverage of all 15 categories is not required in year 1.",
     })
 
     return comparison
