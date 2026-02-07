@@ -1444,17 +1444,19 @@ def review_consultant(assessment_id):
             if responses_list:
                 our_roadmap = generate_roadmap(assessment, responses_list)
 
-            # Try AI-powered analysis first
-            ai_result = _ai_analyze_consultant_report(
-                consultant_text, criteria_map, responses_map, our_roadmap
-            )
+            # Only use AI if user explicitly opted in (checkbox)
+            use_ai = request.form.get("use_ai") == "1"
+            ai_result = None
+            if use_ai:
+                ai_result = _ai_analyze_consultant_report(
+                    consultant_text, criteria_map, responses_map, our_roadmap
+                )
 
             if ai_result is not None:
-                # AI analysis succeeded
                 results, all_matched_ids, roadmap_comparison = ai_result
                 analysis_method = "ai"
             else:
-                # Fallback to keyword matching
+                # Keyword matching (default — fast and reliable)
                 analysis_method = "keyword"
                 keyword_index = _build_keyword_index()
 

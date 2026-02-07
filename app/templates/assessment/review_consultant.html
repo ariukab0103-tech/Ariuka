@@ -72,7 +72,7 @@
 - Budget proposals with scope descriptions
 
 The AI will analyze the entire document against SSBJ requirements and compare with your current assessment scores and roadmap.">{{ consultant_text }}</textarea>
-                <div class="form-text">AI-powered analysis compares the consultant's report against your assessment scores and SSBJ minimum compliance requirements. Upload a file or paste text (or both).</div>
+                <div class="form-text">Compares the consultant's report against your assessment scores and SSBJ minimum compliance requirements. Toggle AI for deeper analysis.</div>
             </div>
             <div class="mb-3">
                 <label for="consultant_file" class="form-label">
@@ -82,9 +82,17 @@ The AI will analyze the entire document against SSBJ requirements and compare wi
                        accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.csv,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv,image/png,image/jpeg">
                 <div class="form-text">Text will be extracted from the document and analyzed alongside any pasted text.</div>
             </div>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-robot me-1"></i>Compare Against Our Assessment & SSBJ Requirements
-            </button>
+            <div class="d-flex justify-content-between align-items-center">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Analyze Against SSBJ Requirements
+                </button>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="use_ai" name="use_ai" value="1">
+                    <label class="form-check-label" for="use_ai">
+                        <i class="bi bi-robot me-1"></i>Use AI Analysis <small class="text-muted">(slower but more detailed)</small>
+                    </label>
+                </div>
+            </div>
         </form>
     </div>
 </div>
