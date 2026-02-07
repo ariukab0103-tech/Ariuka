@@ -177,12 +177,27 @@
             </div>
         </div>
 
-        <!-- File Upload Section -->
+        <!-- File Upload & AI Assess Section -->
         <div class="card mt-4" id="upload-section">
-            <div class="card-header">
-                <i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents (Evidence per Criterion)
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents & AI Assessment</span>
+                {% if assessment.status in ('draft', 'in_progress') %}
+                <form method="POST" action="{{ url_for('assessment.ai_assess_criterion', assessment_id=assessment.id, criterion_id=criterion.id) }}"
+                      class="d-inline" id="aiAssessForm">
+                    <button type="submit" class="btn btn-sm btn-primary" id="aiAssessBtn"
+                            onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>Analyzing...';this.form.submit();">
+                        <i class="bi bi-robot me-1"></i>AI Assess This Criterion
+                    </button>
+                </form>
+                {% endif %}
             </div>
             <div class="card-body">
+                <p class="text-muted small mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Upload supporting documents and/or type evidence above, then click <strong>AI Assess</strong>
+                    to get an AI-powered score based on your specific evidence for this criterion.
+                </p>
+
                 {% if assessment.status in ('draft', 'in_progress') %}
                 <form method="POST" enctype="multipart/form-data"
                       action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
@@ -230,7 +245,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted mb-0"><small>No files uploaded yet.</small></p>
+                <p class="text-muted mb-0"><small>No files uploaded yet. Upload documents or type evidence above for AI assessment.</small></p>
                 {% endif %}
             </div>
         </div>
