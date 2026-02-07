@@ -91,20 +91,22 @@
                     </td>
                     <td><small>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</small></td>
                     <td>
-                        <div class="btn-group btn-group-sm">
-                            <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            {% if a.status in ('completed', 'under_review', 'reviewed') %}
-                            <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
-                                <i class="bi bi-file-earmark-text"></i>
-                            </a>
-                            {% endif %}
+                        <div class="d-flex gap-1 align-items-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if a.status in ('completed', 'under_review', 'reviewed') %}
+                                <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                </a>
+                                {% endif %}
+                            </div>
                             {% if a.user_id == current_user.id or current_user.is_admin %}
                             <form method="POST" action="{{ url_for('assessment.delete_assessment', assessment_id=a.id) }}"
-                                  onsubmit="return confirm('Delete assessment \'{{ a.title }}\'?\n\nThis will permanently delete all responses, documents, reviews, and uploaded files.\n\nThis cannot be undone.');"
-                                  style="display: inline;">
-                                <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                  onsubmit="return confirm('Delete assessment &quot;{{ a.title }}&quot;?\n\nThis will permanently delete all responses, documents, reviews, and uploaded files.\n\nThis cannot be undone.');"
+                                  class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
