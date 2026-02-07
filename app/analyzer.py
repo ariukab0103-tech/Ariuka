@@ -116,12 +116,161 @@ def _truncate_text(text, max_chars=40000):
     return text[:half] + "\n\n[... content truncated for length ...]\n\n" + text[-half:]
 
 
+# Sustainability keywords for smart extraction (English + Japanese)
+_SUSTAINABILITY_KEYWORDS = [
+    # Core SSBJ/ISSB terms
+    "sustainability", "esg", "emissions", "ghg", "greenhouse",
+    "scope 1", "scope 2", "scope 3", "carbon", "climate",
+    "governance", "risk management", "tcfd", "issb", "ssbj",
+    "disclosure", "assurance", "environmental", "social",
+    "value chain", "transition", "physical risk", "scenario",
+    "intensity", "remuneration", "target", "metrics",
+    "net zero", "decarboni", "renewable", "energy efficiency",
+    "board", "committee", "oversight", "strategy",
+    "emission factor", "activity data", "boundary", "inventory",
+    "internal control", "audit trail", "reconciliation",
+    "materiality", "stakeholder", "resilience",
+    # Japanese terms
+    "サステナビリティ", "気候", "温室効果ガス", "排出量",
+    "スコープ", "ガバナンス", "リスク管理", "開示",
+    "保証", "バリューチェーン", "カーボン", "脱炭素",
+    "移行", "シナリオ", "取締役会", "戦略",
+]
+
+
+def _smart_extract(text, max_chars=60000):
+    """Extract sustainability-relevant sections from large documents.
+
+    Instead of blind first/last truncation, scores paragraphs by keyword
+    relevance and keeps the most useful content. Always preserves the
+    beginning of the document (executive summary / TOC area).
+    """
+    if len(text) <= max_chars:
+        return text
+
+    # Split into paragraphs (preserve structure)
+    paragraphs = text.split("\n")
+
+    # Always keep first ~8K chars (executive summary, TOC, intro)
+    header_chars = min(8000, max_chars // 6)
+    header_parts = []
+    header_len = 0
+    header_end_idx = 0
+    for i, para in enumerate(paragraphs):
+        if header_len + len(para) > header_chars:
+            break
+        header_parts.append(para)
+        header_len += len(para) + 1
+        header_end_idx = i + 1
+
+    # Score remaining paragraphs by sustainability keyword relevance
+    scored = []
+    for i, para in enumerate(paragraphs[header_end_idx:], start=header_end_idx):
+        para_lower = para.lower()
+        if len(para.strip()) < 5:
+            continue  # Skip blank/tiny lines
+        score = sum(1 for kw in _SUSTAINABILITY_KEYWORDS if kw in para_lower)
+        # Boost paragraphs with numbers (likely data/metrics)
+        if any(c.isdigit() for c in para):
+            score += 1
+        scored.append((score, i, para))
+
+    # Sort by relevance (highest first), then by original position for ties
+    scored.sort(key=lambda x: (-x[0], x[1]))
+
+    # Take highest-scoring paragraphs up to budget
+    remaining_budget = max_chars - header_len
+    selected = []
+    for score, idx, para in scored:
+        if score == 0:
+            break  # No more relevant paragraphs
+        if remaining_budget - len(para) < 0:
+            continue  # Skip paragraphs that are too long, try smaller ones
+        selected.append((idx, para))
+        remaining_budget -= len(para) + 1
+
+    # If we still have budget, add some zero-score paragraphs (context)
+    for score, idx, para in scored:
+        if remaining_budget <= 0:
+            break
+        if score == 0 and len(para.strip()) > 20:
+            selected.append((idx, para))
+            remaining_budget -= len(para) + 1
+
+    # Re-sort selected paragraphs by original document order
+    selected.sort(key=lambda x: x[0])
+
+    result = "\n".join(header_parts)
+    if selected:
+        result += "\n\n[... relevant sections extracted ...]\n\n"
+        result += "\n".join(para for _, para in selected)
+
+    return result
+
+
+def _summarize_document(text, api_key):
+    """Pass 1 of two-pass assessment: extract structured sustainability content.
+
+    Sends document text to Claude and gets back a structured summary of all
+    sustainability-relevant information organized by SSBJ pillar.
+    This produces a compact input for the scoring pass.
+    """
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+    import anthropic
+
+    # Use smart extraction to get the most relevant 80K chars
+    extracted = _smart_extract(text, max_chars=80000)
+
+    system_prompt = """You are an expert sustainability disclosure analyst. Extract ALL sustainability-related information from this document into a structured summary.
+
+Organize by these 4 categories:
+1. GOVERNANCE: Board/committee oversight, management roles, policies, competencies, controls
+2. STRATEGY: Climate risks/opportunities, value chain, scenario analysis, transition plans, business model impacts
+3. RISK MANAGEMENT: Risk identification processes, assessment, monitoring, integration with enterprise risk
+4. METRICS & TARGETS: GHG emissions (Scope 1/2/3), targets, intensity metrics, methodologies, data quality, remuneration links
+
+For each section, extract:
+- Specific facts, numbers, named entities, dates
+- Named processes, policies, frameworks mentioned
+- Specific methodologies or standards referenced
+- Any gaps or areas where information is vague/missing
+
+Be thorough — include ALL relevant details. This summary will be used for SSBJ compliance scoring.
+If a section has no relevant content in the document, write "No relevant content found."
+Keep the summary factual and concise (no commentary)."""
+
+    user_prompt = f"""Extract all sustainability-relevant information from this document:
+
+{extracted}
+
+Provide a structured summary organized by the 4 categories above."""
+
+    def _call_api():
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        return client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_call_api)
+        response = future.result(timeout=90)
+
+    return response.content[0].text.strip()
+
+
 def ai_assess_all(combined_text):
     """
     Use Claude to assess all SSBJ criteria against the document text.
 
-    Sends the document text + all criteria in a single call for efficiency.
-    Runs the API call in a separate thread to prevent Gunicorn worker kills.
+    For large documents (>30K chars), uses a two-pass approach:
+      Pass 1: Summarize document into structured sustainability content
+      Pass 2: Score 25 criteria against the summary
+
+    For smaller documents, scores directly in a single pass.
+    Runs all API calls in separate threads to prevent Gunicorn worker kills.
     Returns dict: {criterion_id: (score, evidence, notes)}
     """
     from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
@@ -135,7 +284,21 @@ def ai_assess_all(combined_text):
     except ImportError:
         return None
 
-    truncated = _truncate_text(combined_text)
+    # Decide strategy based on document size
+    is_large = len(combined_text) > 30000
+
+    if is_large:
+        # Two-pass: summarize first, then score
+        try:
+            logger.info(f"Large document ({len(combined_text)} chars), using two-pass assessment")
+            summary = _summarize_document(combined_text, api_key)
+            scoring_text = summary
+        except Exception as e:
+            # If summarization fails, fall back to smart extraction
+            logger.warning(f"Summarization failed ({e}), using smart extraction fallback")
+            scoring_text = _smart_extract(combined_text, max_chars=60000)
+    else:
+        scoring_text = combined_text
 
     # Build criteria descriptions for the prompt
     criteria_list = []
@@ -160,13 +323,14 @@ SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal document
 Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
 IMPORTANT: Keep evidence and notes very brief (1 short sentence each) to stay within token limits."""
 
-    user_prompt = f"""Assess these documents against each SSBJ criterion. Return ONLY a JSON array.
+    doc_label = "DOCUMENT SUMMARY" if is_large else "DOCUMENTS"
+    user_prompt = f"""Assess this content against each SSBJ criterion. Return ONLY a JSON array.
 
 CRITERIA:
 {criteria_text}
 
-DOCUMENTS:
-{truncated}
+{doc_label}:
+{scoring_text}
 
 For each of the 25 criteria return: {{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 short sentence)", "notes": "improvement needed (1 short sentence)"}}
 Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
