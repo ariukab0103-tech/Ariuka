@@ -83,9 +83,9 @@
                     <label for="edit_fiscal" class="form-label">Fiscal Year (affects roadmap timeline)</label>
                     <select class="form-select" id="edit_fiscal" name="fiscal_year" required>
                         <option value="FY2025 (ending March 2026)" {% if 'FY2025' in assessment.fiscal_year %}selected{% endif %}>FY2025 (ending March 2026) — Voluntary</option>
-                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 (ending March 2027) — Mandatory Phase 1</option>
-                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 (ending March 2028) — Mandatory Phase 2</option>
-                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 (ending March 2029) — Mandatory Phase 3</option>
+                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 (ending March 2027) — Phase 1 (¥3T+), assurance from March 2028</option>
+                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 (ending March 2028) — Phase 2 (¥1T+), assurance from March 2029</option>
+                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 (ending March 2029) — Phase 3 (¥500B+), assurance from March 2030</option>
                         <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029 (ending March 2030)</option>
                     </select>
                     <div class="form-text">Changing the fiscal year recalculates the roadmap timeline and urgency level.</div>

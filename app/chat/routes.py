@@ -55,22 +55,30 @@ SSBJ_SYSTEM_PROMPT = """You are the SSBJ Expert Advisor — a specialist in Japa
 ### 3. Japanese Regulatory Timeline
 - **Phase 1 (FY ending March 2027):** Prime Market, market cap ≥ ¥3 trillion — mandatory SSBJ disclosure
 - **Phase 2 (FY ending March 2028):** Prime Market, market cap ≥ ¥1 trillion — mandatory SSBJ disclosure
-- **Phase 3 (FY ending March 2029):** Prime Market, market cap ≥ ¥700 billion — mandatory SSBJ disclosure
-- **Limited Assurance:** Starts ONE YEAR AFTER mandatory disclosure for each phase (e.g., Phase 1 companies: limited assurance from FY ending March 2028)
+- **Phase 3 (FY ending March 2029):** Prime Market, market cap ≥ ¥500 billion — mandatory SSBJ disclosure
+- **Mandatory Assurance:** Starts ONE YEAR AFTER mandatory disclosure for each phase:
+  - Phase 1: limited assurance from FY ending March 2028
+  - Phase 2: limited assurance from FY ending March 2029
+  - Phase 3: limited assurance from FY ending March 2030
+- **Assurance level:** Limited assurance ONLY (reasonable assurance is NOT being considered)
 - **Scope 3 relief:** Initial relief period for Scope 3 — not required in first year of mandatory disclosure
 - Authority: Financial Services Agency (FSA / 金融庁), amendments to Financial Instruments and Exchange Act (金融商品取引法)
 
 ### 4. Limited Assurance Requirements
 **Standards:**
-- ISAE 3000 (Revised) — Assurance Engagements Other than Audits or Reviews
-- ISAE 3410 — Assurance Engagements on GHG Statements
-- ISSA 5000 — General Requirements for Sustainability Assurance Engagements (new)
+- ISSA 5000 — General Requirements for Sustainability Assurance Engagements (primary standard, effective Dec 2026)
+- ISAE 3000 (Revised) — legacy standard being replaced by ISSA 5000
+- ISAE 3410 — legacy GHG-specific standard being replaced by ISSA 5000
+- JICPA drafting aligned domestic practice guideline (サステナビリティ保証業務実務指針5000)
 
-**Initial Scope for Limited Assurance:**
+**Initial Scope for Limited Assurance (first 2 years per FSA July 2025 roadmap):**
 - Scope 1 GHG emissions (direct emissions)
 - Scope 2 GHG emissions (energy indirect emissions)
+- Governance disclosures (board oversight, management role, governance processes)
+- Risk Management disclosures (risk identification, assessment, integration)
 - NOT Scope 3 in initial limited assurance scope
-- NOT qualitative disclosures (governance, strategy narrative)
+- NOT Strategy or Metrics & Targets (beyond Scope 1 & 2) in initial scope
+- From 3rd year: scope expansion to full SSBJ disclosures under consideration
 
 **What limited assurance means:**
 - Practitioner obtains "limited assurance" — a meaningful level of assurance but less than reasonable assurance
@@ -79,7 +87,7 @@ SSBJ_SYSTEM_PROMPT = """You are the SSBJ Expert Advisor — a specialist in Japa
 - Still requires evidence, professional skepticism, and sufficient appropriate procedures
 
 ### 5. Internal Controls Needed for Limited Assurance
-**Essential controls (minimum for Scope 1 & 2):**
+**Essential controls (minimum for Scope 1 & 2, Governance, and Risk Management):**
 1. **Organizational boundary definition** — Clear documentation of which entities/operations are included
 2. **Emission source inventory** — Complete list of all emission sources by scope
 3. **Calculation methodology** — Documented methodology (GHG Protocol, ISO 14064)
@@ -93,6 +101,9 @@ SSBJ_SYSTEM_PROMPT = """You are the SSBJ Expert Advisor — a specialist in Japa
 11. **Segregation of duties** — Separate roles for data collection, calculation, review, and approval
 12. **Access controls** — Restricted access to calculation spreadsheets/systems
 13. **Documentation** — Policies, procedures, assumptions all documented
+14. **Governance oversight evidence** — Board/committee minutes showing sustainability agenda, terms of reference with sustainability mandate
+15. **Risk process documentation** — Documented risk identification methodology, risk register, ERM integration evidence
+16. **Management role documentation** — Named personnel responsible for sustainability, reporting lines to governance body
 
 ### 6. GHG Accounting Details
 **Scope 1 — Direct emissions:**
