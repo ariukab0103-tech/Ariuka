@@ -1,0 +1,479 @@
+{% extends "base.html" %}
+{% block title %}Combined Report — {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 no-print">
+    <div>
+        <h2><i class="bi bi-file-earmark-pdf me-2"></i>Combined Report</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
+    </div>
+    <div>
+        <button onclick="window.print()" class="btn btn-danger me-2">
+            <i class="bi bi-printer me-1"></i>Print / Save PDF
+        </button>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Cover / Header (print only shows this at top) -->
+<div class="print-only mb-4" style="text-align: center; padding: 2rem 0; border-bottom: 2px solid #333;">
+    <h1 style="font-size: 1.8rem;">SSBJ Gap Analysis Report</h1>
+    <h3 style="color: #666;">{{ assessment.entity_name }}</h3>
+    <p>{{ assessment.title }} | {{ assessment.fiscal_year }}</p>
+    <p class="text-muted small">Generated {{ "now" | default("") }}{% set sections_list = [] %}{% if 'gap' in sections %}{% if sections_list.append('Gap Analysis') %}{% endif %}{% endif %}{% if 'roadmap' in sections %}{% if sections_list.append('Roadmap') %}{% endif %}{% endif %}{% if 'raci' in sections %}{% if sections_list.append('RACI') %}{% endif %}{% endif %}{% if 'relief' in sections %}{% if sections_list.append('Relief Advisor') %}{% endif %}{% endif %}{% if 'audit' in sections %}{% if sections_list.append('Mock Audit') %}{% endif %}{% endif %}
+    | Sections: {{ sections_list | join(', ') }}</p>
+</div>
+
+<!-- Table of Contents -->
+<div class="card mb-4 no-print">
+    <div class="card-header"><i class="bi bi-list-ul me-2"></i>Contents</div>
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2">
+            {% if 'gap' in sections %}<a href="#sec-gap" class="btn btn-sm btn-outline-primary">Gap Analysis</a>{% endif %}
+            {% if 'roadmap' in sections %}<a href="#sec-roadmap" class="btn btn-sm btn-outline-warning">Roadmap</a>{% endif %}
+            {% if 'raci' in sections %}<a href="#sec-raci" class="btn btn-sm btn-outline-secondary">RACI Matrix</a>{% endif %}
+            {% if 'relief' in sections %}<a href="#sec-relief" class="btn btn-sm btn-outline-success">Relief Advisor</a>{% endif %}
+            {% if 'audit' in sections %}<a href="#sec-audit" class="btn btn-sm btn-outline-danger">Mock Audit</a>{% endif %}
+        </div>
+    </div>
+</div>
+
+{# ==================== GAP ANALYSIS ==================== #}
+{% if 'gap' in sections %}
+<div class="page-break-before" id="sec-gap">
+    <h3 class="mb-3"><i class="bi bi-file-earmark-text me-2"></i>Gap Analysis Report</h3>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card stat-blue">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="color: var(--accent-blue); font-size: 1.5rem;">{{ assessment.overall_score }}</div>
+                    <div class="stat-label">Overall Score</div>
+                    <small style="color: var(--text-muted);">out of 5.0</small>
+                </div>
+            </div>
+        </div>
+        {% for pillar, score in pillar_scores.items() %}
+        <div class="col-md-{{ 9 // (pillar_scores|length) if pillar_scores|length else 3 }}">
+            <div class="card {% if score < 2 %}gap-high{% elif score < 3 %}gap-medium{% else %}gap-low{% endif %}">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="font-size: 1.3rem;">{{ score }}</div>
+                    <div class="stat-label">{{ pillar }}</div>
+                    {% if score < 3 %}<span class="badge bg-danger">Below Threshold</span>{% else %}<span class="badge bg-success">Ready</span>{% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- LA-Critical Gaps -->
+    {% set la_gaps = [] %}
+    {% for gap in gaps %}{% if gap.criterion.la_scope == 'in_scope' %}{% if la_gaps.append(gap) %}{% endif %}{% endif %}{% endfor %}
+    {% if la_gaps %}
+    <div class="card mb-3" style="border: 1px solid rgba(239,68,68,0.4);">
+        <div class="card-header" style="background: var(--gradient-red);">
+            <span class="text-white fw-bold"><i class="bi bi-shield-exclamation me-2"></i>LA Critical Gaps ({{ la_gaps|length }})</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Minimum Action</th></tr></thead>
+                <tbody>
+                    {% for gap in la_gaps %}
+                    <tr>
+                        <td><code>{{ gap.criterion.id }}</code></td>
+                        <td><small>{{ gap.criterion.category }}</small></td>
+                        <td><span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span></td>
+                        <td><small>{{ gap.criterion.minimum_action }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Other Gaps -->
+    {% set other_gaps = [] %}
+    {% for gap in gaps %}{% if gap.criterion.la_scope != 'in_scope' %}{% if other_gaps.append(gap) %}{% endif %}{% endif %}{% endfor %}
+    {% if other_gaps %}
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Other Gaps ({{ other_gaps|length }})</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Minimum Action</th></tr></thead>
+                <tbody>
+                    {% for gap in other_gaps %}
+                    <tr>
+                        <td><code>{{ gap.criterion.id }}</code></td>
+                        <td><small>{{ gap.criterion.category }}</small></td>
+                        <td><span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span></td>
+                        <td><small>{{ gap.criterion.minimum_action }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not gaps %}
+    <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>All criteria meet the minimum maturity level.</div>
+    {% endif %}
+
+    <!-- Detailed Scores -->
+    {% for pillar, criteria in criteria_by_pillar.items() %}
+    <div class="card mb-3">
+        <div class="card-header">{{ pillar }} — Detailed Scores</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Evidence</th></tr></thead>
+                <tbody>
+                    {% for c in criteria %}
+                    {% set resp = responses.get(c.id) %}
+                    <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
+                        <td><code>{{ c.id }}</code></td>
+                        <td>{{ c.category }}</td>
+                        <td>{% if resp and resp.score is not none %}<span class="score-badge score-{{ resp.score }}">{{ resp.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td><small>{{ (resp.evidence[:80] + '...') if resp and resp.evidence and resp.evidence|length > 80 else (resp.evidence if resp and resp.evidence else '—') }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ==================== ROADMAP ==================== #}
+{% if 'roadmap' in sections and roadmap %}
+<div class="page-break-before" id="sec-roadmap">
+    <h3 class="mb-3"><i class="bi bi-calendar3 me-2"></i>Compliance Roadmap</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.months_remaining }} months</div>
+                    <div class="stat-label">To Compliance Deadline</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.total_tasks }}</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <div class="stat-value" style="font-size: 1.2rem;">{{ roadmap.phases | length }}</div>
+                    <div class="stat-label">Phases</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% for phase in roadmap.phases %}
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>{{ phase.name }}</strong>
+            <small class="text-muted ms-2">{{ phase.start }} — {{ phase.end }} ({{ phase.duration_months }} months)</small>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Criterion</th><th>Category</th><th>Current</th><th>Target</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% for task in phase.tasks %}
+                    <tr>
+                        <td><code>{{ task.criterion_id }}</code></td>
+                        <td><small>{{ task.category }}</small></td>
+                        <td><span class="score-badge score-{{ task.current_score }}">{{ task.current_score }}</span></td>
+                        <td><span class="score-badge score-{{ task.target_score }}">{{ task.target_score }}</span></td>
+                        <td><small>{{ task.action }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ==================== RACI MATRIX ==================== #}
+{% if 'raci' in sections and raci %}
+<div class="page-break-before" id="sec-raci">
+    <h3 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>RACI Matrix</h3>
+
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <small class="text-muted">
+                <span class="badge" style="background:#dc3545;color:white;">R</span> Responsible
+                <span class="badge ms-2" style="background:#ffc107;color:#212529;">A</span> Accountable
+                <span class="badge ms-2" style="background:#0d6efd;color:white;">C</span> Consulted
+                <span class="badge ms-2" style="background:#6c757d;color:white;">I</span> Informed
+            </small>
+        </div>
+    </div>
+
+    <!-- Priority Actions -->
+    {% if raci.priority_actions %}
+    <div class="card mb-3" style="border: 1px solid rgba(239,68,68,0.4);">
+        <div class="card-header" style="background: var(--gradient-red);">
+            <span class="text-white fw-bold">Priority Actions: LA Gaps ({{ raci.priority_actions|length }})</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Criterion</th><th>Score</th><th>Gap</th><th>Responsible</th><th>Accountable</th></tr></thead>
+                <tbody>
+                    {% for a in raci.priority_actions %}
+                    <tr>
+                        <td><code>{{ a.criterion_id }}</code> <small class="text-muted">{{ a.category }}</small></td>
+                        <td>{% if a.score is not none %}<span class="score-badge score-{{ a.score }}">{{ a.score }}</span>{% else %}—{% endif %}</td>
+                        <td><span class="badge bg-danger">+{{ a.gap }}</span></td>
+                        <td><small>{{ a.responsible | join(', ') }}</small></td>
+                        <td><small>{{ a.accountable | join(', ') }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Workload -->
+    <div class="card mb-3">
+        <div class="card-header">Department Workload</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Department</th><th class="text-center">R</th><th class="text-center">A</th><th class="text-center">C</th><th class="text-center">I</th></tr></thead>
+                <tbody>
+                    {% for code, name in raci.departments %}
+                    {% set w = raci.dept_workload[code] %}
+                    {% if w.R + w.A + w.C + w.I > 0 %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td class="text-center">{{ w.R or '—' }}</td>
+                        <td class="text-center">{{ w.A or '—' }}</td>
+                        <td class="text-center">{{ w.C or '—' }}</td>
+                        <td class="text-center">{{ w.I or '—' }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Full Matrix per Pillar -->
+    {% set pillar_order = ['Governance', 'Strategy', 'Risk Management', 'Metrics & Targets'] %}
+    {% for pillar in pillar_order %}
+    {% set pillar_criteria = raci.criteria | selectattr('pillar', 'equalto', pillar) | list %}
+    {% if pillar_criteria %}
+    <div class="card mb-3">
+        <div class="card-header">{{ pillar }}</div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0" style="font-size: 0.8em;">
+                <thead>
+                    <tr>
+                        <th>ID</th><th>Category</th><th>Score</th>
+                        {% for code, name in raci.departments %}
+                        <th class="text-center" title="{{ name }}" style="min-width:35px;">{{ name.split('/')[0].split(' ')[0][:4] }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in pillar_criteria %}
+                    <tr{% if row.la_scope == 'in_scope' %} style="background:rgba(239,68,68,0.08);"{% endif %}>
+                        <td><code>{{ row.id }}</code></td>
+                        <td><small>{{ row.category }}</small></td>
+                        <td>{% if row.score is not none %}<span class="score-badge score-{{ row.score }}">{{ row.score }}</span>{% else %}—{% endif %}</td>
+                        {% for code, name in raci.departments %}
+                        {% set role = row.dept_roles.get(code, '') %}
+                        <td class="text-center">
+                            {% if role == 'R' %}<span class="badge" style="background:#dc3545;color:white;font-size:0.7em;">R</span>
+                            {% elif role == 'A' %}<span class="badge" style="background:#ffc107;color:#212529;font-size:0.7em;">A</span>
+                            {% elif role == 'C' %}<span class="badge" style="background:#0d6efd;color:white;font-size:0.7em;">C</span>
+                            {% elif role == 'I' %}<span class="badge" style="background:#6c757d;color:white;font-size:0.7em;">I</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{# ==================== RELIEF ADVISOR ==================== #}
+{% if 'relief' in sections and relief %}
+<div class="page-break-before" id="sec-relief">
+    <h3 class="mb-3"><i class="bi bi-clock-history me-2"></i>Transitional Relief Advisor</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{% if relief.summary.is_first_year %}Year 1{% else %}Year 2+{% endif %}</div>
+                <div class="stat-label">Reporting Period</div>
+                <small class="text-muted">FY ends {{ relief.summary.first_fy_end }}</small>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ relief.summary.months_to_deadline }}</div>
+                <div class="stat-label">Months to FY End</div>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ relief.summary.total_relief_available }}</div>
+                <div class="stat-label">Reliefs Available</div>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ relief.summary.critical_now }}</div>
+                <div class="stat-label">Fix Now (LA Gaps)</div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- Available Reliefs Table -->
+    {% set available = [] %}
+    {% for item in relief.relief_items %}{% if item.applicable %}{% if available.append(item) %}{% endif %}{% endif %}{% endfor %}
+    {% if available %}
+    <div class="card mb-3">
+        <div class="card-header" style="background: var(--gradient-green);"><span class="text-white fw-bold">Available Reliefs ({{ available|length }})</span></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Type</th><th>Can Defer/Simplify</th><th>Must Still Do</th><th>Year 2</th></tr></thead>
+                <tbody>
+                    {% for item in available %}
+                    <tr>
+                        <td><code>{{ item.criterion_id }}</code></td>
+                        <td>{% if item.is_deferral %}<span class="badge bg-success">Defer</span>{% else %}<span class="badge bg-info">Simplify</span>{% endif %}</td>
+                        <td><small>{{ item.what_you_can_defer }}</small></td>
+                        <td><small>{{ item.what_you_must_do }}</small></td>
+                        <td><small class="text-muted">{{ item.year2_requirement }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Japan Shortcuts -->
+    {% if relief.japan_items %}
+    <div class="card mb-3">
+        <div class="card-header" style="background: var(--gradient-blue);"><span class="text-white fw-bold">Japan-Specific Shortcuts ({{ relief.japan_items|length }})</span></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Alternative</th><th>Action</th><th>Benefit</th></tr></thead>
+                <tbody>
+                    {% for item in relief.japan_items %}
+                    <tr>
+                        <td><code>{{ item.criterion_id }}</code></td>
+                        <td><small>{{ item.alternative }}</small></td>
+                        <td><small>{{ item.action }}</small></td>
+                        <td><small class="text-muted">{{ item.benefit }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{# ==================== MOCK AUDIT ==================== #}
+{% if 'audit' in sections and sim %}
+<div class="page-break-before" id="sec-audit">
+    <h3 class="mb-3"><i class="bi bi-shield-check me-2"></i>Assurance Readiness — Mock Audit (ISSA 5000)</h3>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ sim.readiness_summary.pass_pct }}%</div>
+                <div class="stat-label">Pass Rate</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ sim.readiness_summary.at_risk + sim.readiness_summary.not_ready }}</div>
+                <div class="stat-label">Will Fail</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body text-center">
+                <div class="stat-value" style="font-size: 1.2rem;">{{ sim.readiness_summary.total }}</div>
+                <div class="stat-label">In-Scope Items</div>
+            </div></div>
+        </div>
+    </div>
+
+    {% for item in sim.ssbj_items %}
+    <div class="card mb-3" style="border-left: 4px solid {% if item.readiness.level == 'ready' %}#22c55e{% elif item.readiness.level == 'borderline' %}#eab308{% else %}#ef4444{% endif %};">
+        <div class="card-header">
+            <code>{{ item.id }}</code> — <strong>{{ item.category }}</strong>
+            <span class="badge bg-{{ item.readiness.badge }} ms-2">{{ item.readiness.label }}</span>
+            {% if item.score is not none %}<span class="score-badge score-{{ item.score }} ms-1">{{ item.score }}</span>{% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h6 class="small fw-bold"><i class="bi bi-chat-left-quote me-1 text-primary"></i>Auditor Will Ask</h6>
+                    <ol class="ps-3 mb-0">
+                        {% for q in item.inquiry %}<li><small>{{ q }}</small></li>{% endfor %}
+                    </ol>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="small fw-bold"><i class="bi bi-folder-check me-1 text-success"></i>Documents Needed</h6>
+                    <ul class="list-unstyled mb-0">
+                        {% for doc in item.documents_needed %}
+                        <li><small>{% if doc.mentioned %}<i class="bi bi-check-circle-fill text-success me-1"></i>{% else %}<i class="bi bi-circle text-muted me-1"></i>{% endif %}{{ doc.document }}</small></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-2">
+                <h6 class="small fw-bold"><i class="bi bi-flag-fill me-1 text-danger"></i>Red Flags</h6>
+                <ul class="ps-3 mb-0">
+                    {% for flag in item.red_flags %}<li><small class="text-danger">{{ flag }}</small></li>{% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    .page-break-before { page-break-before: always; }
+    .card { break-inside: avoid; }
+    body { font-size: 11px; }
+}
+@media screen {
+    .print-only { display: none; }
+}
+.page-break-before:first-of-type { page-break-before: avoid; }
+</style>
+{% endblock %}

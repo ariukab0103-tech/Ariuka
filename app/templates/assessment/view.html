@@ -49,6 +49,9 @@
         <a href="{{ url_for('assessment.audit_simulator', assessment_id=assessment.id) }}" class="btn btn-outline-danger">
             <i class="bi bi-shield-check me-1"></i>Mock Audit
         </a>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#downloadModal">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Download
+        </button>
         {% endif %}
         {% if can_manage %}
         <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">
@@ -524,9 +527,77 @@
 </div>
 {% endif %}
 </form>
+
+<!-- Download Reports Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-pdf me-2"></i>Download Reports</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Select the reports to include. A combined report page will open — use your browser's Print (Ctrl+P / Cmd+P) to save as PDF.</p>
+                <div class="list-group">
+                    <label class="list-group-item d-flex align-items-center">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="gap" checked>
+                        <div>
+                            <strong><i class="bi bi-file-earmark-text me-1"></i>Gap Analysis</strong>
+                            <small class="d-block text-muted">Scores, pillar breakdown, identified gaps with actions</small>
+                        </div>
+                    </label>
+                    <label class="list-group-item d-flex align-items-center">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="roadmap" checked>
+                        <div>
+                            <strong><i class="bi bi-calendar3 me-1"></i>Compliance Roadmap</strong>
+                            <small class="d-block text-muted">Phased timeline, milestones, urgency indicators</small>
+                        </div>
+                    </label>
+                    <label class="list-group-item d-flex align-items-center">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="raci">
+                        <div>
+                            <strong><i class="bi bi-diagram-3 me-1"></i>RACI Matrix</strong>
+                            <small class="d-block text-muted">Department responsibilities, workload, priority actions</small>
+                        </div>
+                    </label>
+                    <label class="list-group-item d-flex align-items-center">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="relief">
+                        <div>
+                            <strong><i class="bi bi-clock-history me-1"></i>Relief Advisor</strong>
+                            <small class="d-block text-muted">Transitional reliefs, Japan shortcuts, Year 1 vs Year 2</small>
+                        </div>
+                    </label>
+                    <label class="list-group-item d-flex align-items-center">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="audit">
+                        <div>
+                            <strong><i class="bi bi-shield-check me-1"></i>Mock Audit</strong>
+                            <small class="d-block text-muted">Auditor questions, documents needed, red flags</small>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="downloadBtn" onclick="openDownload()">
+                    <i class="bi bi-file-earmark-pdf me-1"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
+<script>
+function openDownload() {
+    const checks = document.querySelectorAll('.dl-check:checked');
+    if (checks.length === 0) { alert('Select at least one report.'); return; }
+    const params = Array.from(checks).map(c => 's=' + c.value).join('&');
+    const url = "{{ url_for('assessment.download_report', assessment_id=assessment.id) }}?" + params;
+    window.open(url, '_blank');
+    bootstrap.Modal.getInstance(document.getElementById('downloadModal')).hide();
+}
+</script>
 <script>
 const originalValues = {};
 let hasChanges = false;

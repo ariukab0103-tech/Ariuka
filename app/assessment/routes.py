@@ -444,6 +444,81 @@ def report(assessment_id):
     )
 
 
+@assessment_bp.route("/<int:assessment_id>/download-report")
+@login_required
+def download_report(assessment_id):
+    """Combined report download — renders selected sections into one printable page."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    # Which sections were requested (checkboxes from modal)
+    sections = request.args.getlist("s")
+    if not sections:
+        sections = ["gap"]  # default
+
+    all_responses = assessment.responses.all()
+    responses = {r.criterion_id: r for r in all_responses}
+    criteria_by_pillar = get_criteria_by_pillar()
+    pillar_scores = assessment.pillar_scores()
+    category_scores = assessment.category_scores()
+
+    # Gap analysis data
+    gaps = []
+    for r in all_responses:
+        if r.score is not None and r.score < 3:
+            criterion = next((c for c in SSBJ_CRITERIA if c["id"] == r.criterion_id), None)
+            if criterion:
+                gaps.append({"response": r, "criterion": criterion})
+
+    # Roadmap data
+    roadmap_data = None
+    if "roadmap" in sections:
+        from app.roadmap import generate_roadmap
+        scored = [r for r in all_responses if r.score is not None]
+        if scored:
+            roadmap_data = generate_roadmap(assessment, scored)
+
+    # RACI data
+    raci_data = None
+    if "raci" in sections:
+        from app.raci import generate_raci, DEPARTMENTS
+        raci_data = generate_raci(assessment, responses)
+        raci_data["departments"] = DEPARTMENTS
+
+    # Relief advisor data
+    relief_data = None
+    if "relief" in sections:
+        from app.relief_advisor import generate_relief_plan
+        relief_data = generate_relief_plan(assessment, responses)
+
+    # Audit simulator data
+    sim_data = None
+    if "audit" in sections:
+        from app.assurance_simulator import generate_simulation
+        sim_data = generate_simulation(assessment, responses)
+
+    return render_template(
+        "assessment/download_report.html",
+        assessment=assessment,
+        sections=sections,
+        criteria_by_pillar=criteria_by_pillar,
+        responses=responses,
+        pillar_scores=pillar_scores,
+        category_scores=category_scores,
+        gaps=gaps,
+        roadmap=roadmap_data,
+        raci=raci_data,
+        relief=relief_data,
+        sim=sim_data,
+        maturity_levels=MATURITY_LEVELS,
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+        la_priority_labels=LA_PRIORITY_LABELS,
+    )
+
+
 # =========================================================================
 # Bulk document upload + auto-assessment
 # =========================================================================
