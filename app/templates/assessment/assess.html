@@ -188,8 +188,8 @@
                       action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
                     <div class="mb-3">
                         <label for="file" class="form-label">Upload file (PDF, Word, Excel, Image, CSV — max 100 MB)</label>
-                        <input class="form-control" type="file" id="file" name="file" required
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt">
+                        <input class="form-control" type="file" id="file" name="file"
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv,image/png,image/jpeg">
                     </div>
                     <button type="submit" class="btn btn-outline-primary btn-sm">
                         <i class="bi bi-upload me-1"></i>Upload

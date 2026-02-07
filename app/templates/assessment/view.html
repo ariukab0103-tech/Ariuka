@@ -65,16 +65,17 @@
         <div class="row">
             <div class="col-md-7">
                 <form method="POST" enctype="multipart/form-data"
-                      action="{{ url_for('assessment.bulk_upload', assessment_id=assessment.id) }}">
+                      action="{{ url_for('assessment.bulk_upload', assessment_id=assessment.id) }}"
+                      onsubmit="if(!document.getElementById('files').files.length){alert('Please select at least one file.');return false;}">
                     <div class="mb-2">
                         <label for="files" class="form-label">
                             Upload your sustainability reports, policies, GHG inventories, and other relevant documents.
                             The system will analyze them and auto-score each requirement.
                         </label>
-                        <input class="form-control" type="file" id="files" name="files" multiple required
-                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                        <input class="form-control" type="file" id="files" name="files" multiple
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv,image/png,image/jpeg">
                     </div>
-                    <small class="text-muted d-block mb-2">Supported: PDF, Word, Excel, CSV, TXT (max 100 MB each). You can select multiple files.</small>
+                    <small class="text-muted d-block mb-2">Supported: PDF, Word, Excel, CSV, TXT, Images (max 100 MB each). You can select multiple files.</small>
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-upload me-1"></i>Upload Documents
                     </button>
