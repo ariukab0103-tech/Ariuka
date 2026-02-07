@@ -130,9 +130,48 @@
     </div>
 </div>
 
+<!-- Compressed Timeline Warning -->
+{% if roadmap.urgency == 'critical' %}
+<div class="alert alert-danger border-2 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+        <div>
+            <h5 class="mb-1">Compressed Emergency Timeline</h5>
+            <p class="mb-0">Only <strong>{{ roadmap.months_remaining }} months</strong> remain. Phases below have been compressed with parallel execution.
+            Focus exclusively on LA-scope items. Some phases will overlap — assign separate teams to run them concurrently.</p>
+        </div>
+    </div>
+</div>
+{% elif roadmap.urgency == 'tight' %}
+<div class="alert alert-warning border-2 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-clock-history fs-3 me-3"></i>
+        <div>
+            <h5 class="mb-1">Tight Timeline — Phases Compressed</h5>
+            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> remaining. Phase durations have been shortened and some overlap.
+            Prioritize LA-scope items and start assurance provider engagement immediately.</p>
+        </div>
+    </div>
+</div>
+{% elif roadmap.urgency == 'adequate' %}
+<div class="alert alert-info border-2 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-info-circle fs-3 me-3"></i>
+        <div>
+            <h5 class="mb-1">Adequate Timeline — Stay on Track</h5>
+            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> remaining. Phases are slightly compressed. Start promptly to maintain buffer time.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Key Milestones Bar -->
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-signpost me-2"></i>Key Milestones</div>
+    <div class="card-header"><i class="bi bi-signpost me-2"></i>Key Milestones
+        <span class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}info{% else %}success{% endif %} ms-2">
+            {% if roadmap.urgency == 'critical' %}COMPRESSED{% elif roadmap.urgency == 'tight' %}TIGHT{% elif roadmap.urgency == 'adequate' %}ON TRACK{% else %}COMFORTABLE{% endif %}
+        </span>
+    </div>
     <div class="card-body">
         <div class="row text-center g-1">
             <div class="col">
@@ -142,17 +181,29 @@
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
                 <div class="badge bg-info rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Start Talking to Assurance Providers</div>
-                <div class="small text-muted">~3 months</div>
+                <div class="small text-muted">
+                    {% if roadmap.urgency == 'critical' %}IMMEDIATELY
+                    {% elif roadmap.urgency == 'tight' %}Within weeks
+                    {% else %}~3 months{% endif %}
+                </div>
             </div>
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
                 <div class="badge bg-success rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Provider Selected</div>
-                <div class="small text-muted">~6-9 months</div>
+                <div class="small text-muted">
+                    {% if roadmap.urgency == 'critical' %}~{{ (roadmap.months_remaining * 0.25)|int }} months
+                    {% elif roadmap.urgency == 'tight' %}~{{ (roadmap.months_remaining * 0.3)|int }} months
+                    {% else %}~6-9 months{% endif %}
+                </div>
             </div>
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
                 <div class="badge bg-warning text-dark rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Pre-Assurance Review</div>
-                <div class="small text-muted">~15-18 months</div>
+                <div class="small text-muted">
+                    {% if roadmap.urgency == 'critical' %}~{{ (roadmap.months_remaining * 0.6)|int }} months
+                    {% elif roadmap.urgency == 'tight' %}~{{ (roadmap.months_remaining * 0.7)|int }} months
+                    {% else %}~15-18 months{% endif %}
+                </div>
             </div>
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
@@ -260,7 +311,12 @@
                     <strong>Phase {{ phase.number }}: {{ phase.title }}</strong>
                     <br><small {% if phase.number in (5, 6, 7) %}class="text-white-50"{% else %}class="text-muted"{% endif %}>{{ phase.subtitle }}</small>
                 </span>
-                <span class="badge bg-{% if phase.number in (5, 6, 7) %}light text-dark{% else %}{{ phase.color }}{% endif %}">{{ phase.duration }}</span>
+                <span>
+                    {% if 'parallel' in phase.duration|lower or roadmap.urgency == 'critical' and phase.number <= 2 %}
+                    <span class="badge bg-danger me-1" style="font-size: 0.7em;">PARALLEL</span>
+                    {% endif %}
+                    <span class="badge bg-{% if phase.number in (5, 6, 7) %}light text-dark{% else %}{{ phase.color }}{% endif %}">{{ phase.duration }}</span>
+                </span>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -272,7 +328,7 @@
                             </h6>
                             <ul>
                                 {% for task in phase.tasks.management %}
-                                <li {% if 'URGENT' in task or 'CRITICAL' in task %}class="text-danger fw-bold"{% elif 'Fix ' in task %}class="text-warning"{% endif %}>
+                                <li {% if 'URGENT' in task or 'CRITICAL' in task %}class="text-danger fw-bold"{% elif 'ACCELERATED' in task or 'COMPRESSED' in task or 'FAST-TRACK' in task %}class="text-danger fw-bold"{% elif 'Fix ' in task %}class="text-warning"{% endif %}>
                                     {{ task }}
                                 </li>
                                 {% endfor %}
@@ -287,7 +343,7 @@
                             </h6>
                             <ul>
                                 {% for task in phase.tasks.technical %}
-                                <li {% if 'CRITICAL' in task %}class="text-danger fw-bold"{% endif %}>
+                                <li {% if 'CRITICAL' in task or 'ACCELERATED' in task or 'FAST-TRACK' in task or 'COMPRESSED' in task %}class="text-danger fw-bold"{% endif %}>
                                     {{ task }}
                                 </li>
                                 {% endfor %}
@@ -305,7 +361,7 @@
                             </h6>
                             <ul>
                                 {% for task in phase.tasks.assurance %}
-                                <li>{{ task }}</li>
+                                <li {% if 'IMMEDIATE' in task or 'FAST-TRACK' in task or 'PRIORITY' in task or 'COMPRESSED' in task %}class="text-danger fw-bold"{% endif %}>{{ task }}</li>
                                 {% endfor %}
                             </ul>
                         </div>

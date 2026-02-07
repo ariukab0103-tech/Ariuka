@@ -148,11 +148,79 @@ def generate_roadmap(assessment, responses_list):
     }
 
 
+def _calculate_phase_schedule(months_remaining):
+    """Calculate dynamic phase durations based on available time.
+
+    Returns a list of (start_month, end_month) tuples for phases 1-6.
+    Phase 7 (assurance) is always the year after compliance.
+    """
+    m = max(months_remaining, 3)  # floor at 3 months
+
+    if m >= 24:
+        # Comfortable: standard 24-month plan
+        return [
+            (1, 3), (3, 6), (6, 12), (12, 18), (15, 21), (18, 24),
+        ]
+    elif m >= 18:
+        # Adequate: compress to 18 months
+        return [
+            (1, 2), (2, 5), (5, 10), (10, 14), (12, 16), (16, m),
+        ]
+    elif m >= 12:
+        # Tight: aggressive compression, overlapping phases
+        return [
+            (0, 1), (1, 3), (3, 7), (7, 10), (8, 11), (10, m),
+        ]
+    else:
+        # Critical (<12 months): emergency parallel execution
+        half = max(2, m // 2)
+        q1 = max(1, m // 4)
+        q3 = max(4, m * 3 // 4)
+        return [
+            (0, q1),
+            (0, half),         # parallel with phase 1
+            (q1, half + 1),
+            (half, q3),
+            (half + 1, q3 + 1),
+            (q3, m),
+        ]
+
+
+def _phase_duration_label(start, end, months_remaining):
+    """Format a human-readable duration label from month boundaries."""
+    if start == 0 and end <= 1:
+        return "Weeks 1-4"
+    elif start == 0:
+        return f"Months 1-{end}"
+    else:
+        return f"Months {start}-{end}"
+
+
 def _generate_phases(compliance_date, assurance_date, today, months_remaining, gaps):
-    """Generate implementation phases with specific tasks."""
+    """Generate implementation phases with specific tasks.
+
+    Phase durations and task urgency adapt dynamically based on months_remaining:
+    - Comfortable (24+ mo): standard phased rollout
+    - Adequate (18-24 mo): slightly compressed
+    - Tight (12-18 mo): aggressive compression, overlapping phases
+    - Critical (<12 mo): emergency parallel execution with accelerated tasks
+    """
     phases = []
 
-    # Phase 1: Foundation & Management Buy-in (Now to +3 months)
+    # Determine urgency for task adjustments
+    if months_remaining <= 6:
+        urgency = "critical"
+    elif months_remaining <= 12:
+        urgency = "tight"
+    elif months_remaining <= 24:
+        urgency = "adequate"
+    else:
+        urgency = "comfortable"
+
+    # Calculate dynamic phase schedule
+    schedule = _calculate_phase_schedule(months_remaining)
+
+    # Phase 1: Foundation & Management Buy-in
     p1_tasks = {
         "management": [
             "Present gap analysis results to executive management / board",
@@ -180,11 +248,24 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             f"URGENT: Highlight {len(gaps['la_critical'])} limited assurance critical gaps to management — these will be directly examined by auditors"
         )
 
+    # Urgency-specific adjustments for Phase 1
+    if urgency == "critical":
+        p1_tasks["management"].insert(0,
+            "ACCELERATED: Compress foundation activities into weeks, not months — run governance setup in parallel"
+        )
+        p1_tasks["assurance"].insert(0,
+            "IMMEDIATE: Contact assurance providers THIS WEEK — you cannot afford delays"
+        )
+    elif urgency == "tight":
+        p1_tasks["management"].insert(0,
+            "COMPRESSED TIMELINE: Complete foundation within 1 month — delegate tasks across team members simultaneously"
+        )
+
     phases.append({
         "number": 1,
         "title": "Foundation & Management Buy-in",
         "subtitle": "Gap analysis, governance setup, project launch",
-        "duration": "Months 1-3",
+        "duration": _phase_duration_label(schedule[0][0], schedule[0][1], months_remaining),
         "icon": "bi-flag",
         "color": "primary",
         "tasks": p1_tasks,
@@ -229,11 +310,24 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Define calculation methodology document (emission factors, sources, methodology)",
         ])
 
+    # Urgency-specific adjustments for Phase 2
+    if urgency == "critical":
+        p2_tasks["management"].insert(0,
+            "ACCELERATED: Use existing governance structures — add sustainability as standing board agenda item NOW, formalize later"
+        )
+        p2_tasks["assurance"].insert(0,
+            "FAST-TRACK: Skip RFP — approach your current financial auditor or Big 4 firm directly for fastest engagement"
+        )
+    elif urgency == "tight":
+        p2_tasks["assurance"].insert(0,
+            "PRIORITY: Send RFP within 2 weeks — provider selection cannot wait"
+        )
+
     phases.append({
         "number": 2,
         "title": "Governance & Policy Framework",
         "subtitle": "Policies, roles, assurance provider selection",
-        "duration": "Months 3-6",
+        "duration": _phase_duration_label(schedule[1][0], schedule[1][1], months_remaining),
         "icon": "bi-building",
         "color": "info",
         "tasks": p2_tasks,
@@ -290,11 +384,24 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             f"Address {len(gaps['risk'])} risk management gaps: integrate sustainability into ERM framework"
         )
 
+    # Urgency-specific adjustments for Phase 3
+    if urgency == "critical":
+        p3_tasks["management"].insert(0,
+            "ACCELERATED: Focus ONLY on LA-scope items (Scope 1 & 2 GHG). Defer non-LA disclosures to Year 2"
+        )
+        p3_tasks["technical"].insert(0,
+            "FAST-TRACK: Use spreadsheet-based approach with controls — do NOT start a multi-month IT project"
+        )
+    elif urgency == "tight":
+        p3_tasks["management"].insert(0,
+            "COMPRESSED: Prioritize LA-scope items first, then address remaining gaps"
+        )
+
     phases.append({
         "number": 3,
         "title": "Process & System Implementation",
         "subtitle": "IT systems, data collection, internal controls",
-        "duration": "Months 6-12",
+        "duration": _phase_duration_label(schedule[2][0], schedule[2][1], months_remaining),
         "icon": "bi-gear",
         "color": "warning",
         "tasks": p3_tasks,
@@ -322,11 +429,24 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         ],
     }
 
+    # Urgency-specific adjustments for Phase 4
+    if urgency == "critical":
+        p4_tasks["management"].insert(0,
+            "ACCELERATED: Combine dry run with actual disclosure preparation — no time for separate cycles"
+        )
+        p4_tasks["assurance"].insert(0,
+            "FAST-TRACK: Provider should be doing readiness review NOW, concurrent with your data preparation"
+        )
+    elif urgency == "tight":
+        p4_tasks["technical"].insert(0,
+            "COMPRESSED: Run dry run on partial data if full year not yet available — don't wait for year-end"
+        )
+
     phases.append({
         "number": 4,
         "title": "Dry Run & Internal Review",
         "subtitle": "Trial disclosure, assurance readiness check",
-        "duration": "Months 12-18",
+        "duration": _phase_duration_label(schedule[3][0], schedule[3][1], months_remaining),
         "icon": "bi-clipboard-check",
         "color": "success",
         "tasks": p4_tasks,
@@ -363,11 +483,24 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             f"CRITICAL: Re-assess {len(gaps['la_critical'])} LA-critical items — all must be at score 3+ before assurance"
         )
 
+    # Urgency-specific adjustments for Phase 5
+    if urgency == "critical":
+        p5_tasks["management"].insert(0,
+            "ACCELERATED: Merge pre-assurance with dry run — run both simultaneously with provider support"
+        )
+        p5_tasks["assurance"].insert(0,
+            "FAST-TRACK: Provider readiness review and formal engagement planning happen in parallel"
+        )
+    elif urgency == "tight":
+        p5_tasks["assurance"].insert(0,
+            "COMPRESSED: Schedule mock audit immediately after dry run with no gap between phases"
+        )
+
     phases.append({
         "number": 5,
         "title": "Pre-Assurance Readiness",
         "subtitle": "Mock audit, provider readiness review, remediation",
-        "duration": "Months 15-21",
+        "duration": _phase_duration_label(schedule[4][0], schedule[4][1], months_remaining),
         "icon": "bi-search",
         "color": "purple",
         "tasks": p5_tasks,
@@ -394,11 +527,22 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         ],
     }
 
+    # Urgency-specific adjustments for Phase 6
+    if urgency == "critical":
+        p6_tasks["technical"].insert(0,
+            "ACCELERATED: Focus on minimum viable disclosure — ensure LA-scope items are complete, address others in amendments"
+        )
+    elif urgency == "tight":
+        p6_tasks["technical"].insert(0,
+            "PRIORITY: Finalize LA-scope disclosures first, then complete remaining sections"
+        )
+
     phases.append({
         "number": 6,
         "title": "First Mandatory Disclosure",
         "subtitle": f"Publish SSBJ-compliant disclosure (FY{compliance_date.year})",
-        "duration": f"Compliance Year ({compliance_date.year})",
+        "duration": _phase_duration_label(schedule[5][0], schedule[5][1], months_remaining)
+            if urgency in ("critical", "tight") else f"Compliance Year ({compliance_date.year})",
         "icon": "bi-file-earmark-text",
         "color": "danger",
         "tasks": p6_tasks,
@@ -632,12 +776,23 @@ def _generate_summary(gaps, months_remaining, urgency):
     if urgency == "critical":
         lines.append(
             f"TIMELINE CRITICAL: Only {months_remaining} months until compliance. "
-            f"Accelerate all phases — consider external consultants to supplement internal resources."
+            f"Phases have been compressed with parallel execution. "
+            f"Focus exclusively on LA-scope items. Consider external consultants to supplement internal resources."
         )
     elif urgency == "tight":
         lines.append(
-            f"Timeline is tight ({months_remaining} months). Prioritize limited assurance scope items "
-            f"and begin assurance provider discussions immediately."
+            f"Timeline is tight ({months_remaining} months). Phases have been compressed and some overlap. "
+            f"Prioritize limited assurance scope items and begin assurance provider discussions immediately."
+        )
+    elif urgency == "adequate":
+        lines.append(
+            f"You have {months_remaining} months — adequate time if you start promptly. "
+            f"Phases are slightly compressed. Stay on schedule to avoid last-minute pressure."
+        )
+    else:
+        lines.append(
+            f"Comfortable timeline ({months_remaining} months). Standard phased approach with full time allocations. "
+            f"Use the extra time for thorough preparation and testing."
         )
 
     return lines
