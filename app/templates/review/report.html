@@ -35,34 +35,38 @@
 <!-- Summary Stats -->
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card stat-card stat-green text-center">
             <div class="card-body">
-                <div class="fs-2 fw-bold text-success">{{ stats.satisfactory }}</div>
-                <small class="text-muted">Satisfactory</small>
+                <i class="bi bi-check-circle stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-green);">{{ stats.satisfactory }}</div>
+                <div class="stat-label">Satisfactory</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card stat-card stat-yellow text-center">
             <div class="card-body">
-                <div class="fs-2 fw-bold text-warning">{{ stats.needs_improvement }}</div>
-                <small class="text-muted">Needs Improvement</small>
+                <i class="bi bi-exclamation-triangle stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-yellow);">{{ stats.needs_improvement }}</div>
+                <div class="stat-label">Needs Improvement</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card stat-card stat-red text-center">
             <div class="card-body">
-                <div class="fs-2 fw-bold text-danger">{{ stats.unsatisfactory }}</div>
-                <small class="text-muted">Unsatisfactory</small>
+                <i class="bi bi-x-circle stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-red);">{{ stats.unsatisfactory }}</div>
+                <div class="stat-label">Unsatisfactory</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="card stat-card stat-blue text-center">
             <div class="card-body">
-                <div class="fs-2 fw-bold text-primary">{{ stats.evidence_adequate }}/{{ stats.total }}</div>
-                <small class="text-muted">Evidence Adequate</small>
+                <i class="bi bi-file-earmark-check stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-blue);">{{ stats.evidence_adequate }}/{{ stats.total }}</div>
+                <div class="stat-label">Evidence Adequate</div>
             </div>
         </div>
     </div>
@@ -125,7 +129,7 @@
                 {% for criterion in la_criteria %}
                 {% set item = review_items.get(criterion.id) %}
                 {% if item %}
-                <tr class="{% if item.status == 'unsatisfactory' %}table-danger{% elif item.status == 'needs_improvement' %}table-warning{% endif %}">
+                <tr style="{% if item.status == 'unsatisfactory' %}background: rgba(239,68,68,0.08);{% elif item.status == 'needs_improvement' %}background: rgba(234,179,8,0.08);{% endif %}">
                     <td><code>{{ criterion.id }}</code></td>
                     <td>{{ criterion.category }}</td>
                     <td>
@@ -166,7 +170,9 @@ new Chart(document.getElementById('pillarChart'), {
         datasets: [{
             label: 'Score',
             data: Object.values(pillarScores),
-            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? 'rgba(239,68,68,0.7)' : v < 3 ? 'rgba(249,115,22,0.7)' : 'rgba(34,197,94,0.7)'),
+            borderColor: Object.values(pillarScores).map(v => v < 2 ? '#ef4444' : v < 3 ? '#f97316' : '#22c55e'),
+            borderWidth: 1,
             borderRadius: 6
         }, {
             label: 'Threshold (3.0)',
@@ -180,7 +186,7 @@ new Chart(document.getElementById('pillarChart'), {
     },
     options: {
         responsive: true,
-        scales: { y: { beginAtZero: true, max: 5 } },
+        scales: { y: { beginAtZero: true, max: 5, grid: { color: 'rgba(42,54,80,0.5)' } }, x: { grid: { color: 'rgba(42,54,80,0.3)' } } },
         plugins: { legend: { position: 'bottom' } }
     }
 });
@@ -192,7 +198,9 @@ new Chart(document.getElementById('reviewPieChart'), {
         labels: ['Satisfactory', 'Needs Improvement', 'Unsatisfactory'],
         datasets: [{
             data: [stats.satisfactory, stats.needs_improvement, stats.unsatisfactory],
-            backgroundColor: ['#38a169', '#d69e2e', '#e53e3e']
+            backgroundColor: ['rgba(34,197,94,0.8)', 'rgba(234,179,8,0.8)', 'rgba(239,68,68,0.8)'],
+            borderColor: ['#22c55e', '#eab308', '#ef4444'],
+            borderWidth: 1
         }]
     },
     options: {

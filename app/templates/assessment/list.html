@@ -16,7 +16,7 @@
         <div class="row g-2 align-items-center">
             <div class="col-md-5">
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" id="searchInput" placeholder="Search assessments..." oninput="filterTable()">
                 </div>
             </div>
@@ -31,7 +31,7 @@
                 </select>
             </div>
             <div class="col-md-4 text-end">
-                <small class="text-muted" id="resultCount">{{ assessments|length }} assessment(s)</small>
+                <small style="color: var(--text-muted);" id="resultCount">{{ assessments|length }} assessment(s)</small>
             </div>
         </div>
     </div>
@@ -39,6 +39,7 @@
 
 <div class="card">
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0" id="assessmentTable">
             <thead>
                 <tr>
@@ -56,7 +57,7 @@
                 {% for a in assessments %}
                 <tr data-status="{{ a.status }}" data-search="{{ a.title|lower }} {{ a.entity_name|lower }} {{ a.fiscal_year|lower }}">
                     <td>
-                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold">
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold" style="color: var(--accent-cyan);">
                             {{ a.title }}
                         </a>
                     </td>
@@ -66,13 +67,13 @@
                         {% if a.status == 'draft' %}
                         <span class="status-badge bg-secondary text-white">Draft</span>
                         {% elif a.status == 'in_progress' %}
-                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        <span class="status-badge" style="background: rgba(234,179,8,0.2); color: var(--accent-yellow);">In Progress</span>
                         {% elif a.status == 'completed' %}
-                        <span class="status-badge bg-success text-white">Completed</span>
+                        <span class="status-badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Completed</span>
                         {% elif a.status == 'under_review' %}
-                        <span class="status-badge bg-info text-white">Under Review</span>
+                        <span class="status-badge" style="background: rgba(6,182,212,0.2); color: var(--accent-cyan);">Under Review</span>
                         {% elif a.status == 'reviewed' %}
-                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        <span class="status-badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Reviewed</span>
                         {% endif %}
                     </td>
                     <td>
@@ -105,11 +106,12 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 {% else %}
 <div class="card">
-    <div class="card-body text-center py-5 text-muted">
+    <div class="card-body text-center py-5" style="color: var(--text-muted);">
         <i class="bi bi-clipboard-check" style="font-size: 3rem;"></i>
         <p class="mt-2">No assessments found. Create your first SSBJ gap analysis.</p>
         <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
@@ -124,6 +126,7 @@
 <h4 class="mt-4 mb-3"><i class="bi bi-people me-2"></i>Shared with Me</h4>
 <div class="card">
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
@@ -141,7 +144,7 @@
                 {% for a in shared_assessments %}
                 <tr>
                     <td>
-                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold">
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold" style="color: var(--accent-cyan);">
                             {{ a.title }}
                         </a>
                     </td>
@@ -150,9 +153,9 @@
                     <td>
                         {% set my_perm = a.user_permission(current_user) %}
                         {% if my_perm == 'manage' %}
-                        <span class="badge bg-primary">Manage</span>
+                        <span class="badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Manage</span>
                         {% elif my_perm == 'edit' %}
-                        <span class="badge bg-success">Edit</span>
+                        <span class="badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Edit</span>
                         {% else %}
                         <span class="badge bg-secondary">View</span>
                         {% endif %}
@@ -161,13 +164,13 @@
                         {% if a.status == 'draft' %}
                         <span class="status-badge bg-secondary text-white">Draft</span>
                         {% elif a.status == 'in_progress' %}
-                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        <span class="status-badge" style="background: rgba(234,179,8,0.2); color: var(--accent-yellow);">In Progress</span>
                         {% elif a.status == 'completed' %}
-                        <span class="status-badge bg-success text-white">Completed</span>
+                        <span class="status-badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Completed</span>
                         {% elif a.status == 'under_review' %}
-                        <span class="status-badge bg-info text-white">Under Review</span>
+                        <span class="status-badge" style="background: rgba(6,182,212,0.2); color: var(--accent-cyan);">Under Review</span>
                         {% elif a.status == 'reviewed' %}
-                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        <span class="status-badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Reviewed</span>
                         {% endif %}
                     </td>
                     <td>
@@ -199,6 +202,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 {% endif %}
@@ -223,7 +227,7 @@ function filterTable() {
     document.getElementById('resultCount').textContent = visible + ' assessment(s)';
 }
 
-// Focus search on Ctrl+F (override browser find for in-page search)
+// Focus search on Ctrl+F
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         const input = document.getElementById('searchInput');

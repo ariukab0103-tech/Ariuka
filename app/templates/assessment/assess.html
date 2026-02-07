@@ -73,17 +73,19 @@
                 <form method="POST">
                     <div class="mb-4">
                         <label class="form-label fw-bold">Maturity Score *</label>
-                        {% for level, info in maturity_levels.items() %}
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="score" id="score_{{ level }}"
-                                   value="{{ level }}" {% if response.score == level %}checked{% endif %}>
-                            <label class="form-check-label" for="score_{{ level }}">
-                                <span class="score-badge score-{{ level }} me-2">{{ level }}</span>
-                                <strong>{{ info.label }}</strong>
-                                <small class="text-muted d-block ms-5">{{ info.description }}</small>
-                            </label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for level, info in maturity_levels.items() %}
+                            <div class="form-check form-check-inline mb-0">
+                                <input class="form-check-input" type="radio" name="score" id="score_{{ level }}"
+                                       value="{{ level }}" {% if response.score == level %}checked{% endif %}>
+                                <label class="form-check-label" for="score_{{ level }}" title="{{ info.description }}">
+                                    <span class="score-badge score-{{ level }}">{{ level }}</span>
+                                    <small class="ms-1">{{ info.label }}</small>
+                                </label>
+                            </div>
+                            {% endfor %}
                         </div>
-                        {% endfor %}
+                        <small class="text-muted mt-1 d-block">See Maturity Scale Reference on the right for level descriptions.</small>
                     </div>
 
                     <div class="mb-3">
@@ -101,6 +103,26 @@
                         <textarea class="form-control" id="notes" name="notes" rows="3"
                                   placeholder="Additional notes, observations, or action items for improvement...">{{ response.notes or '' }}</textarea>
                     </div>
+
+                    <!-- Minimum Compliance Actions -->
+                    {% if criterion.minimum_action %}
+                    <div class="alert alert-warning mt-3 mb-3">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-check2-square me-1"></i>Minimum Compliance Actions
+                        </h6>
+                        <p class="mb-0" style="white-space: pre-line; font-size: 0.9em;">{{ criterion.minimum_action }}</p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Best Practice Suggestions -->
+                    {% if criterion.best_practice %}
+                    <div class="alert alert-info mt-2 mb-3">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-stars me-1"></i>Best Practice (Peer Examples &amp; Research)
+                        </h6>
+                        <p class="mb-0" style="white-space: pre-line; font-size: 0.9em;">{{ criterion.best_practice }}</p>
+                    </div>
+                    {% endif %}
 
                     <div class="d-flex justify-content-between">
                         <div class="d-flex gap-2">
