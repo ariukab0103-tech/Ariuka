@@ -128,6 +128,21 @@ def view(assessment_id):
 
     criteria_by_pillar = get_criteria_by_pillar()
 
+    # Auto-sync: add response rows for any new criteria not yet in this assessment
+    existing_ids = {r.criterion_id for r in assessment.responses.all()}
+    new_criteria = [c for c in SSBJ_CRITERIA if c["id"] not in existing_ids]
+    if new_criteria:
+        for c in new_criteria:
+            resp = Response(
+                assessment_id=assessment.id,
+                criterion_id=c["id"],
+                pillar=c["pillar"],
+                category=c["category"],
+                standard=c["standard"],
+            )
+            db.session.add(resp)
+        db.session.commit()
+
     # Single query for all responses (avoid N+1)
     all_responses = assessment.responses.all()
     responses = {r.criterion_id: r for r in all_responses}
@@ -700,11 +715,212 @@ def _get_next_criterion(current_id):
 
 
 # =========================================================================
-# Consultant Roadmap Review
+# Consultant Report Review (AI-Powered with Keyword Fallback)
 # =========================================================================
 
+
+def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, roadmap_data):
+    """Use Claude AI to analyze consultant report against SSBJ requirements and our assessment.
+
+    Returns (results, all_matched_ids, comparison) or None if AI unavailable.
+    """
+    import json as _json
+    import re
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+    except Exception:
+        return None
+
+    # Build context: criteria + our scores
+    criteria_context = []
+    for c in SSBJ_CRITERIA:
+        resp = responses_map.get(c["id"])
+        score = resp.score if resp and resp.score is not None else None
+        score_str = f"{score}/5" if score is not None else "Not scored"
+        criteria_context.append(
+            f"{c['id']} | {c['pillar']} | {c['category']} | "
+            f"Obligation: {c['obligation']} | LA Scope: {c['la_scope']} | "
+            f"Our Score: {score_str}\n"
+            f"  Requirement: {c['requirement']}\n"
+            f"  Minimum Action: {c.get('minimum_action', 'N/A')}"
+        )
+    criteria_text = "\n\n".join(criteria_context)
+
+    # Build roadmap context
+    roadmap_context = ""
+    if roadmap_data:
+        la_critical = roadmap_data.get("gaps", {}).get("la_critical", [])
+        la_ids = [g["id"] for g in la_critical]
+        roadmap_context = (
+            f"Timeline: {roadmap_data.get('months_remaining', '?')} months remaining | "
+            f"Urgency: {roadmap_data.get('urgency', '?')} | "
+            f"Total gaps (score<3): {roadmap_data.get('gaps', {}).get('total_gaps', '?')} | "
+            f"LA-critical gaps: {len(la_critical)} ({', '.join(la_ids)})"
+        )
+
+    # Truncate consultant text if needed
+    max_chars = 30000
+    truncated = consultant_text[:max_chars] if len(consultant_text) > max_chars else consultant_text
+
+    system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You are comparing an external consultant's report/proposal against:
+1. Our own SSBJ gap assessment tool results (scores per criterion)
+2. Our compliance roadmap (phases, timeline, urgency)
+3. SSBJ minimum compliance requirements
+
+You know:
+- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
+- 25 SSBJ criteria across 4 pillars: Governance (5), Strategy (6), Risk Management (5), Metrics & Targets (9)
+- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive requirements
+- Limited assurance scope (first 2 years): Scope 1 & 2 GHG, Governance, and Risk Management (ISSA 5000)
+- Value chain analysis (STR-01, STR-02) and Scope 3 all 15 categories (MET-03) are MANDATORY
+- GHG Intensity (MET-08) and Climate Remuneration (MET-09) are mandatory under IFRS S2
+- Carbon offsets do NOT reduce reported Scope 1/2 emissions — they are NOT part of SSBJ compliance
+- Reasonable assurance is NOT being considered — limited assurance only
+- ISSA 5000 replaces ISAE 3000/3410 from Dec 2026
+
+Your task: Compare the consultant's report against OUR assessment results and roadmap. For each distinct suggestion/recommendation/finding in the consultant's report:
+1. Does it MATCH our tool's findings? If our score is low for that criterion, the consultant is aligned.
+2. Does it DEVIATE from our results? If our score is already >=3 but consultant flags it, it may be redundant.
+3. Is it BEYOND minimum SSBJ compliance? Flag anything that goes beyond what SSBJ actually requires.
+4. Is it UNNECESSARY for SSBJ? (e.g., carbon offsets, blockchain, ESG ratings, real-time dashboards)
+5. Does the consultant MISS something our tool identified as a gap?
+
+Classify each: essential (matches SSBJ mandatory + our gap), recommended (useful but beyond minimum), already_covered (our score already >=3), out_of_scope (not SSBJ related), unnecessary (actively wrong or misleading for SSBJ).
+
+Also compare the consultant's overall approach with our roadmap — timeline, priorities, scope."""
+
+    user_prompt = f"""OUR TOOL'S ASSESSMENT RESULTS (scores per SSBJ criterion):
+{criteria_text}
+
+OUR ROADMAP STATUS:
+{roadmap_context}
+
+CONSULTANT'S REPORT/PROPOSAL TO REVIEW:
+{truncated}
+
+Compare the consultant's report against our assessment results and SSBJ requirements. For each distinct recommendation/finding in the consultant's report, determine if it:
+- Aligns with our gaps (score < 3 on relevant criterion) = essential
+- Goes beyond minimum SSBJ compliance = recommended
+- Targets something we already cover (score >= 3) = already_covered
+- Is not related to any SSBJ requirement = out_of_scope
+- Is misleading or unnecessary for SSBJ (e.g., carbon offsets, ESG ratings) = unnecessary
+
+Return ONLY a JSON object:
+{{
+  "suggestions": [
+    {{
+      "text": "Brief summary of this suggestion (max 2 sentences)",
+      "verdict": "essential|recommended|already_covered|out_of_scope|unnecessary",
+      "matched_criteria": ["GOV-01", "GOV-02"],
+      "explanation": "How this compares to our assessment score and SSBJ minimum requirements. Reference specific criterion scores."
+    }}
+  ],
+  "overall_comparison": {{
+    "critical_observations": [
+      {{
+        "type": "danger|warning|success|info",
+        "title": "Short title",
+        "detail": "Explanation comparing consultant vs our tool results"
+      }}
+    ],
+    "differences": [
+      {{
+        "area": "Area name (e.g., Timeline, Scope, Prioritization)",
+        "our_approach": "What our tool/roadmap identifies",
+        "consultant_note": "How the consultant's approach differs and whether the deviation is justified"
+      }}
+    ],
+    "missing_from_consultant": ["SSBJ criterion IDs the consultant does NOT address but our tool flags as gaps"]
+  }}
+}}
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no commentary outside JSON."""
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Extract JSON (handle potential markdown code blocks)
+        if response_text.startswith("```"):
+            response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
+            response_text = re.sub(r'\n?```\s*$', '', response_text)
+
+        ai_result = _json.loads(response_text)
+
+        # Convert AI results to our standard format
+        results = []
+        all_matched_ids = set()
+        verdict_colors = {
+            "essential": ("danger", "exclamation-triangle-fill"),
+            "recommended": ("warning", "info-circle"),
+            "already_covered": ("success", "check-circle"),
+            "out_of_scope": ("secondary", "question-circle"),
+            "unnecessary": ("secondary", "x-circle"),
+        }
+
+        for item in ai_result.get("suggestions", []):
+            verdict = item.get("verdict", "out_of_scope")
+            color, icon = verdict_colors.get(verdict, ("secondary", "question-circle"))
+            matched_ids = item.get("matched_criteria", [])
+            all_matched_ids.update(matched_ids)
+
+            # Build matched criteria details
+            mc_details = []
+            for cid in matched_ids:
+                c = criteria_map.get(cid)
+                if c:
+                    resp = responses_map.get(cid)
+                    mc_details.append(_criterion_summary(c, resp))
+
+            results.append({
+                "text": item.get("text", ""),
+                "verdict": verdict,
+                "explanation": item.get("explanation", ""),
+                "matched_criteria": mc_details,
+                "icon": icon,
+                "color": color,
+            })
+
+        # Build comparison from AI output
+        overall = ai_result.get("overall_comparison", {})
+        comparison = {
+            "our_urgency": roadmap_data.get("urgency", "") if roadmap_data else "",
+            "our_months": roadmap_data.get("months_remaining", 0) if roadmap_data else 0,
+            "our_total_gaps": roadmap_data.get("gaps", {}).get("total_gaps", 0) if roadmap_data else 0,
+            "our_la_critical": len(roadmap_data.get("gaps", {}).get("la_critical", [])) if roadmap_data else 0,
+            "our_phases": len(roadmap_data.get("phases", [])) if roadmap_data else 0,
+            "critical_observations": overall.get("critical_observations", []),
+            "differences": overall.get("differences", []),
+        }
+
+        return results, all_matched_ids, comparison
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"AI consultant analysis failed: {e}")
+        return None
+
+
 def _build_keyword_index():
-    """Build keyword-to-criterion mapping for matching consultant suggestions."""
+    """Build keyword-to-criterion mapping for matching consultant suggestions.
+
+    IMPORTANT: SSBJ requires disclosure across ALL four pillars even for items
+    not in initial limited assurance scope. Value chain analysis, Scope 3,
+    scenario analysis, etc. are ALL mandatory.
+    Initial LA scope (first 2 years): Scope 1 & 2, Governance, Risk Management.
+    """
     import re
     index = {}
     for c in SSBJ_CRITERIA:
@@ -714,21 +930,98 @@ def _build_keyword_index():
             text = c.get(field, "")
             words = re.findall(r"[a-zA-Z]{4,}", text.lower())
             keywords.update(words)
-        # Add specific domain keywords per pillar/topic
-        if "scope 1" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope1", "scope", "direct", "emissions", "ghg", "greenhouse"])
-        if "scope 2" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope2", "indirect", "electricity", "purchased"])
-        if "scope 3" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
-            keywords.update(["scope3", "value", "chain", "supply"])
+
+        # Add specific domain keywords per criterion topic
+        cid = c["id"]
+        combined_text = (c.get("requirement", "") + " " + c.get("minimum_action", "")).lower()
+
+        # Scope 1 keywords
+        if "scope 1" in combined_text or cid == "MET-01":
+            keywords.update(["scope1", "scope", "direct", "emissions", "ghg", "greenhouse",
+                             "fuel", "combustion", "stationary", "mobile", "fugitive", "refrigerant"])
+        # Scope 2 keywords
+        if "scope 2" in combined_text or cid == "MET-02":
+            keywords.update(["scope2", "indirect", "electricity", "purchased", "grid",
+                             "energy", "utility", "location", "market"])
+        # Scope 3 / Value chain keywords (MET-03 and STR-02 are both mandatory)
+        if "scope 3" in combined_text or cid == "MET-03":
+            keywords.update(["scope3", "value", "chain", "supply", "upstream", "downstream",
+                             "supplier", "procurement", "logistics", "transport", "categories",
+                             "purchased", "goods", "services", "travel", "commuting"])
+        # Value chain analysis (STR-02 is mandatory)
+        if "value chain" in combined_text or cid == "STR-02":
+            keywords.update(["value", "chain", "supply", "upstream", "downstream",
+                             "business", "model", "impact", "dependency", "supplier",
+                             "procurement", "customer", "distribution"])
+        # Risk and opportunity analysis (STR-01, RSK-01, RSK-02 are all mandatory)
+        if cid in ("STR-01", "RSK-01", "RSK-02"):
+            keywords.update(["risk", "opportunity", "opportunities", "risks", "identify",
+                             "assessment", "materiality", "material", "register", "impact",
+                             "likelihood", "prioritize", "monitor"])
+        # Climate scenario analysis (STR-04 is mandatory)
+        if cid == "STR-04":
+            keywords.update(["scenario", "analysis", "resilience", "pathway",
+                             "transition", "physical", "temperature", "paris", "degrees"])
+        # Financial impact (STR-03 is mandatory)
+        if cid == "STR-03":
+            keywords.update(["financial", "impact", "position", "performance",
+                             "cashflow", "cash", "flows", "balance", "sheet"])
+        # Transition plan (STR-05)
+        if cid == "STR-05":
+            keywords.update(["transition", "plan", "decarbonization", "decarbonisation",
+                             "target", "pathway", "roadmap", "reduction"])
+        # Board oversight (GOV-01, GOV-02 are in LA scope)
+        if cid in ("GOV-01", "GOV-02"):
+            keywords.update(["board", "oversight", "committee", "governance", "mandate",
+                             "charter", "terms", "reference", "sustainability", "esg",
+                             "director", "directors", "responsible", "supervisory"])
+        # Management role (GOV-04 is in LA scope)
+        if cid == "GOV-04":
+            keywords.update(["management", "role", "manager", "officer", "cso",
+                             "sustainability", "responsible", "monitoring", "reporting",
+                             "cross", "functional", "working", "group"])
+        # Climate governance (GOV-05 is in LA scope)
+        if cid == "GOV-05":
+            keywords.update(["climate", "decision", "investment", "capital", "carbon", "pricing"])
+        # Risk integration (RSK-03 is now in LA scope)
+        if cid == "RSK-03":
+            keywords.update(["integration", "integrate", "erm", "enterprise", "overall",
+                             "combined", "unified", "framework", "holistic"])
+        # Internal controls (RSK-05 is in LA scope)
+        if cid == "RSK-05":
+            keywords.update(["internal", "controls", "audit", "trail", "maker", "checker",
+                             "review", "segregation", "duties", "data", "quality", "icsr"])
+        # Climate risk (RSK-04 is mandatory)
+        if cid == "RSK-04":
+            keywords.update(["climate", "physical", "transition", "acute", "chronic",
+                             "flood", "heat", "policy", "technology", "reputation"])
+        # Data quality (MET-07 is in LA scope)
+        if cid == "MET-07":
+            keywords.update(["data", "quality", "completeness", "accuracy", "validation",
+                             "governance", "lineage", "reconciliation", "error"])
+        # Climate targets (MET-04 is mandatory)
+        if cid == "MET-04":
+            keywords.update(["target", "targets", "reduction", "base", "year",
+                             "milestone", "sbti", "science", "based", "netzero", "zero"])
+        # GHG emissions intensity (MET-08 is mandatory)
+        if cid == "MET-08":
+            keywords.update(["intensity", "ratio", "per", "unit", "revenue",
+                             "output", "employee", "denominator", "normalized"])
+        # Climate-related remuneration (MET-09 is mandatory)
+        if cid == "MET-09":
+            keywords.update(["remuneration", "compensation", "executive", "incentive",
+                             "bonus", "salary", "linked", "performance", "kpi"])
+
+        # General pillar keywords
         if c["pillar"] == "Governance":
             keywords.update(["board", "governance", "oversight", "committee"])
         if c["pillar"] == "Strategy":
-            keywords.update(["strategy", "scenario", "transition", "climate"])
+            keywords.update(["strategy", "strategic"])
         if c["pillar"] == "Risk Management":
-            keywords.update(["risk", "controls", "internal", "management"])
+            keywords.update(["risk", "controls", "management"])
         if c["pillar"] == "Metrics & Targets":
             keywords.update(["metrics", "targets", "data", "calculation", "emissions"])
+
         index[c["id"]] = keywords
     return index
 
@@ -767,15 +1060,15 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
     import re
     text_lower = suggestion_text.lower()
 
-    # Check for commonly unnecessary or over-engineered consultant suggestions
+    # Check for truly unnecessary items — only flag things NOT required by SSBJ
+    # IMPORTANT: Scope 3, value chain analysis, and risk/opportunity assessments
+    # are ALL mandatory under SSBJ even if not in initial limited assurance scope.
+    # Do NOT flag those as unnecessary.
     unnecessary_patterns = [
         (r"blockchain|nft|web3", "Blockchain/NFT technology is not required for SSBJ compliance. This is a common consultant upsell. Standard databases and spreadsheets with audit trails are fully sufficient for assurance purposes."),
         (r"real.?time\s+dashboard", "Real-time dashboards are nice-to-have but not required. SSBJ requires annual disclosure, not real-time monitoring. Consultants may suggest this to increase project scope and fees."),
-        (r"ai.?powered|machine\s+learning|artificial\s+intelligence", "AI/ML tools are not required for SSBJ compliance. Manual processes with proper controls are fully acceptable. This may be consultant-driven technology upselling."),
-        (r"carbon\s+offset|carbon\s+credit|offset\s+purchase", "Carbon offsets/credits are NOT part of Scope 1 & 2 reporting under SSBJ. Purchasing offsets does not reduce your reported emissions. If a consultant suggests this for compliance, they may be confusing emission reporting with carbon neutrality claims."),
-        (r"comprehensive\s+esg\s+platform|all.in.one\s+esg|esg\s+software\s+suite", "A comprehensive ESG platform is overkill for initial SSBJ compliance. Start with controlled spreadsheets for Scope 1 & 2, then upgrade later. Consultants often bundle expensive software into their proposals."),
-        (r"scope\s*3.*full|complete\s+scope\s*3|all.*scope\s*3\s+categories", "Full Scope 3 reporting across all 15 categories is NOT required in initial SSBJ compliance. Initial limited assurance covers only Scope 1 & 2. Consultants may push comprehensive Scope 3 to extend engagement duration."),
-        (r"cdp.*report|sustainability\s+rating|esg\s+rating|sustainalytics|msci\s+esg", "ESG ratings and CDP reporting are separate from SSBJ mandatory disclosure. While useful, they are NOT required for compliance. Consultants may bundle these to increase project scope."),
+        (r"carbon\s+offset|carbon\s+credit|offset\s+purchase", "Carbon offsets/credits are NOT part of Scope 1 & 2 emission reporting under SSBJ. Purchasing offsets does not reduce your reported emissions. If a consultant suggests this for SSBJ compliance, they are confusing emission reporting with carbon neutrality claims."),
+        (r"cdp.*report|sustainability\s+rating|esg\s+rating|sustainalytics|msci\s+esg", "ESG ratings and CDP reporting are separate from SSBJ mandatory disclosure. While useful, they are NOT required for SSBJ compliance. Consultants may bundle these to increase project scope."),
     ]
     for pattern, reason in unnecessary_patterns:
         if re.search(pattern, text_lower):
@@ -786,6 +1079,21 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
                 "icon": "x-circle",
                 "color": "secondary",
             }
+
+    # Items that are legitimate SSBJ requirements but worth noting context
+    # These are NOT unnecessary — they map to mandatory criteria — but may need
+    # prioritization guidance relative to initial LA scope
+    context_patterns = [
+        (r"ai.?powered|machine\s+learning|artificial\s+intelligence",
+         "AI/ML tools are not required for SSBJ compliance but not harmful. Manual processes with proper controls are fully acceptable. Evaluate cost-benefit before committing."),
+        (r"comprehensive\s+esg\s+platform|all.in.one\s+esg|esg\s+software\s+suite",
+         "A comprehensive ESG platform may be useful but is not required. For initial compliance, controlled spreadsheets can satisfy assurance requirements. Consider phasing in software after first year."),
+    ]
+    for pattern, note in context_patterns:
+        if re.search(pattern, text_lower):
+            # Don't return "unnecessary" — continue to normal matching with added context
+            # This will be handled by normal matching below
+            break
 
     if not matched_criteria:
         return {
@@ -812,29 +1120,63 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
         }
 
     # Determine necessity based on obligation and LA scope
-    if best_c.get("obligation") == "mandatory" and best_c.get("la_scope") == "in_scope":
+    # IMPORTANT: SSBJ mandates disclosure across all pillars. Items not in initial
+    # LA scope are still mandatory for disclosure — they just won't be assured in
+    # the first year. Value chain analysis, Scope 3, scenario analysis, etc. are
+    # all mandatory even though initial LA covers Scope 1 & 2, Governance, and Risk Mgmt.
+    obligation = best_c.get("obligation", "")
+    la_scope = best_c.get("la_scope", "")
+
+    if obligation == "mandatory" and la_scope == "in_scope":
         verdict = "essential"
-        explanation = f"ESSENTIAL for compliance. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory AND in limited assurance scope. Your auditor will examine this."
+        explanation = (
+            f"ESSENTIAL — HIGHEST PRIORITY. This maps to {best_id} ({best_c.get('category', '')}) "
+            f"which is mandatory AND in limited assurance scope. Your auditor will directly examine this. "
+            f"Address this before anything else."
+        )
         color = "danger"
         icon = "exclamation-triangle-fill"
-    elif best_c.get("obligation") == "mandatory":
+    elif obligation == "mandatory" and la_scope == "supporting":
         verdict = "essential"
-        explanation = f"ESSENTIAL. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory under SSBJ. Must be addressed."
+        explanation = (
+            f"ESSENTIAL for compliance. This maps to {best_id} ({best_c.get('category', '')}) "
+            f"which is mandatory under SSBJ and supports assurance readiness. "
+            f"Not directly assured in year 1 but required for disclosure and may be assured later."
+        )
         color = "danger"
         icon = "exclamation-triangle"
-    elif best_c.get("la_scope") == "in_scope":
+    elif obligation == "mandatory":
+        # Mandatory but not_in_initial_scope — still required for disclosure!
         verdict = "essential"
-        explanation = f"ESSENTIAL. While the obligation level is '{best_c.get('obligation', '')}', this is in limited assurance scope. Auditors will look at it."
+        explanation = (
+            f"ESSENTIAL — mandatory disclosure requirement. This maps to {best_id} ({best_c.get('category', '')}). "
+            f"Not in initial limited assurance scope (first 2 years: Scope 1 & 2, Governance, Risk Mgmt) but IS required for SSBJ-compliant disclosure. "
+            f"SSBJ allows proportionality in first year but you must address it."
+        )
         color = "danger"
         icon = "exclamation-triangle"
-    elif best_c.get("obligation") == "recommended":
+    elif la_scope == "in_scope":
+        verdict = "essential"
+        explanation = (
+            f"ESSENTIAL. While the obligation level is '{obligation}', this is in limited assurance scope. "
+            f"Auditors will look at it."
+        )
+        color = "danger"
+        icon = "exclamation-triangle"
+    elif obligation == "recommended":
         verdict = "recommended"
-        explanation = f"RECOMMENDED but not strictly required. Maps to {best_id} ({best_c.get('category', '')}). Good practice but you could defer this if budget/time is tight."
+        explanation = (
+            f"RECOMMENDED but not strictly required (SHOULD, not SHALL). Maps to {best_id} ({best_c.get('category', '')}). "
+            f"Good practice but you could defer this if budget/time is tight."
+        )
         color = "warning"
         icon = "info-circle"
     else:
         verdict = "recommended"
-        explanation = f"NICE TO HAVE. Maps to {best_id} ({best_c.get('category', '')}). Interpretive requirement — implement if resources allow."
+        explanation = (
+            f"NICE TO HAVE. Maps to {best_id} ({best_c.get('category', '')}). "
+            f"Interpretive requirement — implement if resources allow."
+        )
         color = "info"
         icon = "lightbulb"
 
@@ -901,7 +1243,7 @@ def _check_missing_essentials(criteria_map, responses_map, matched_ids):
 @assessment_bp.route("/<int:assessment_id>/review-consultant", methods=["GET", "POST"])
 @login_required
 def review_consultant(assessment_id):
-    """Review external consultant suggestions against SSBJ minimum viable requirements."""
+    """Review external consultant report/proposal against SSBJ requirements using AI analysis."""
     assessment = db.session.get(Assessment, assessment_id)
     denied = _require_access(assessment, "view")
     if denied:
@@ -911,6 +1253,7 @@ def review_consultant(assessment_id):
     consultant_text = ""
     summary = None
     roadmap_comparison = None
+    analysis_method = "none"
 
     if request.method == "POST":
         consultant_text = request.form.get("consultant_text", "").strip()
@@ -935,42 +1278,55 @@ def review_consultant(assessment_id):
             flash("Please paste text or upload a document with the consultant's suggestions.", "warning")
         else:
             import re
-            # Build matching infrastructure
-            keyword_index = _build_keyword_index()
             criteria_map = {c["id"]: c for c in SSBJ_CRITERIA}
             responses_map = {r.criterion_id: r for r in assessment.responses.all()}
 
-            # Parse suggestions (split by newlines, numbered items, or bullet points)
-            lines = re.split(r"\n+", consultant_text)
-            suggestions = []
-            for line in lines:
-                cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
-                if len(cleaned) > 10:  # skip very short lines
-                    suggestions.append(cleaned)
-
-            # Match and classify each suggestion
-            results = []
-            all_matched_ids = set()
-            for suggestion in suggestions:
-                matches = _match_suggestion_to_criteria(suggestion, keyword_index, criteria_map)
-                classification = _classify_suggestion(suggestion, matches, criteria_map, responses_map)
-                results.append({
-                    "text": suggestion,
-                    **classification,
-                })
-                for cid, _ in matches:
-                    all_matched_ids.add(cid)
-
-            # Find missing essentials
-            missing = _check_missing_essentials(criteria_map, responses_map, all_matched_ids)
-
-            # Generate our roadmap for comparison
+            # Generate our roadmap for comparison context
             from app.roadmap import generate_roadmap
+            our_roadmap = None
             responses_list = assessment.responses.filter(Response.score.isnot(None)).all()
             if responses_list:
                 our_roadmap = generate_roadmap(assessment, responses_list)
-                # Build roadmap comparison — what our roadmap says vs consultant
-                roadmap_comparison = _compare_with_roadmap(our_roadmap, results, all_matched_ids, criteria_map)
+
+            # Try AI-powered analysis first
+            ai_result = _ai_analyze_consultant_report(
+                consultant_text, criteria_map, responses_map, our_roadmap
+            )
+
+            if ai_result is not None:
+                # AI analysis succeeded
+                results, all_matched_ids, roadmap_comparison = ai_result
+                analysis_method = "ai"
+            else:
+                # Fallback to keyword matching
+                analysis_method = "keyword"
+                keyword_index = _build_keyword_index()
+
+                # Parse suggestions (split by newlines, numbered items, or bullet points)
+                lines = re.split(r"\n+", consultant_text)
+                suggestions = []
+                for line in lines:
+                    cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
+                    if len(cleaned) > 10:
+                        suggestions.append(cleaned)
+
+                results = []
+                all_matched_ids = set()
+                for suggestion in suggestions:
+                    matches = _match_suggestion_to_criteria(suggestion, keyword_index, criteria_map)
+                    classification = _classify_suggestion(suggestion, matches, criteria_map, responses_map)
+                    results.append({
+                        "text": suggestion,
+                        **classification,
+                    })
+                    for cid, _ in matches:
+                        all_matched_ids.add(cid)
+
+                if our_roadmap:
+                    roadmap_comparison = _compare_with_roadmap(our_roadmap, results, all_matched_ids, criteria_map)
+
+            # Find missing essentials (works for both AI and keyword)
+            missing = _check_missing_essentials(criteria_map, responses_map, all_matched_ids)
 
             # Summary statistics
             verdicts = [r["verdict"] for r in results]
@@ -985,6 +1341,8 @@ def review_consultant(assessment_id):
                 "coverage_pct": round(
                     (len(all_matched_ids) / len(SSBJ_CRITERIA)) * 100
                 ) if SSBJ_CRITERIA else 0,
+                "total_criteria": len(SSBJ_CRITERIA),
+                "analysis_method": analysis_method,
             }
 
     return render_template(
@@ -1076,16 +1434,29 @@ def _compare_with_roadmap(our_roadmap, consultant_results, matched_ids, criteria
             "area": "IT Systems",
             "our_approach": "Based on your metrics scores (<2), we recommend IT investment for GHG calculation. However, minimum viable approach is well-controlled spreadsheets.",
             "consultant_note": "If the consultant recommends expensive GHG/ESG software, verify this is proportionate to your needs. "
-                               "For initial Scope 1 & 2 only, controlled Excel workbooks can satisfy assurance requirements at fraction of the cost.",
+                               "For initial LA scope (Scope 1 & 2, Governance, Risk Mgmt), controlled Excel workbooks can satisfy assurance requirements at fraction of the cost.",
         })
 
     # Prioritization comparison
     comparison["differences"].append({
         "area": "Prioritization",
-        "our_approach": f"Our roadmap prioritizes {our_roadmap['gaps']['total_gaps']} gaps with {len(our_roadmap['gaps']['la_critical'])} LA-critical items first. "
-                        f"Tasks are ordered by assurance impact.",
-        "consultant_note": "Check if the consultant's priority matches SSBJ requirements. LA-scope items (Scope 1 & 2 GHG) must come first. "
-                           "If the consultant prioritizes governance or strategy over metrics, they may not understand the limited assurance focus.",
+        "our_approach": f"Our roadmap prioritizes {our_roadmap['gaps']['total_gaps']} gaps with {len(our_roadmap['gaps']['la_critical'])} LA-critical items first for assurance readiness, "
+                        f"while ensuring ALL mandatory items across all four pillars are addressed for disclosure compliance.",
+        "consultant_note": "ALL four SSBJ pillars (Governance, Strategy, Risk Management, Metrics & Targets) are mandatory for disclosure. "
+                           "Check that the consultant covers all pillars, including value chain analysis (STR-02), Scope 3 (MET-03), scenario analysis (STR-04), "
+                           "and risk/opportunity assessment (STR-01, RSK-01-04). LA-scope items need earliest attention for assurance readiness, but "
+                           "no mandatory criterion should be skipped.",
+    })
+
+    # Value chain & Scope 3 comparison
+    comparison["differences"].append({
+        "area": "Value Chain & Scope 3",
+        "our_approach": "SSBJ mandates value chain analysis (STR-02) and Scope 3 disclosure (MET-03). "
+                        "These are NOT in initial limited assurance scope but ARE required for compliant disclosure. "
+                        "SSBJ provides proportionality relief for first-year Scope 3 reporting.",
+        "consultant_note": "If the consultant includes value chain analysis and Scope 3, this is CORRECT — it is mandatory under SSBJ/IFRS S1 & S2. "
+                           "However, verify the scope is proportionate: SSBJ allows phasing in Scope 3 categories over time. "
+                           "Full coverage of all 15 categories is not required in year 1.",
     })
 
     return comparison

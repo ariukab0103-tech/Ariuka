@@ -15,23 +15,29 @@ Each criterion has:
 - obligation: "mandatory" (SHALL - required by SSBJ), "recommended" (SHOULD - expected
   practice), or "interpretive" (entity judgment on how to comply)
 - la_scope: Whether this item is in scope for initial limited assurance
-  - "in_scope" = directly subject to limited assurance (Scope 1 & 2 and their controls)
+  - "in_scope" = directly subject to limited assurance (first 2 years: Scope 1 & 2,
+    Governance, and Risk Management per FSA July 2025 roadmap)
   - "supporting" = needed to support assurance-ready disclosures
-  - "not_in_initial_scope" = not in initial limited assurance scope (may expand later)
+  - "not_in_initial_scope" = not in initial limited assurance scope (may expand from year 3)
 - la_priority: "essential" / "important" / "nice_to_have" for minimum viable compliance
 - internal_controls: Specific internal controls needed for limited assurance (if applicable)
 - guidance: Guidance on what good practice looks like
 - assurance_focus: What a limited assurance reviewer would look for
 
 Sources:
-- FSA Roadmap on Sustainability Disclosure and Assurance (Nov 2025)
+- FSA Roadmap on Sustainability Disclosure and Assurance (July 2025, updated Nov 2025)
+- FSA Working Group Report (December 2025)
 - SSBJ Standards (March 2025)
-- ISAE 3000 / ISAE 3410 / ISSA 5000 requirements
+- ISSA 5000 (IAASB, approved Sep 2024, published Nov 2024, effective Dec 2026)
+- ISAE 3000 / ISAE 3410 (legacy standards, being replaced by ISSA 5000)
 
-Limited Assurance Scope (FSA Roadmap):
-- Initially focused on Scope 1 and Scope 2 GHG emissions only
+Limited Assurance Scope (FSA Roadmap, July 2025):
+- First 2 years: Scope 1 & 2 GHG emissions, Governance, and Risk Management
+- From 3rd year onwards: scope expansion under consideration (full SSBJ disclosures)
 - Mandatory assurance starts one year AFTER mandatory disclosure
-- Assurance scope may expand after the third year
+- Assurance level: limited assurance only (reasonable assurance NOT being considered)
+- Assurance standard: ISSA 5000 (JICPA drafting aligned domestic practice guideline)
+- Assurance providers: registration system under discussion (not limited to audit firms)
 """
 
 MATURITY_LEVELS = {
@@ -88,8 +94,8 @@ SSBJ_CRITERIA = [
         "category": "Board Oversight",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Disclose the governance body(ies) or individual(s) responsible for oversight of sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Identify specific board committees or members with sustainability oversight. Document their mandate, authority, and reporting lines.",
@@ -110,8 +116,8 @@ SSBJ_CRITERIA = [
         "category": "Board Oversight",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how the governance body's responsibilities are reflected in terms of reference, board mandates, and related policies.",
         "internal_controls": "",
         "guidance": "Ensure board charters and corporate governance policies explicitly reference sustainability oversight.",
@@ -130,8 +136,8 @@ SSBJ_CRITERIA = [
         "category": "Board Competence",
         "standard": "General (S1)",
         "obligation": "recommended",
-        "la_scope": "not_in_initial_scope",
-        "la_priority": "nice_to_have",
+        "la_scope": "supporting",
+        "la_priority": "important",
         "requirement": "Describe how the governance body ensures appropriate skills and competencies are available to oversee sustainability strategies.",
         "internal_controls": "",
         "guidance": "Document board member qualifications related to sustainability. Consider training programs.",
@@ -148,8 +154,8 @@ SSBJ_CRITERIA = [
         "category": "Management Role",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe management's role in governance processes, controls, and procedures used to monitor and oversee sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Define management roles with sustainability responsibilities. Establish clear reporting to the board.",
@@ -167,8 +173,8 @@ SSBJ_CRITERIA = [
         "category": "Climate Governance",
         "standard": "Climate (S2)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Disclose how climate-related risks and opportunities are factored into management's decision-making.",
         "internal_controls": "",
         "guidance": "Document how climate factors influence capital allocation and strategic decisions.",
@@ -191,12 +197,12 @@ SSBJ_CRITERIA = [
         "obligation": "mandatory",
         "la_scope": "supporting",
         "la_priority": "important",
-        "requirement": "Disclose sustainability-related risks and opportunities that could reasonably be expected to affect the entity's prospects.",
+        "requirement": "Disclose sustainability-related risks and opportunities that could reasonably be expected to affect the entity's prospects, including those arising across the entity's entire value chain (IFRS S1 para 28-35).",
         "internal_controls": "",
-        "guidance": "Assess risks across short, medium, and long-term horizons. Consider both financial and operational impacts.",
-        "assurance_focus": "Documented risk register, methodology, time horizons applied.",
-        "minimum_action": "Create a simple sustainability risk register listing 5-10 key risks and opportunities. For each, note the time horizon (short/medium/long-term) and potential impact (high/medium/low). One workshop is enough.",
-        "best_practice": "Comprehensive risk register integrated with ERM, quantified financial impacts, regular stakeholder engagement to identify emerging risks, quarterly review cycle, published materiality matrix.",
+        "guidance": "Assess risks across short, medium, and long-term horizons. Consider both financial and operational impacts. MUST cover the entire value chain — upstream suppliers, own operations, and downstream customers/end-of-life.",
+        "assurance_focus": "Documented risk register, methodology, time horizons applied, evidence of value chain consideration.",
+        "minimum_action": "Create a sustainability risk register listing key risks and opportunities across your ENTIRE value chain (upstream supply, own operations, downstream distribution/use). For each, note time horizon (short/medium/long-term), potential impact (high/medium/low), and where in the value chain it occurs. SSBJ/IFRS S1 explicitly requires value chain coverage.",
+        "best_practice": "Comprehensive risk register integrated with ERM, quantified financial impacts, value chain mapping with dependency analysis, regular stakeholder engagement including suppliers and customers, quarterly review cycle, published materiality matrix.",
         "references": [
             {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Risks & Opportunities Disclosure", "type": "compliance", "for_scores": [0, 1, 2, 3]},
             {"url": "https://www.tcfdhub.org/resource/tcfd-knowledge-hub-risk-management/", "label": "TCFD Risk Guide", "title": "TCFD Knowledge Hub - Risk Management Resources", "type": "best_practice", "for_scores": [3, 4, 5]},
@@ -210,12 +216,12 @@ SSBJ_CRITERIA = [
         "obligation": "mandatory",
         "la_scope": "not_in_initial_scope",
         "la_priority": "important",
-        "requirement": "Describe the current and anticipated effects of sustainability-related risks and opportunities on the entity's business model and value chain.",
+        "requirement": "Describe the current and anticipated effects of sustainability-related risks and opportunities on the entity's business model and ENTIRE value chain — from raw material sourcing through production, distribution, use, and end-of-life (IFRS S1 para 32-33).",
         "internal_controls": "",
-        "guidance": "Map risks to specific business model elements. Assess value chain dependencies.",
-        "assurance_focus": "Value chain mapping, business model impact assessment.",
-        "minimum_action": "Write a 1-2 page narrative describing how your top 3 sustainability risks affect your business model. Include a simple value chain diagram showing where risks concentrate.",
-        "best_practice": "Detailed value chain mapping with dependency analysis, quantified supply chain exposure, regular supplier engagement on sustainability, dynamic assessment updated annually.",
+        "guidance": "Map the ENTIRE value chain: upstream (suppliers, raw materials), own operations, and downstream (distribution, customers, end-of-life). Identify where sustainability risks concentrate and how they affect the business model. This is mandatory — not just a nice-to-have.",
+        "assurance_focus": "Complete value chain mapping, business model impact assessment, dependency analysis across upstream and downstream.",
+        "minimum_action": "Map your ENTIRE value chain from upstream to downstream. For each stage (raw material sourcing → manufacturing → distribution → customer use → end-of-life), identify sustainability-related dependencies and vulnerabilities. Describe how your top risks affect each stage. SSBJ requires the full value chain, not just direct operations.",
+        "best_practice": "Detailed value chain mapping with quantified dependency analysis, regular supplier and customer engagement on sustainability, annual reassessment, integration with procurement and sales strategy, published value chain risk heat map.",
         "references": [
             {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Strategy & Business Model Disclosure", "type": "compliance", "for_scores": [0, 1, 2, 3]},
             {"url": "https://www.sasb.org/standards/materiality-finder/", "label": "SASB Materiality", "title": "SASB Materiality Finder - Industry Value Chain Risks", "type": "best_practice", "for_scores": [3, 4, 5]},
@@ -306,8 +312,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Identification",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe the processes used to identify sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Establish a formal risk identification process including environmental scanning and materiality assessment.",
@@ -325,8 +331,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Assessment",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe the processes used to assess, prioritize, and monitor sustainability-related risks.",
         "internal_controls": "",
         "guidance": "Use consistent criteria for assessing likelihood and impact. Establish monitoring and escalation.",
@@ -343,8 +349,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Integration",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "not_in_initial_scope",
-        "la_priority": "nice_to_have",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how sustainability risk management processes are integrated into overall risk management.",
         "internal_controls": "",
         "guidance": "Integrate sustainability risks into the enterprise risk management (ERM) framework.",
@@ -361,8 +367,8 @@ SSBJ_CRITERIA = [
         "category": "Climate Risk",
         "standard": "Climate (S2)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how climate-related risks are identified, assessed, and managed, including physical and transition risks.",
         "internal_controls": "",
         "guidance": "Cover both physical risks (acute/chronic) and transition risks (policy, technology, market, reputation).",
@@ -444,12 +450,12 @@ SSBJ_CRITERIA = [
         "obligation": "mandatory",
         "la_scope": "not_in_initial_scope",
         "la_priority": "important",
-        "requirement": "Disclose absolute gross Scope 3 greenhouse gas emissions and the categories included.",
+        "requirement": "Disclose absolute gross Scope 3 greenhouse gas emissions, broken down by all 15 GHG Protocol categories. This is MANDATORY under SSBJ/IFRS S2 para 29(a)(vi) even though not in initial limited assurance scope.",
         "internal_controls": "",
-        "guidance": "Identify material Scope 3 categories. Use recognized estimation methodologies. Disclose data sources and assumptions.",
-        "assurance_focus": "Category relevance assessment, calculation methodologies, data sources, assumptions.",
-        "minimum_action": "Not in initial LA scope. For minimum compliance: identify which of the 15 Scope 3 categories are material to your business. Calculate at least the top 2-3 categories using industry averages. SSBJ provides a relief period for first-year reporting.",
-        "best_practice": "All 15 categories assessed, material categories calculated with primary data where possible, supplier engagement program, annual improvement in data quality, science-based targeting for Scope 3.",
+        "guidance": "SSBJ requires disclosure of ALL 15 Scope 3 categories with breakdown — not just 'material' ones. Use GHG Protocol Corporate Value Chain (Scope 3) Standard. Estimation is acceptable where direct data unavailable. Disclose data sources, assumptions, and measurement approach.",
+        "assurance_focus": "Category coverage assessment, calculation methodologies per category, data sources, estimation assumptions, value chain boundary.",
+        "minimum_action": "Not in initial LA scope but IS mandatory for disclosure. (1) Assess all 15 Scope 3 categories for your business. (2) Calculate emissions for each applicable category — use estimation methods (spend-based, industry averages) where primary data is unavailable. (3) Disclose which categories are included and your measurement approach. SSBJ provides first-year transition relief allowing delay, but you must plan for full coverage. Engage with key suppliers early for data collection.",
+        "best_practice": "All 15 categories calculated with increasing use of primary (supplier-specific) data, formal supplier engagement program, annual data quality improvement plan, science-based Scope 3 targets, integration with procurement strategy.",
         "references": [
             {"url": "https://ghgprotocol.org/corporate-value-chain-scope-3-standard", "label": "GHG Protocol Scope 3", "title": "GHG Protocol Scope 3 Standard - Category Guide", "type": "all", "for_scores": [0, 1, 2, 3, 4, 5]},
             {"url": "https://www.cdp.net/en/guidance/guidance-for-companies", "label": "CDP Supply Chain", "title": "CDP Supply Chain Reporting Guidance", "type": "best_practice", "for_scores": [3, 4, 5]},
@@ -529,14 +535,56 @@ SSBJ_CRITERIA = [
             {"url": "https://ghgprotocol.org/corporate-standard", "label": "GHG Protocol", "title": "GHG Protocol - Data Quality Management", "type": "best_practice", "for_scores": [3, 4, 5]},
         ],
     },
+    {
+        "id": "MET-08",
+        "pillar": "Metrics & Targets",
+        "category": "GHG Emissions Intensity",
+        "standard": "Climate (S2)",
+        "obligation": "mandatory",
+        "la_scope": "not_in_initial_scope",
+        "la_priority": "important",
+        "requirement": "Disclose GHG emissions intensity — emissions per unit of physical or economic output (IFRS S2 para 29(b)). Required for Scope 1+2 combined, and separately for Scope 3 if disclosed.",
+        "internal_controls": "",
+        "guidance": "Calculate emissions intensity using a denominator appropriate to your industry (e.g., tCO2e per million JPY revenue, per unit produced, per employee, per square meter). Must be consistent year-over-year.",
+        "assurance_focus": "Intensity ratio calculation, denominator selection rationale, consistency of methodology.",
+        "minimum_action": "Calculate GHG intensity for Scope 1+2 combined using revenue as denominator (tCO2e / ¥ billion revenue). This is a mandatory metric under SSBJ/IFRS S2. Choose a denominator relevant to your industry and apply consistently.",
+        "best_practice": "Multiple intensity metrics (revenue-based and physical-based), year-over-year trend analysis, peer benchmarking, sector-specific denominators, intensity targets alongside absolute targets.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 para 29(b) - GHG Emissions Intensity Requirements", "type": "compliance", "for_scores": [0, 1, 2, 3]},
+            {"url": "https://ghgprotocol.org/corporate-standard", "label": "GHG Protocol", "title": "GHG Protocol - Emissions Intensity Guidance", "type": "best_practice", "for_scores": [3, 4, 5]},
+        ],
+    },
+    {
+        "id": "MET-09",
+        "pillar": "Metrics & Targets",
+        "category": "Climate-related Remuneration",
+        "standard": "Climate (S2)",
+        "obligation": "mandatory",
+        "la_scope": "not_in_initial_scope",
+        "la_priority": "nice_to_have",
+        "requirement": "Disclose whether and how climate-related considerations are factored into executive remuneration, including the percentage of remuneration linked to climate targets (IFRS S2 para 29(g)).",
+        "internal_controls": "",
+        "guidance": "Disclose whether any executive compensation is linked to climate/sustainability performance. If yes, describe what metrics are used, what percentage of compensation is affected, and how performance is assessed.",
+        "assurance_focus": "Compensation policy documentation, climate KPI linkage, board approval of remuneration structure.",
+        "minimum_action": "Disclose whether executive remuneration is linked to climate targets. If not currently linked, state this clearly. If linked, describe the metrics used and percentage of compensation affected. SSBJ/IFRS S2 requires this disclosure.",
+        "best_practice": "Explicit climate KPIs in executive compensation (e.g., GHG reduction targets, energy efficiency), percentage of variable compensation linked to sustainability metrics, board-approved targets, annual assessment with external verification.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 para 29(g) - Climate-related Remuneration Disclosure", "type": "compliance", "for_scores": [0, 1, 2, 3]},
+            {"url": "https://www.jpx.co.jp/english/equities/listing/cg/tvdivq0000008jdy-att/nlsgeu000006gevo.pdf", "label": "JPX CG Code", "title": "Japan Corporate Governance Code - Executive Compensation", "type": "compliance", "for_scores": [0, 1, 2]},
+        ],
+    },
 ]
 
 
 LIMITED_ASSURANCE_CRITERIA = [
     # =========================================================================
     # INTERNAL CONTROLS REQUIRED FOR LIMITED ASSURANCE
-    # Based on ISAE 3000 / ISAE 3410 / ISSA 5000 requirements
-    # Focused on MINIMUM requirements for Scope 1 & 2 assurance
+    # Based on ISSA 5000 (replacing ISAE 3000 / ISAE 3410)
+    # FSA Roadmap (July 2025): First 2 years scope covers:
+    #   - Scope 1 & 2 GHG emissions (LA-01 to LA-10)
+    #   - Governance disclosures (LA-11 to LA-13)
+    #   - Risk Management disclosures (LA-14 to LA-16)
+    # From 3rd year: scope expansion to full SSBJ disclosures under consideration
     # =========================================================================
     {
         "id": "LA-01",
@@ -615,8 +663,66 @@ LIMITED_ASSURANCE_CRITERIA = [
         "category": "Management Representations",
         "obligation": "essential",
         "requirement": "Management provides written representations on completeness and accuracy of GHG data.",
-        "guidance": "Management representation letter confirming: responsibility for GHG data, completeness of emission sources, accuracy of calculations, and disclosure of all known errors.",
+        "guidance": "Management representation letter confirming: responsibility for GHG data, completeness of emission sources, accuracy of calculations, and disclosure of all known errors. Under ISSA 5000, management must also confirm responsibility for the sustainability information and the internal controls over it.",
         "internal_controls": "Annual management representation letter template. Sign-off by appropriate management level.",
+    },
+    # =========================================================================
+    # GOVERNANCE ASSURANCE READINESS (in scope from year 1)
+    # FSA Roadmap: Governance disclosures are in initial LA scope
+    # Assurance provider will inquire about governance processes per IFRS S1 para 26-27
+    # =========================================================================
+    {
+        "id": "LA-11",
+        "category": "Governance Oversight Documentation",
+        "obligation": "essential",
+        "requirement": "Document the governance body(ies) or individual(s) responsible for sustainability oversight, including their mandate and authority.",
+        "guidance": "Maintain formal records showing: (1) Which body/individual has sustainability oversight responsibility, (2) Terms of reference or mandate explicitly referencing sustainability, (3) Role descriptions and reporting lines. Under ISSA 5000 limited assurance, the practitioner will inquire about governance processes and inspect supporting documentation.",
+        "internal_controls": "Formal board/committee charter with sustainability mandate. Governance structure chart. Annual review of terms of reference.",
+    },
+    {
+        "id": "LA-12",
+        "category": "Governance Reporting Evidence",
+        "obligation": "essential",
+        "requirement": "Maintain evidence of regular governance body engagement with sustainability matters: meeting minutes, briefing materials, and decision records.",
+        "guidance": "Assurance providers will seek evidence that governance oversight is not just documented on paper but actually functioning. Maintain: (1) Board/committee meeting minutes showing sustainability agenda items, (2) Briefing materials provided to the governance body, (3) Records of frequency of sustainability briefings (IFRS S1 requires disclosure of how often the body is informed), (4) Evidence of decisions or actions taken.",
+        "internal_controls": "Minimum quarterly sustainability agenda items in relevant board/committee meetings. Minutes retained for assurance period. Briefing materials archived.",
+    },
+    {
+        "id": "LA-13",
+        "category": "Management Role Documentation",
+        "obligation": "essential",
+        "requirement": "Document management's role in monitoring and overseeing sustainability-related risks and opportunities, including designated personnel and reporting to governance body.",
+        "guidance": "Clearly document: (1) Named management personnel responsible for sustainability data and reporting, (2) Their specific responsibilities and authority, (3) How management reports to the governance body on sustainability matters, (4) Evidence of management's sustainability monitoring activities. This supports IFRS S1 para 27 requirements on management's role.",
+        "internal_controls": "RACI matrix or role description for sustainability management. Evidence of management reporting to board (reports, memos, dashboards).",
+    },
+    # =========================================================================
+    # RISK MANAGEMENT ASSURANCE READINESS (in scope from year 1)
+    # FSA Roadmap: Risk Management disclosures are in initial LA scope
+    # Assurance provider will inquire about risk processes per IFRS S1 para 43
+    # =========================================================================
+    {
+        "id": "LA-14",
+        "category": "Risk Process Documentation",
+        "obligation": "essential",
+        "requirement": "Document the processes used to identify, assess, and prioritize sustainability-related risks and opportunities.",
+        "guidance": "Maintain documentation showing: (1) How sustainability risks are identified (methodology, inputs, data sources), (2) How risks are assessed (likelihood/impact criteria, scoring methodology), (3) How risks are prioritized relative to other business risks, (4) How risks are monitored over time. Under ISSA 5000 limited assurance, the practitioner will inquire about these processes and review supporting documentation.",
+        "internal_controls": "Written risk identification and assessment methodology. Risk register with documented assessment criteria. Annual review cycle.",
+    },
+    {
+        "id": "LA-15",
+        "category": "Risk Assessment Records",
+        "obligation": "essential",
+        "requirement": "Maintain records of risk assessments performed, including inputs, parameters, scope, outcomes, and risk owners.",
+        "guidance": "For each assessment cycle, retain: (1) Risk register with identified risks and opportunities, (2) Assessment scores/ratings with supporting rationale, (3) Named risk owners, (4) Monitoring status and actions taken, (5) Changes from prior period assessments. IFRS S1 para 43 requires disclosure of how processes have changed from the prior year.",
+        "internal_controls": "Dated risk register. Version history showing changes. Risk owner sign-off. Year-over-year comparison documentation.",
+    },
+    {
+        "id": "LA-16",
+        "category": "Risk Integration Evidence",
+        "obligation": "essential",
+        "requirement": "Document how sustainability risk management processes are integrated into the entity's overall risk management framework.",
+        "guidance": "The assurance provider will look for evidence that sustainability risks are not managed in isolation. Document: (1) How sustainability risks feed into enterprise risk management (ERM), (2) Whether sustainability risks are reported alongside other business risks, (3) Integration points between sustainability risk processes and existing risk governance. IFRS S1 para 43 explicitly requires this disclosure.",
+        "internal_controls": "ERM framework document showing sustainability integration. Combined risk reporting to board. Cross-reference between sustainability risk register and ERM risk register.",
     },
 ]
 

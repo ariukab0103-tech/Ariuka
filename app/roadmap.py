@@ -7,8 +7,9 @@ compliance year, tailored to the entity's actual gap assessment results.
 SSBJ Timeline Context:
 - Mandatory disclosure begins for prime market companies
 - Limited assurance starts ONE YEAR after mandatory disclosure
-- Assurance scope may expand after the third year
-- Initial limited assurance covers Scope 1 & 2 GHG only
+- Initial limited assurance (first 2 years): Scope 1 & 2, Governance, and Risk Management
+- From 3rd year: scope expansion to full SSBJ disclosures under consideration
+- Assurance standard: ISSA 5000 (JICPA drafting aligned domestic practice guideline)
 """
 
 from datetime import date
@@ -235,10 +236,10 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Inventory existing IT systems that hold sustainability data (ERP, utility management, etc.)",
         ],
         "assurance": [
-            "BEGIN NOW: Research potential assurance providers (Big 4, mid-tier firms with ISAE 3000/3410 experience)",
+            "BEGIN NOW: Research potential assurance providers (Big 4, mid-tier firms with ISSA 5000 / ISAE 3410 experience)",
             "Create shortlist of 3-5 providers — check their SSBJ/ISSB experience in Japan",
-            "Understand limited assurance scope: Scope 1 & 2 GHG only in initial phase",
-            "Review ISAE 3000/3410 and ISSA 5000 requirements at high level",
+            "Understand limited assurance scope: Scope 1 & 2 GHG, Governance, and Risk Management (first 2 years)",
+            "Review ISSA 5000 requirements at high level (replacing ISAE 3000/3410 from Dec 2026)",
             "Contact providers for informal introduction calls — don't wait until Phase 3",
         ],
     }
@@ -387,7 +388,7 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
     # Urgency-specific adjustments for Phase 3
     if urgency == "critical":
         p3_tasks["management"].insert(0,
-            "ACCELERATED: Focus ONLY on LA-scope items (Scope 1 & 2 GHG). Defer non-LA disclosures to Year 2"
+            "ACCELERATED: Focus ONLY on LA-scope items (Scope 1 & 2 GHG, Governance, Risk Management). Defer non-LA disclosures to Year 2"
         )
         p3_tasks["technical"].insert(0,
             "FAST-TRACK: Use spreadsheet-based approach with controls — do NOT start a multi-month IT project"
@@ -423,7 +424,7 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         ],
         "assurance": [
             "Share draft disclosure with assurance provider for informal review",
-            "Assurance provider conducts readiness assessment (gap-check against ISAE 3000)",
+            "Assurance provider conducts readiness assessment (gap-check against ISSA 5000)",
             "Address any findings from readiness assessment",
             "Rehearse management inquiry sessions (auditor will interview key staff)",
         ],
@@ -467,6 +468,8 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Test internal controls: does maker-checker work? Are reviews documented with dates and signatures?",
             "Prepare organized evidence binders/folders for each in-scope criterion",
             "Run completeness check: all sites, all emission sources, all months accounted for?",
+            "GOVERNANCE READINESS: Verify board/committee minutes show sustainability agenda items, terms of reference include sustainability mandate",
+            "RISK MANAGEMENT READINESS: Verify risk register is documented, risk assessment methodology is written, ERM integration is evidenced",
         ],
         "assurance": [
             "Assurance provider conducts pre-assurance readiness review (formal or advisory)",
@@ -557,26 +560,33 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         ],
         "technical": [
             "Provide complete evidence packages to assurance provider on day one",
+            "GHG evidence: source data, calculations, methodology docs, reconciliations, review sign-offs",
+            "Governance evidence: board/committee minutes, terms of reference, management role documentation",
+            "Risk Management evidence: risk register, assessment methodology, ERM integration documentation",
             "Respond to information requests promptly (target 2-3 business days turnaround)",
             "Support site visits if required by assurance provider",
             "Address any findings or adjustments identified during fieldwork",
             "Track and resolve all auditor queries in a formal tracker",
         ],
         "assurance": [
-            "Formal limited assurance engagement begins (ISAE 3000 / ISAE 3410 / ISSA 5000)",
+            "Formal limited assurance engagement begins (ISSA 5000 / JICPA Practice Guideline 5000)",
             "Assurance procedures: inquiry, analytical review, recalculation, limited testing of controls",
-            "Scope: Scope 1 & 2 GHG emissions quantification and related disclosures",
+            "Scope: Scope 1 & 2 GHG emissions, Governance disclosures, and Risk Management disclosures",
+            "GHG procedures: recalculation of emissions, source data testing, emission factor verification",
+            "Governance procedures: inquiry on oversight processes, inspection of minutes and charters",
+            "Risk Management procedures: inquiry on risk processes, inspection of risk register and methodology",
             "Draft assurance report reviewed by management before finalization",
             "Receive assurance report — target: unqualified (clean) conclusion",
+            "Note: IAASB expects modified conclusions may be common in early years — prepare for potential qualifications",
             "Debrief with provider: lessons learned, improvement areas for Year 2",
-            "Plan for scope expansion in subsequent years (Scope 3, broader sustainability topics)",
+            "Plan for scope expansion from Year 3 (Strategy, Metrics, Scope 3 — per FSA roadmap)",
         ],
     }
 
     phases.append({
         "number": 7,
         "title": "First Limited Assurance",
-        "subtitle": f"Auditor examines Scope 1 & 2 (FY{assurance_date.year})",
+        "subtitle": f"Auditor examines Scope 1 & 2, Governance, Risk Mgmt (FY{assurance_date.year})",
         "duration": f"Assurance Year ({assurance_date.year})",
         "icon": "bi-shield-check",
         "color": "dark",
@@ -690,6 +700,40 @@ def _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, c
             "detail": "Calculation processes are in place. Ensure audit trail is complete.",
         })
 
+    # Governance readiness (IN SCOPE for initial LA per FSA July 2025 roadmap)
+    has_gov_gap = any(g["id"].startswith("GOV-") for g in gaps.get("la_critical", []))
+    if has_gov_gap:
+        checklist.append({
+            "item": "Governance documentation gaps — IN ASSURANCE SCOPE",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "Auditors will inquire about governance processes. Need: board/committee mandate, meeting minutes with sustainability agenda, management role documentation.",
+        })
+    else:
+        checklist.append({
+            "item": "Governance oversight documented",
+            "status": "ready",
+            "priority": "done",
+            "detail": "Governance processes documented. Ensure board minutes and terms of reference are filed as evidence.",
+        })
+
+    # Risk management readiness (IN SCOPE for initial LA per FSA July 2025 roadmap)
+    has_rsk_gap = any(g["id"].startswith("RSK-") for g in gaps.get("la_critical", []))
+    if has_rsk_gap:
+        checklist.append({
+            "item": "Risk management documentation gaps — IN ASSURANCE SCOPE",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "Auditors will inquire about risk processes. Need: documented risk identification methodology, risk register, ERM integration evidence.",
+        })
+    else:
+        checklist.append({
+            "item": "Risk management processes documented",
+            "status": "ready",
+            "priority": "done",
+            "detail": "Risk management processes documented. Ensure risk register and methodology are filed as evidence.",
+        })
+
     # General readiness items
     checklist.extend([
         {
@@ -702,19 +746,19 @@ def _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, c
             "item": "Management representation letter template prepared",
             "status": "pending",
             "priority": "important",
-            "detail": "Management must formally represent completeness and accuracy of GHG data. Prepare template in advance.",
+            "detail": "Management must formally represent completeness and accuracy of GHG data, governance processes, and risk management. Prepare template in advance.",
         },
         {
             "item": "Key personnel identified and briefed for auditor inquiries",
             "status": "pending",
             "priority": "important",
-            "detail": "Auditors will interview data owners, reviewers, and management. Prepare them for typical questions.",
+            "detail": "Auditors will interview data owners, reviewers, governance body members, and risk owners. Prepare them for typical questions.",
         },
     ])
 
     # Assurance provider selection criteria
     provider_criteria = [
-        {"criterion": "ISAE 3000/3410 or ISSA 5000 certification", "why": "Mandatory standard for sustainability assurance engagements"},
+        {"criterion": "ISSA 5000 certification (or ISAE 3000/3410 experience)", "why": "ISSA 5000 is the new mandatory standard for sustainability assurance (effective Dec 2026)"},
         {"criterion": "Experience with Japanese SSBJ standards", "why": "SSBJ has Japan-specific requirements that differ from global ISSB"},
         {"criterion": "Industry experience in your sector", "why": "Sector-specific emission sources and calculation methods matter"},
         {"criterion": "Pre-assurance advisory service available", "why": "Best practice: provider reviews your readiness BEFORE formal engagement"},

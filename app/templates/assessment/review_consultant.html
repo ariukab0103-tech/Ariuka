@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Review Consultant Roadmap: {{ assessment.title }}{% endblock %}
+{% block title %}Consultant Report Review: {{ assessment.title }}{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -33,7 +33,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2><i class="bi bi-clipboard2-check me-2"></i>Review Consultant Roadmap</h2>
+        <h2><i class="bi bi-clipboard2-check me-2"></i>Consultant Report Review</h2>
         <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }}</p>
     </div>
     <div>
@@ -54,25 +54,25 @@
 <!-- Input Form -->
 <div class="card mb-4 no-print">
     <div class="card-header">
-        <i class="bi bi-upload me-2"></i>Paste or Upload Consultant Suggestions
+        <i class="bi bi-upload me-2"></i>Paste or Upload Consultant Report
     </div>
     <div class="card-body">
         <form method="POST" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="consultant_text" class="form-label">
-                    Paste consultant's roadmap, recommendations, or action items:
+                    Paste consultant's report, gap analysis, roadmap, or proposal:
                 </label>
                 <textarea class="form-control" id="consultant_text" name="consultant_text"
-                          rows="10" placeholder="Paste each suggestion on a separate line, e.g.:
+                          rows="10" placeholder="Paste the consultant's report, proposal, or recommendations here. You can paste:
 
-1. Establish board-level ESG committee with quarterly meetings
-2. Implement comprehensive GHG calculation software (Zeroboard or Persefoni)
-3. Conduct scenario analysis for climate transition risks
-4. Hire dedicated sustainability manager
-5. Develop full Scope 3 value chain emissions inventory
-6. Purchase carbon offsets to achieve carbon neutrality
-...">{{ consultant_text }}</textarea>
-                <div class="form-text">Each line will be analyzed as a separate suggestion. Numbered lists, bullet points, and plain text are all supported.</div>
+- Full consultant reports or proposals
+- Gap analysis findings
+- Roadmap recommendations
+- Action items and work plans
+- Budget proposals with scope descriptions
+
+The AI will analyze the entire document against SSBJ requirements and compare with your current assessment scores and roadmap.">{{ consultant_text }}</textarea>
+                <div class="form-text">AI-powered analysis compares the consultant's report against your assessment scores and SSBJ minimum compliance requirements. Upload a file or paste text (or both).</div>
             </div>
             <div class="mb-3">
                 <label for="consultant_file" class="form-label">
@@ -83,7 +83,7 @@
                 <div class="form-text">Text will be extracted from the document and analyzed alongside any pasted text.</div>
             </div>
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-search me-1"></i>Analyze Against SSBJ Requirements
+                <i class="bi bi-robot me-1"></i>Compare Against Our Assessment & SSBJ Requirements
             </button>
         </form>
     </div>
@@ -92,7 +92,14 @@
 {% if results %}
 <!-- Summary Dashboard -->
 <div class="card mb-4">
-    <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Analysis Summary</div>
+    <div class="card-header">
+        <i class="bi bi-bar-chart me-2"></i>Analysis Summary
+        {% if summary.analysis_method == 'ai' %}
+        <span class="badge bg-primary ms-2"><i class="bi bi-robot me-1"></i>AI-Powered</span>
+        {% else %}
+        <span class="badge bg-secondary ms-2">Keyword Matching</span>
+        {% endif %}
+    </div>
     <div class="card-body">
         <div class="row text-center">
             <div class="col">
@@ -135,7 +142,7 @@
             </div>
             <div class="mt-2 text-center">
                 <small class="text-muted">
-                    Consultant covers <strong>{{ summary.coverage_pct }}%</strong> of 23 SSBJ criteria
+                    Consultant covers <strong>{{ summary.coverage_pct }}%</strong> of {{ summary.total_criteria }} SSBJ criteria
                 </small>
             </div>
         </div>
@@ -146,7 +153,7 @@
 <!-- Roadmap Comparison -->
 <div class="card mb-4 border-info border-2">
     <div class="card-header bg-info text-white">
-        <i class="bi bi-arrow-left-right me-2"></i>Comparison: Our Roadmap vs Consultant
+        <i class="bi bi-arrow-left-right me-2"></i>Comparison: Our Assessment & Roadmap vs Consultant Report
     </div>
     <div class="card-body">
         <!-- Critical Observations -->
@@ -168,11 +175,11 @@
                 <h6 class="mb-2"><strong>{{ diff.area }}</strong></h6>
                 <div class="row">
                     <div class="col-md-6">
-                        <small class="d-block text-primary fw-bold mb-1"><i class="bi bi-house me-1"></i>Our Roadmap:</small>
+                        <small class="d-block text-primary fw-bold mb-1"><i class="bi bi-house me-1"></i>Our Assessment/Roadmap:</small>
                         <small class="text-muted">{{ diff.our_approach }}</small>
                     </div>
                     <div class="col-md-6 border-start">
-                        <small class="d-block text-warning fw-bold mb-1"><i class="bi bi-building me-1"></i>Ask the Consultant:</small>
+                        <small class="d-block text-warning fw-bold mb-1"><i class="bi bi-building me-1"></i>Consultant's Approach:</small>
                         <small class="text-muted">{{ diff.consultant_note }}</small>
                     </div>
                 </div>
