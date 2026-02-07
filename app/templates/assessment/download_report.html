@@ -120,6 +120,28 @@
         {% endfor %}
     </div>
 
+    <!-- SSBJ Standard Breakdown -->
+    {% if exec_summary.standard_breakdown %}
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-layers me-2"></i><strong>SSBJ Standard Breakdown</strong></div>
+        <div class="card-body py-2">
+            <div class="row text-center">
+                <div class="col-md-6">
+                    <small class="fw-bold">SSBJ No.1 — General (IFRS S1)</small>
+                    <div class="small">{{ exec_summary.standard_breakdown.s1_total }} criteria | <span class="{% if exec_summary.standard_breakdown.s1_gaps %}text-danger{% else %}text-success{% endif %}">{{ exec_summary.standard_breakdown.s1_gaps }} gaps</span></div>
+                    <small class="text-muted">Governance, strategy, risk management fundamentals</small>
+                </div>
+                <div class="col-md-6">
+                    <small class="fw-bold">SSBJ No.2 — Climate (IFRS S2)</small>
+                    <div class="small">{{ exec_summary.standard_breakdown.s2_total }} criteria | <span class="{% if exec_summary.standard_breakdown.s2_gaps %}text-danger{% else %}text-success{% endif %}">{{ exec_summary.standard_breakdown.s2_gaps }} gaps</span></div>
+                    <small class="text-muted">GHG emissions, climate scenarios, transition plans</small>
+                </div>
+            </div>
+            <p class="small text-muted text-center mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>Year 1 transition relief allows climate-focused (SSBJ No.2) disclosure first. See Relief Advisor for details.</p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Minimum Requirements -->
     {% if exec_summary.minimum_requirements %}
     <div class="card mb-3">
@@ -668,6 +690,49 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- No Relief Items -->
+    {% if relief.no_relief_items %}
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-x-octagon me-2 text-danger"></i><strong>No Relief — Must Address from Year 1 ({{ relief.no_relief_items|length }})</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Reason</th></tr></thead>
+                <tbody>
+                    {% for item in relief.no_relief_items %}
+                    <tr {% if item.at_risk %}style="background:rgba(239,68,68,0.06);"{% endif %}>
+                        <td><code>{{ item.criterion_id }}</code></td>
+                        <td><small>{{ item.category }}</small></td>
+                        <td>{% if item.score is not none %}<span class="score-badge score-{{ item.score }}">{{ item.score }}</span>{% else %}—{% endif %}</td>
+                        <td>{% if item.at_risk %}<span class="badge bg-danger">At Risk</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
+                        <td><small class="text-muted">{{ item.reason }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Climate-Only Year 1 -->
+    {% if relief.climate_only_option and relief.climate_only_option.available %}
+    <div class="card mb-3" style="border-left: 3px solid var(--accent-blue);">
+        <div class="card-header"><i class="bi bi-cloud-sun me-2"></i><strong>Climate-Only Year 1 Option</strong></div>
+        <div class="card-body py-2">
+            <p class="small mb-2">{{ relief.climate_only_option.note }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="fw-bold text-success">Deferrable S1 items ({{ relief.climate_only_option.s1_deferrable_count }}):</small>
+                    <small>{% for item in relief.climate_only_option.s1_deferrable %}{{ item.id }}{% if not loop.last %}, {% endif %}{% endfor %}</small>
+                </div>
+                <div class="col-md-6">
+                    <small class="fw-bold text-danger">NOT deferrable S1 items ({{ relief.climate_only_option.s1_la_scope_count }}, in LA scope):</small>
+                    <small>{% for item in relief.climate_only_option.s1_la_scope %}{{ item.id }}{% if not loop.last %}, {% endif %}{% endfor %}</small>
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}

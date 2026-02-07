@@ -52,10 +52,41 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
             if c["la_scope"] == "in_scope":
                 la_gaps.append(gap_info)
 
-    # ---- Timeline ----
-    months_remaining = roadmap_data["months_remaining"] if roadmap_data else None
-    urgency = roadmap_data["urgency"] if roadmap_data else "unknown"
-    compliance_year = roadmap_data["compliance_year"] if roadmap_data else "TBD"
+    # ---- Timeline (defensive: works even if roadmap_data is None) ----
+    if roadmap_data:
+        months_remaining = roadmap_data["months_remaining"]
+        urgency = roadmap_data["urgency"]
+        compliance_year = roadmap_data["compliance_year"]
+    else:
+        # Fallback: compute independently from assessment
+        from app.roadmap import _extract_year
+        import calendar
+        fy_end_month = getattr(assessment, "fy_end_month", 3) or 3
+        comp_year = _extract_year(assessment.fiscal_year)
+        if not comp_year:
+            comp_year = date.today().year + 2
+        if fy_end_month != 3:
+            adj_year = comp_year if fy_end_month < 3 else comp_year - 1
+        else:
+            adj_year = comp_year
+        fy_end_day = calendar.monthrange(adj_year, fy_end_month)[1]
+        comp_date = date(adj_year, fy_end_month, fy_end_day)
+        months_remaining = (comp_date.year - date.today().year) * 12 + (comp_date.month - date.today().month)
+        compliance_year = comp_year
+        if months_remaining <= 6:
+            urgency = "critical"
+        elif months_remaining <= 12:
+            urgency = "tight"
+        elif months_remaining <= 24:
+            urgency = "adequate"
+        else:
+            urgency = "comfortable"
+
+    # ---- Standard classification (SSBJ No.1 General vs No.2 Climate) ----
+    s1_gaps = [g for g in gaps if criteria_map.get(g["id"], {}).get("standard") == "General (S1)"]
+    s2_gaps = [g for g in gaps if criteria_map.get(g["id"], {}).get("standard") == "Climate (S2)"]
+    s1_total = len([c for c in SSBJ_CRITERIA if c.get("standard") == "General (S1)"])
+    s2_total = len([c for c in SSBJ_CRITERIA if c.get("standard") == "Climate (S2)"])
 
     # ---- Compliance readiness verdict ----
     if not gaps:
@@ -365,4 +396,11 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
         "option_b": option_b,
         "risks": risks,
         "key_decisions": key_decisions,
+        # Standard breakdown (SSBJ No.1 vs No.2)
+        "standard_breakdown": {
+            "s1_total": s1_total,
+            "s2_total": s2_total,
+            "s1_gaps": len(s1_gaps),
+            "s2_gaps": len(s2_gaps),
+        },
     }
