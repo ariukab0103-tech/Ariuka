@@ -121,10 +121,18 @@ def ai_assess_all(combined_text):
     Use Claude to assess all SSBJ criteria against the document text.
 
     Sends the document text + all criteria in a single call for efficiency.
+    Runs the API call in a separate thread to prevent Gunicorn worker kills.
     Returns dict: {criterion_id: (score, evidence, notes)}
     """
-    client = _get_anthropic_client()
-    if not client:
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    try:
+        import anthropic
+    except ImportError:
         return None
 
     truncated = _truncate_text(combined_text)
@@ -139,11 +147,6 @@ def ai_assess_all(combined_text):
         )
     criteria_text = "\n\n".join(criteria_list)
 
-    maturity_desc = "\n".join(
-        f"  {level}: {info['label']} - {info['description']}"
-        for level, info in MATURITY_LEVELS.items()
-    )
-
     system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You know:
 - SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
 - Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive distinctions
@@ -154,7 +157,8 @@ def ai_assess_all(combined_text):
 - Mandatory assurance starts ONE YEAR after mandatory disclosure: Phase 1 assurance from FY ending March 2028, Phase 2 from March 2029, Phase 3 from March 2030
 
 SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal documented processes (minimum for assurance), 4=Monitored with review cycles, 5=Leading practice.
-Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2."""
+Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
+IMPORTANT: Keep evidence and notes very brief (1 short sentence each) to stay within token limits."""
 
     user_prompt = f"""Assess these documents against each SSBJ criterion. Return ONLY a JSON array.
 
@@ -164,27 +168,52 @@ CRITERIA:
 DOCUMENTS:
 {truncated}
 
-For each criterion return: {{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 sentence)", "notes": "improvement needed (1 sentence)"}}
-Return ONLY valid JSON array, no other text."""
+For each of the 25 criteria return: {{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 short sentence)", "notes": "improvement needed (1 short sentence)"}}
+Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
-    try:
-        response = client.messages.create(
+    def _call_api():
+        """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        return client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=4000,
+            max_tokens=8192,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
+
+    try:
+        # Run in separate thread with hard 90s timeout
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_call_api)
+            response = future.result(timeout=90)
+
+        # Check if output was truncated (stop_reason != "end_turn")
+        stop_reason = response.stop_reason
+        if stop_reason != "end_turn":
+            logger.warning(f"AI response truncated (stop_reason={stop_reason}), output may be incomplete")
 
         # Parse the response
         response_text = response.content[0].text.strip()
 
         # Extract JSON from response (handle potential markdown code blocks)
         if response_text.startswith("```"):
-            # Remove markdown code block markers
             response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
             response_text = re.sub(r'\n?```\s*$', '', response_text)
 
-        results_list = json.loads(response_text)
+        # If JSON was truncated, try to salvage partial results
+        try:
+            results_list = json.loads(response_text)
+        except json.JSONDecodeError:
+            # Try to fix truncated JSON array by closing it
+            fixed = response_text.rstrip().rstrip(",")
+            # Find last complete object (ends with })
+            last_brace = fixed.rfind("}")
+            if last_brace > 0:
+                fixed = fixed[:last_brace + 1] + "]"
+                logger.warning("Attempting to salvage truncated JSON response")
+                results_list = json.loads(fixed)
+            else:
+                raise
 
         results = {}
         for item in results_list:
@@ -197,11 +226,15 @@ Return ONLY valid JSON array, no other text."""
 
         return results
 
+    except FuturesTimeout:
+        logger.warning("AI assessment timed out (90s)")
+        raise RuntimeError("AI assessment timed out. Please try again.") from None
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse AI response as JSON: {e}")
         raise RuntimeError(f"AI returned invalid response. Please try again.") from e
-    except Exception as e:
-        logger.error(f"AI assessment failed: {e}")
+    except BaseException as e:
+        # Catch BaseException to handle SystemExit from Gunicorn SIGABRT
+        logger.error(f"AI assessment failed: {type(e).__name__}: {e}")
         raise RuntimeError(str(e)) from e
 
 
