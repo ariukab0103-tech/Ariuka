@@ -128,6 +128,21 @@ def view(assessment_id):
 
     criteria_by_pillar = get_criteria_by_pillar()
 
+    # Auto-sync: add response rows for any new criteria not yet in this assessment
+    existing_ids = {r.criterion_id for r in assessment.responses.all()}
+    new_criteria = [c for c in SSBJ_CRITERIA if c["id"] not in existing_ids]
+    if new_criteria:
+        for c in new_criteria:
+            resp = Response(
+                assessment_id=assessment.id,
+                criterion_id=c["id"],
+                pillar=c["pillar"],
+                category=c["category"],
+                standard=c["standard"],
+            )
+            db.session.add(resp)
+        db.session.commit()
+
     # Single query for all responses (avoid N+1)
     all_responses = assessment.responses.all()
     responses = {r.criterion_id: r for r in all_responses}
@@ -778,6 +793,14 @@ def _build_keyword_index():
         if cid == "MET-04":
             keywords.update(["target", "targets", "reduction", "base", "year",
                              "milestone", "sbti", "science", "based", "netzero", "zero"])
+        # GHG emissions intensity (MET-08 is mandatory)
+        if cid == "MET-08":
+            keywords.update(["intensity", "ratio", "per", "unit", "revenue",
+                             "output", "employee", "denominator", "normalized"])
+        # Climate-related remuneration (MET-09 is mandatory)
+        if cid == "MET-09":
+            keywords.update(["remuneration", "compensation", "executive", "incentive",
+                             "bonus", "salary", "linked", "performance", "kpi"])
 
         # General pillar keywords
         if c["pillar"] == "Governance":
