@@ -104,12 +104,34 @@
                         <div class="p-3 rounded h-100" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
                             <h6 class="text-success mb-2"><i class="bi bi-check-circle me-1"></i>Minimum to Comply (Target: Score 3)</h6>
                             <small>{{ gap.criterion.minimum_action }}</small>
+                            {% if gap.criterion.references %}
+                            <div class="mt-2">
+                                {% for ref in gap.criterion.references %}
+                                {% if ref.type == 'compliance' or ref.type == 'all' %}
+                                <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success py-0 px-2 me-1 mb-1">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
+                                </a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 rounded h-100" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
                             <h6 class="text-primary mb-2"><i class="bi bi-star me-1"></i>Best Practice (Score 4-5)</h6>
                             <small>{{ gap.criterion.best_practice }}</small>
+                            {% if gap.criterion.references %}
+                            <div class="mt-2">
+                                {% for ref in gap.criterion.references %}
+                                {% if ref.type == 'best_practice' or ref.type == 'all' %}
+                                <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-info py-0 px-2 me-1 mb-1">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
+                                </a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -171,8 +193,34 @@
                         </span>
                     </td>
                     <td><span class="score-badge score-{{ gap.response.score }}">{{ gap.response.score }}</span></td>
-                    <td><small>{{ gap.criterion.minimum_action }}</small></td>
-                    <td><small>{{ gap.criterion.best_practice[:120] }}{% if gap.criterion.best_practice|length > 120 %}...{% endif %}</small></td>
+                    <td>
+                        <small>{{ gap.criterion.minimum_action }}</small>
+                        {% if gap.criterion.references %}
+                        <div class="mt-1">
+                            {% for ref in gap.criterion.references %}
+                            {% if ref.type == 'compliance' or ref.type == 'all' %}
+                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="badge bg-success bg-opacity-25 text-success text-decoration-none me-1" title="{{ ref.title }}">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
+                            </a>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <small>{{ gap.criterion.best_practice }}</small>
+                        {% if gap.criterion.references %}
+                        <div class="mt-1">
+                            {% for ref in gap.criterion.references %}
+                            {% if ref.type == 'best_practice' or ref.type == 'all' %}
+                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="badge bg-info bg-opacity-25 text-info text-decoration-none me-1" title="{{ ref.title }}">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
+                            </a>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
