@@ -898,6 +898,52 @@ def unshare_assessment(assessment_id, access_id):
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
+@assessment_bp.route("/<int:assessment_id>/delete", methods=["POST"])
+@login_required
+def delete_assessment(assessment_id):
+    """Delete an assessment and all associated data (responses, reviews, documents, files)."""
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment:
+        flash("Assessment not found.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    # Only owner or admin can delete
+    perm = assessment.user_permission(current_user)
+    if perm != "owner":
+        flash("Only the assessment owner or admin can delete an assessment.", "danger")
+        return redirect(url_for("assessment.list_assessments"))
+
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    title = assessment.title
+
+    # Delete physical files from per-criterion attachments
+    for resp in assessment.responses.all():
+        for att in resp.attachments.all():
+            filepath = os.path.join(upload_dir, att.filename)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except OSError:
+                    pass
+
+    # Delete physical files from assessment-level documents
+    for doc in assessment.documents.all():
+        filepath = os.path.join(upload_dir, doc.filename)
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except OSError:
+                pass
+
+    # Delete assessment — cascades handle Response, Review, AssessmentAccess,
+    # Attachment (via Response), AssessmentDocument records
+    db.session.delete(assessment)
+    db.session.commit()
+
+    flash(f"Assessment '{title}' and all associated data deleted.", "success")
+    return redirect(url_for("assessment.list_assessments"))
+
+
 def _get_next_criterion(current_id):
     """Get the next criterion ID in sequence."""
     ids = [c["id"] for c in SSBJ_CRITERIA]
@@ -1444,17 +1490,19 @@ def review_consultant(assessment_id):
             if responses_list:
                 our_roadmap = generate_roadmap(assessment, responses_list)
 
-            # Try AI-powered analysis first
-            ai_result = _ai_analyze_consultant_report(
-                consultant_text, criteria_map, responses_map, our_roadmap
-            )
+            # Only use AI if user explicitly opted in (checkbox)
+            use_ai = request.form.get("use_ai") == "1"
+            ai_result = None
+            if use_ai:
+                ai_result = _ai_analyze_consultant_report(
+                    consultant_text, criteria_map, responses_map, our_roadmap
+                )
 
             if ai_result is not None:
-                # AI analysis succeeded
                 results, all_matched_ids, roadmap_comparison = ai_result
                 analysis_method = "ai"
             else:
-                # Fallback to keyword matching
+                # Keyword matching (default — fast and reliable)
                 analysis_method = "keyword"
                 keyword_index = _build_keyword_index()
 

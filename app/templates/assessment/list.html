@@ -100,6 +100,15 @@
                                 <i class="bi bi-file-earmark-text"></i>
                             </a>
                             {% endif %}
+                            {% if a.user_id == current_user.id or current_user.is_admin %}
+                            <form method="POST" action="{{ url_for('assessment.delete_assessment', assessment_id=a.id) }}"
+                                  onsubmit="return confirm('Delete assessment \'{{ a.title }}\'?\n\nThis will permanently delete all responses, documents, reviews, and uploaded files.\n\nThis cannot be undone.');"
+                                  style="display: inline;">
+                                <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
