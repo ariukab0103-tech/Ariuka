@@ -5,13 +5,13 @@ Internal tool for assessing organizational readiness against **SSBJ (Sustainabil
 ## Features
 
 - **Multi-user system** with role-based access (Admin, Assessor, Reviewer)
-- **SSBJ Gap Assessment** — 22 criteria across 4 pillars:
-  - Governance (board oversight, competence, management role)
-  - Strategy (risks & opportunities, scenario analysis, transition plans)
-  - Risk Management (identification, assessment, integration, internal controls)
-  - Metrics & Targets (GHG Scope 1/2/3, climate targets, data quality)
+- **SSBJ Gap Assessment** — 25 criteria across 4 pillars:
+  - Governance (5: board oversight, competence, management role, monitoring, reporting)
+  - Strategy (6: climate risks & opportunities, value chain, scenario analysis, transition plans)
+  - Risk Management (5: identification, assessment, integration, internal controls, monitoring)
+  - Metrics & Targets (9: GHG Scope 1/2/3, climate targets, data quality, GHG intensity, remuneration)
 - **Maturity scoring** on a 0-5 scale with evidence documentation
-- **Limited Assurance Review** — 10-point checklist for reviewers to assess assurance readiness
+- **Limited Assurance Review** — 16-point checklist for reviewers to assess assurance readiness (GHG controls, governance readiness, risk management readiness)
 - **Gap Analysis Reports** with visual charts (pillar scores, category breakdown, radar)
 - **Review Reports** with opinion types (Unqualified, Qualified, Adverse, Disclaimer)
 - **Dashboard** with aggregated statistics and progress tracking
@@ -71,10 +71,10 @@ The app starts at `http://localhost:5000`.
 
 1. **Admin** creates user accounts with appropriate roles
 2. **Assessor** creates a new gap assessment for an entity/fiscal year
-3. **Assessor** scores each of the 22 SSBJ criteria (0-5 maturity scale) with evidence
+3. **Assessor** scores each of the 25 SSBJ criteria (0-5 maturity scale) with evidence
 4. **Assessor** marks the assessment as complete
 5. **Reviewer** starts a limited assurance review on the completed assessment
-6. **Reviewer** evaluates 10 assurance criteria (satisfactory / needs improvement / unsatisfactory)
+6. **Reviewer** evaluates 16 assurance criteria (satisfactory / needs improvement / unsatisfactory)
 7. **Reviewer** issues an overall opinion and submits the review report
 
 ## Maturity Scale
