@@ -1,6 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - SSBJ Gap Analysis{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* Animated stat cards */
+    .stat-card { cursor: pointer; transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s; }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,0.35); }
+    .stat-card.active-filter { border-color: var(--accent-cyan) !important; box-shadow: 0 0 20px rgba(6,182,212,0.25); }
+
+    /* Filter pills */
+    .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-pill {
+        padding: 6px 16px; border-radius: 9999px; font-size: 0.78rem; font-weight: 600;
+        border: 1px solid var(--border-subtle); color: var(--text-secondary); cursor: pointer;
+        transition: all 0.2s; user-select: none; letter-spacing: 0.3px;
+    }
+    .filter-pill:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+    .filter-pill.active { background: var(--accent-blue); border-color: var(--accent-blue); color: white; }
+    .filter-pill .pill-count {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 20px; height: 20px; border-radius: 10px; font-size: 0.7rem;
+        background: rgba(255,255,255,0.15); margin-left: 6px; padding: 0 5px;
+    }
+    .filter-pill.active .pill-count { background: rgba(255,255,255,0.3); }
+
+    /* Sortable table headers */
+    .sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+    .sortable:hover { color: var(--accent-cyan) !important; }
+    .sort-arrow { font-size: 0.6rem; margin-left: 4px; opacity: 0.4; }
+    .sortable.sort-asc .sort-arrow, .sortable.sort-desc .sort-arrow { opacity: 1; color: var(--accent-cyan); }
+
+    /* Row hover action */
+    .assessment-row { cursor: pointer; }
+    .assessment-row:hover td { background: rgba(59,130,246,0.08) !important; }
+    .assessment-row .quick-actions { opacity: 0; transition: opacity 0.2s; }
+    .assessment-row:hover .quick-actions { opacity: 1; }
+
+    /* Chart toggle tabs */
+    .chart-tab {
+        padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; font-weight: 600;
+        color: var(--text-muted); cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+    }
+    .chart-tab:hover { color: var(--text-primary); }
+    .chart-tab.active { background: rgba(59,130,246,0.15); color: var(--accent-blue); border-color: rgba(59,130,246,0.3); }
+
+    /* Count-up animation */
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .stat-card { animation: fadeInUp 0.5s ease forwards; }
+    .stat-card:nth-child(1) { animation-delay: 0s; }
+    .stat-card:nth-child(2) { animation-delay: 0.1s; }
+    .stat-card:nth-child(3) { animation-delay: 0.2s; }
+    .stat-card:nth-child(4) { animation-delay: 0.3s; }
+
+    /* Donut center text */
+    .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+    .donut-center .value { font-size: 1.8rem; font-weight: 800; color: var(--text-primary); }
+    .donut-center .label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
@@ -9,53 +67,109 @@
     </a>
 </div>
 
-<!-- Stats Row -->
-<div class="row mb-4 g-3">
-    <div class="col-md-3">
-        <div class="card stat-card stat-blue">
+<!-- Stats Row — clickable to filter table -->
+<div class="row mb-4 g-3" id="statCards">
+    <div class="col-md-3 col-6">
+        <div class="card stat-card stat-blue" data-filter="" onclick="filterByStatus(this, '')">
             <div class="card-body">
                 <i class="bi bi-clipboard-check stat-icon"></i>
-                <div class="stat-value" style="color: var(--accent-blue);">{{ stats.total_assessments }}</div>
+                <div class="stat-value" style="color: var(--accent-blue);" data-count="{{ stats.total_assessments }}">0</div>
                 <div class="stat-label">Total Assessments</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stat-card stat-yellow">
+    <div class="col-md-3 col-6">
+        <div class="card stat-card stat-yellow" data-filter="in_progress" onclick="filterByStatus(this, 'in_progress')">
             <div class="card-body">
                 <i class="bi bi-hourglass-split stat-icon"></i>
-                <div class="stat-value" style="color: var(--accent-yellow);">{{ stats.in_progress }}</div>
+                <div class="stat-value" style="color: var(--accent-yellow);" data-count="{{ stats.in_progress }}">0</div>
                 <div class="stat-label">In Progress</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stat-card stat-green">
+    <div class="col-md-3 col-6">
+        <div class="card stat-card stat-green" data-filter="completed" onclick="filterByStatus(this, 'completed')">
             <div class="card-body">
                 <i class="bi bi-check-circle stat-icon"></i>
-                <div class="stat-value" style="color: var(--accent-green);">{{ stats.completed }}</div>
+                <div class="stat-value" style="color: var(--accent-green);" data-count="{{ stats.completed }}">0</div>
                 <div class="stat-label">Completed</div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stat-card stat-purple">
+    <div class="col-md-3 col-6">
+        <div class="card stat-card stat-purple" data-filter="reviewed" onclick="filterByStatus(this, 'reviewed')">
             <div class="card-body">
                 <i class="bi bi-search stat-icon"></i>
-                <div class="stat-value" style="color: var(--accent-purple);">{{ stats.reviewed }}</div>
+                <div class="stat-value" style="color: var(--accent-purple);" data-count="{{ stats.reviewed }}">0</div>
                 <div class="stat-label">Reviewed</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Per-Assessment Scores -->
 {% if assessment_details %}
-<div class="card mb-4">
-    <div class="card-header">
-        <i class="bi bi-bar-chart me-2"></i>Pillar Scores by Assessment
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Bar chart -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bar-chart me-2"></i>Pillar Scores</span>
+            </div>
+            <div class="card-body">
+                <canvas id="comparisonChart" height="260"></canvas>
+            </div>
+        </div>
     </div>
-    <div class="card-body p-0">
+    <!-- Radar chart -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-bullseye me-2"></i>Maturity Radar</span>
+                {% if assessment_details | length > 1 %}
+                <select id="radarSelect" class="form-select form-select-sm" style="width: auto; max-width: 160px;">
+                    {% for a in assessment_details %}
+                    <option value="{{ loop.index0 }}">{{ a.title }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <canvas id="radarChart" height="260"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Status distribution donut -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-pie-chart me-2"></i>Status Distribution
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="position: relative;">
+                <canvas id="statusDonut" height="260"></canvas>
+                <div class="donut-center">
+                    <div class="value">{{ stats.total_assessments }}</div>
+                    <div class="label">Total</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pillar Scores Table -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table me-2"></i>Pillar Scores by Assessment</span>
+        <div class="d-flex gap-1">
+            <span class="chart-tab active" onclick="toggleScoreView(this, 'table')">
+                <i class="bi bi-table me-1"></i>Table
+            </span>
+            <span class="chart-tab" onclick="toggleScoreView(this, 'heatmap')">
+                <i class="bi bi-grid-3x3 me-1"></i>Heatmap
+            </span>
+        </div>
+    </div>
+    <div class="card-body p-0" id="scoreTableView">
         <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
@@ -73,7 +187,7 @@
             </thead>
             <tbody>
                 {% for a in assessment_details %}
-                <tr>
+                <tr class="assessment-row" onclick="window.location='{{ url_for('assessment.view', assessment_id=a.id) }}'">
                     <td><strong>{{ a.title }}</strong></td>
                     <td><small>{{ a.entity_name }}</small></td>
                     <td><small>{{ a.fiscal_year }}</small></td>
@@ -101,14 +215,19 @@
                         {% if ps %}
                         <span class="score-badge score-{{ (ps | round | int) }}">{{ ps }}</span>
                         {% else %}
-                        <span class="text-muted">—</span>
+                        <span class="text-muted">&mdash;</span>
                         {% endif %}
                     </td>
                     {% endfor %}
-                    <td>
-                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-eye"></i>
-                        </a>
+                    <td onclick="event.stopPropagation()">
+                        <div class="btn-group btn-group-sm quick-actions">
+                            <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -116,37 +235,9 @@
         </table>
         </div>
     </div>
-</div>
-
-<div class="row mb-4">
-    <!-- Per-assessment bar chart comparison -->
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header">
-                <i class="bi bi-bar-chart me-2"></i>Pillar Scores Comparison
-            </div>
-            <div class="card-body">
-                <canvas id="comparisonChart" height="280"></canvas>
-            </div>
-        </div>
-    </div>
-    <!-- Radar chart for each assessment -->
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-bullseye me-2"></i>Maturity vs. Target</span>
-                {% if assessment_details | length > 1 %}
-                <select id="radarSelect" class="form-select form-select-sm" style="width: auto;">
-                    {% for a in assessment_details %}
-                    <option value="{{ loop.index0 }}">{{ a.title }} ({{ a.fiscal_year }})</option>
-                    {% endfor %}
-                </select>
-                {% endif %}
-            </div>
-            <div class="card-body">
-                <canvas id="radarChart" height="280"></canvas>
-            </div>
-        </div>
+    <!-- Heatmap view (hidden by default) -->
+    <div class="card-body d-none" id="heatmapView">
+        <canvas id="heatmapChart" height="200"></canvas>
     </div>
 </div>
 {% else %}
@@ -172,35 +263,59 @@
 </div>
 {% endif %}
 
-<!-- Recent Assessments -->
+<!-- All Assessments — filterable, sortable -->
 <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
         <span><i class="bi bi-clock-history me-2"></i>All Assessments</span>
-        <a href="{{ url_for('assessment.create') }}" class="btn btn-sm btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>New Assessment
-        </a>
+        <div class="d-flex align-items-center gap-3">
+            <!-- Filter pills -->
+            <div class="filter-pills" id="filterPills">
+                <span class="filter-pill active" data-status="" onclick="setFilter(this)">
+                    All<span class="pill-count">{{ assessments|length }}</span>
+                </span>
+                <span class="filter-pill" data-status="draft" onclick="setFilter(this)">
+                    Draft<span class="pill-count">{{ stats.draft }}</span>
+                </span>
+                <span class="filter-pill" data-status="in_progress" onclick="setFilter(this)">
+                    In Progress<span class="pill-count">{{ stats.in_progress }}</span>
+                </span>
+                <span class="filter-pill" data-status="completed" onclick="setFilter(this)">
+                    Completed<span class="pill-count">{{ stats.completed }}</span>
+                </span>
+                <span class="filter-pill" data-status="reviewed" onclick="setFilter(this)">
+                    Reviewed<span class="pill-count">{{ stats.reviewed }}</span>
+                </span>
+            </div>
+            <a href="{{ url_for('assessment.create') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>New
+            </a>
+        </div>
     </div>
     <div class="card-body p-0">
         {% if assessments %}
         <div class="table-responsive">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="mainTable">
             <thead>
                 <tr>
-                    <th>Title</th>
-                    <th>Entity</th>
+                    <th class="sortable" data-sort="title" onclick="sortTable(this)">Title <i class="bi bi-chevron-expand sort-arrow"></i></th>
+                    <th class="sortable" data-sort="entity" onclick="sortTable(this)">Entity <i class="bi bi-chevron-expand sort-arrow"></i></th>
                     <th>Fiscal Year</th>
                     <th>Status</th>
-                    <th>Completion</th>
-                    <th>Score</th>
-                    <th>Updated</th>
+                    <th class="sortable" data-sort="completion" onclick="sortTable(this)">Completion <i class="bi bi-chevron-expand sort-arrow"></i></th>
+                    <th class="sortable" data-sort="score" onclick="sortTable(this)">Score <i class="bi bi-chevron-expand sort-arrow"></i></th>
+                    <th class="sortable" data-sort="updated" onclick="sortTable(this)">Updated <i class="bi bi-chevron-expand sort-arrow"></i></th>
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                {% for a in assessments[:10] %}
-                <tr>
+                {% for a in assessments %}
+                <tr class="assessment-row" data-status="{{ a.status }}"
+                    data-title="{{ a.title|lower }}" data-entity="{{ a.entity_name|lower }}"
+                    data-completion="{{ a.completion_pct }}" data-score="{{ a.overall_score or 0 }}"
+                    data-updated="{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '' }}"
+                    onclick="window.location='{{ url_for('assessment.view', assessment_id=a.id) }}'">
                     <td>
-                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold" style="color: var(--accent-cyan);">
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold" style="color: var(--accent-cyan);" onclick="event.stopPropagation()">
                             {{ a.title }}
                         </a>
                     </td>
@@ -222,7 +337,7 @@
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <div class="progress" style="width: 80px;">
-                                <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                                <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%; transition: width 1s ease;"></div>
                             </div>
                             <small>{{ a.completion_pct }}%</small>
                         </div>
@@ -233,10 +348,20 @@
                         </span>
                     </td>
                     <td><small>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</small></td>
-                    <td>
-                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-eye"></i>
-                        </a>
+                    <td onclick="event.stopPropagation()">
+                        <div class="btn-group btn-group-sm quick-actions">
+                            <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            {% if a.status in ('completed', 'under_review', 'reviewed') %}
+                            <a href="{{ url_for('assessment.report', assessment_id=a.id) }}" class="btn btn-outline-success" title="Report">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </a>
+                            <a href="{{ url_for('assessment.roadmap', assessment_id=a.id) }}" class="btn btn-outline-warning" title="Roadmap">
+                                <i class="bi bi-calendar3"></i>
+                            </a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -257,8 +382,136 @@
 {% endblock %}
 
 {% block extra_scripts %}
-{% if assessment_details %}
 <script>
+// ═══════════════════════════════════════
+// 1. ANIMATED COUNT-UP ON STAT CARDS
+// ═══════════════════════════════════════
+function animateCountUp(el, target, duration) {
+    let start = 0;
+    const step = target / (duration / 16);
+    function tick() {
+        start += step;
+        if (start >= target) { el.textContent = target; return; }
+        el.textContent = Math.floor(start);
+        requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+}
+
+document.querySelectorAll('[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count) || 0;
+    if (target > 0) animateCountUp(el, target, 800);
+    else el.textContent = '0';
+});
+
+// ═══════════════════════════════════════
+// 2. STAT CARD → FILTER TABLE
+// ═══════════════════════════════════════
+let activeStatFilter = '';
+
+function filterByStatus(card, status) {
+    // Toggle: clicking same card again clears filter
+    if (activeStatFilter === status && status !== '') {
+        status = '';
+        card = document.querySelector('.stat-card[data-filter=""]');
+    }
+    activeStatFilter = status;
+
+    // Update active card styling
+    document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-filter'));
+    if (status) card.classList.add('active-filter');
+
+    // Also sync filter pills
+    document.querySelectorAll('#filterPills .filter-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.status === status);
+    });
+
+    applyFilter(status);
+}
+
+// ═══════════════════════════════════════
+// 3. FILTER PILLS
+// ═══════════════════════════════════════
+function setFilter(pill) {
+    const status = pill.dataset.status;
+    activeStatFilter = status;
+
+    document.querySelectorAll('#filterPills .filter-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+
+    // Sync stat card highlighting
+    document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-filter'));
+    if (status) {
+        const matchCard = document.querySelector(`.stat-card[data-filter="${status}"]`);
+        if (matchCard) matchCard.classList.add('active-filter');
+    }
+
+    applyFilter(status);
+}
+
+function applyFilter(status) {
+    const rows = document.querySelectorAll('#mainTable tbody tr');
+    let visible = 0;
+    rows.forEach(row => {
+        // For 'completed' filter, also show under_review
+        let show;
+        if (!status) {
+            show = true;
+        } else if (status === 'completed') {
+            show = ['completed', 'under_review'].includes(row.dataset.status);
+        } else {
+            show = row.dataset.status === status;
+        }
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+}
+
+// ═══════════════════════════════════════
+// 4. SORTABLE TABLE COLUMNS
+// ═══════════════════════════════════════
+let currentSort = { col: null, dir: 'asc' };
+
+function sortTable(th) {
+    const col = th.dataset.sort;
+    const dir = (currentSort.col === col && currentSort.dir === 'asc') ? 'desc' : 'asc';
+    currentSort = { col, dir };
+
+    // Update header styles
+    document.querySelectorAll('#mainTable .sortable').forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+        h.querySelector('.sort-arrow').className = 'bi bi-chevron-expand sort-arrow';
+    });
+    th.classList.add('sort-' + dir);
+    th.querySelector('.sort-arrow').className = `bi bi-chevron-${dir === 'asc' ? 'up' : 'down'} sort-arrow`;
+
+    const tbody = document.querySelector('#mainTable tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        let va, vb;
+        if (col === 'score' || col === 'completion') {
+            va = parseFloat(a.dataset[col]) || 0;
+            vb = parseFloat(b.dataset[col]) || 0;
+        } else if (col === 'updated') {
+            va = a.dataset.updated || '';
+            vb = b.dataset.updated || '';
+        } else {
+            va = (a.dataset[col] || '').toLowerCase();
+            vb = (b.dataset[col] || '').toLowerCase();
+        }
+        if (va < vb) return dir === 'asc' ? -1 : 1;
+        if (va > vb) return dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+}
+
+{% if assessment_details %}
+// ═══════════════════════════════════════
+// 5. CHARTS
+// ═══════════════════════════════════════
 const assessmentDetails = {{ assessment_details | tojson }};
 const allPillars = {{ all_pillars | tojson }};
 const chartColors = [
@@ -266,17 +519,17 @@ const chartColors = [
     '#f97316', '#06b6d4', '#ec4899', '#6366f1', '#14b8a6'
 ];
 
-// ---- Grouped Bar Chart: each assessment's pillar scores side by side ----
+// ---- Grouped Bar Chart with click navigation ----
 const datasets = assessmentDetails.map((a, i) => ({
     label: a.title + ' (' + a.fiscal_year + ')',
     data: allPillars.map(p => a.pillar_scores[p] || 0),
     backgroundColor: chartColors[i % chartColors.length] + 'cc',
     borderColor: chartColors[i % chartColors.length],
     borderWidth: 1,
-    borderRadius: 6
+    borderRadius: 6,
+    assessmentId: a.id
 }));
 
-// Add target line
 datasets.push({
     label: 'Target (3.0)',
     data: allPillars.map(() => 3),
@@ -288,46 +541,64 @@ datasets.push({
     order: 0
 });
 
-new Chart(document.getElementById('comparisonChart'), {
+const compChart = new Chart(document.getElementById('comparisonChart'), {
     type: 'bar',
     data: { labels: allPillars, datasets: datasets },
     options: {
         responsive: true,
+        onClick: function(event, elements) {
+            if (elements.length > 0) {
+                const dsIndex = elements[0].datasetIndex;
+                const ds = this.data.datasets[dsIndex];
+                if (ds.assessmentId) {
+                    window.location = '/assessments/' + ds.assessmentId;
+                }
+            }
+        },
         scales: {
-            y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42, 54, 80, 0.5)' } },
-            x: { grid: { color: 'rgba(42, 54, 80, 0.3)' } }
+            y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42,54,80,0.5)' } },
+            x: { grid: { color: 'rgba(42,54,80,0.3)' } }
         },
         plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+            tooltip: {
+                callbacks: {
+                    afterBody: function(context) {
+                        const ds = context[0].dataset;
+                        return ds.assessmentId ? '(click to view)' : '';
+                    }
+                }
+            }
         }
     }
 });
 
-// ---- Radar Chart: switchable per assessment ----
+// ---- Radar Chart ----
 let radarChart;
-
 function renderRadar(idx) {
     const a = assessmentDetails[idx];
     const data = allPillars.map(p => a.pillar_scores[p] || 0);
-
     if (radarChart) radarChart.destroy();
     radarChart = new Chart(document.getElementById('radarChart'), {
         type: 'radar',
         data: {
             labels: allPillars,
             datasets: [{
-                label: a.title + ' (' + a.fiscal_year + ')',
+                label: a.title,
                 data: data,
                 borderColor: chartColors[idx % chartColors.length],
                 backgroundColor: chartColors[idx % chartColors.length] + '33',
-                pointBackgroundColor: chartColors[idx % chartColors.length]
+                pointBackgroundColor: chartColors[idx % chartColors.length],
+                pointRadius: 5,
+                pointHoverRadius: 8
             }, {
-                label: 'Target (Limited Assurance Ready)',
+                label: 'Target (3.0)',
                 data: allPillars.map(() => 3),
                 borderColor: '#ef4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                backgroundColor: 'rgba(239,68,68,0.08)',
                 borderDash: [5, 5],
-                pointBackgroundColor: '#ef4444'
+                pointBackgroundColor: '#ef4444',
+                pointRadius: 3
             }]
         },
         options: {
@@ -335,28 +606,110 @@ function renderRadar(idx) {
             scales: {
                 r: {
                     beginAtZero: true, max: 5, ticks: { stepSize: 1, backdropColor: 'transparent' },
-                    grid: { color: 'rgba(42, 54, 80, 0.5)' },
-                    angleLines: { color: 'rgba(42, 54, 80, 0.5)' },
-                    pointLabels: { color: '#94a3b8' }
+                    grid: { color: 'rgba(42,54,80,0.5)' },
+                    angleLines: { color: 'rgba(42,54,80,0.5)' },
+                    pointLabels: { color: '#94a3b8', font: { size: 11 } }
                 }
             },
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
-            }
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
         }
     });
 }
-
-// Initial render
 renderRadar(0);
 
-// Dropdown switcher
 const radarSelect = document.getElementById('radarSelect');
-if (radarSelect) {
-    radarSelect.addEventListener('change', function() {
-        renderRadar(parseInt(this.value));
+if (radarSelect) radarSelect.addEventListener('change', function() { renderRadar(parseInt(this.value)); });
+
+// ---- Status Distribution Donut ----
+const statusCounts = {{ {'Draft': stats.draft, 'In Progress': stats.in_progress, 'Completed': stats.completed, 'Reviewed': stats.reviewed} | tojson }};
+const donutColors = ['#64748b', '#eab308', '#22c55e', '#3b82f6'];
+
+new Chart(document.getElementById('statusDonut'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(statusCounts),
+        datasets: [{
+            data: Object.values(statusCounts),
+            backgroundColor: donutColors.map(c => c + 'cc'),
+            borderColor: donutColors,
+            borderWidth: 2,
+            hoverOffset: 8
+        }]
+    },
+    options: {
+        responsive: true,
+        cutout: '68%',
+        plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, padding: 12, usePointStyle: true } }
+        },
+        animation: { animateRotate: true, duration: 1200, easing: 'easeOutQuart' }
+    }
+});
+
+// ═══════════════════════════════════════
+// 6. TABLE/HEATMAP TOGGLE
+// ═══════════════════════════════════════
+let heatmapRendered = false;
+
+function toggleScoreView(tab, view) {
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    document.getElementById('scoreTableView').classList.toggle('d-none', view !== 'table');
+    document.getElementById('heatmapView').classList.toggle('d-none', view !== 'heatmap');
+
+    if (view === 'heatmap' && !heatmapRendered) {
+        renderHeatmap();
+        heatmapRendered = true;
+    }
+}
+
+function renderHeatmap() {
+    const labels = assessmentDetails.map(a => a.title);
+    const heatData = [];
+
+    assessmentDetails.forEach((a, row) => {
+        allPillars.forEach((p, col) => {
+            heatData.push({ x: p, y: a.title, v: a.pillar_scores[p] || 0 });
+        });
+    });
+
+    // Use a grouped bar chart as heatmap alternative
+    const heatDatasets = assessmentDetails.map((a, i) => ({
+        label: a.title,
+        data: allPillars.map(p => a.pillar_scores[p] || 0),
+        backgroundColor: allPillars.map(p => {
+            const v = a.pillar_scores[p] || 0;
+            if (v >= 4) return 'rgba(34,197,94,0.7)';
+            if (v >= 3) return 'rgba(234,179,8,0.7)';
+            if (v >= 2) return 'rgba(249,115,22,0.7)';
+            return 'rgba(239,68,68,0.7)';
+        }),
+        borderColor: allPillars.map(p => {
+            const v = a.pillar_scores[p] || 0;
+            if (v >= 4) return '#22c55e';
+            if (v >= 3) return '#eab308';
+            if (v >= 2) return '#f97316';
+            return '#ef4444';
+        }),
+        borderWidth: 1,
+        borderRadius: 4
+    }));
+
+    new Chart(document.getElementById('heatmapChart'), {
+        type: 'bar',
+        data: { labels: allPillars, datasets: heatDatasets },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            scales: {
+                x: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42,54,80,0.5)' } },
+                y: { grid: { color: 'rgba(42,54,80,0.3)' } }
+            },
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+        }
     });
 }
-</script>
 {% endif %}
+</script>
 {% endblock %}
