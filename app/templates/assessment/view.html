@@ -183,7 +183,7 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
             <strong>Overall Progress</strong>
-            <span>{{ assessment.completion_pct }}% complete ({{ scored_count }}/{{ total_count }} scored)</span>
+            <span data-progress-text>{{ assessment.completion_pct }}% complete ({{ scored_count }}/{{ total_count }} scored)</span>
         </div>
         <div class="progress" style="height: 12px;">
             <div class="progress-bar {% if assessment.completion_pct == 100 %}bg-success{% elif assessment.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}"
@@ -436,14 +436,18 @@
 
 <!-- Sticky Save Bar -->
 {% if assessment.status in ('draft', 'in_progress') and can_edit %}
-<div id="saveBar" class="position-fixed bottom-0 start-0 end-0 bg-white border-top shadow-lg py-3 px-4 d-none" style="z-index: 1050;">
+<div id="saveBar" class="position-fixed bottom-0 start-0 end-0 border-top shadow-lg py-3 px-4 d-none" style="z-index: 1050; background: linear-gradient(135deg, #1a365d, #2b6cb0);">
     <div class="container d-flex justify-content-between align-items-center">
-        <span class="text-warning fw-bold"><i class="bi bi-exclamation-circle me-1"></i>You have unsaved score changes</span>
+        <span class="text-white fw-bold">
+            <i class="bi bi-pencil-square me-1"></i>
+            <span id="changeCount">0</span> unsaved change(s)
+            <small class="ms-2 opacity-75">(Ctrl+S to save)</small>
+        </span>
         <div>
-            <button type="button" class="btn btn-outline-secondary me-2" onclick="resetScores()">
+            <button type="button" class="btn btn-outline-light me-2" onclick="resetScores()">
                 <i class="bi bi-x-circle me-1"></i>Discard
             </button>
-            <button type="submit" class="btn btn-success">
+            <button type="button" class="btn btn-success" id="saveBtn" onclick="saveScoresAjax()">
                 <i class="bi bi-check-circle me-1"></i>Save All Scores
             </button>
         </div>
@@ -457,49 +461,114 @@
 <script>
 const originalValues = {};
 let hasChanges = false;
+let saving = false;
 
 // Store original values on page load
 document.querySelectorAll('.score-select').forEach(sel => {
     originalValues[sel.name] = sel.value;
 });
 
+function countChanges() {
+    let count = 0;
+    document.querySelectorAll('.score-select').forEach(s => {
+        if (s.value !== originalValues[s.name]) count++;
+    });
+    return count;
+}
+
 function markChanged(sel) {
-    // Highlight changed rows
     const row = sel.closest('tr');
     if (sel.value !== originalValues[sel.name]) {
         row.classList.add('table-info');
-        sel.classList.add('border-primary');
+        sel.classList.add('border-primary', 'border-2');
     } else {
         row.classList.remove('table-info');
-        sel.classList.remove('border-primary');
+        sel.classList.remove('border-primary', 'border-2');
     }
 
-    // Check if any values changed
-    hasChanges = false;
-    document.querySelectorAll('.score-select').forEach(s => {
-        if (s.value !== originalValues[s.name]) hasChanges = true;
-    });
-
+    const count = countChanges();
+    hasChanges = count > 0;
     const bar = document.getElementById('saveBar');
+    const counter = document.getElementById('changeCount');
     if (bar) {
-        if (hasChanges) {
-            bar.classList.remove('d-none');
-        } else {
-            bar.classList.add('d-none');
-        }
+        bar.classList.toggle('d-none', !hasChanges);
     }
+    if (counter) counter.textContent = count;
 }
 
 function resetScores() {
     document.querySelectorAll('.score-select').forEach(sel => {
         sel.value = originalValues[sel.name];
-        sel.classList.remove('border-primary');
+        sel.classList.remove('border-primary', 'border-2');
         sel.closest('tr').classList.remove('table-info');
     });
     hasChanges = false;
     const bar = document.getElementById('saveBar');
     if (bar) bar.classList.add('d-none');
 }
+
+/* ── AJAX save — no page reload ── */
+async function saveScoresAjax() {
+    if (saving) return;
+    saving = true;
+    const btn = document.getElementById('saveBtn');
+    if (btn) setButtonLoading(btn, true);
+
+    // Collect all scores
+    const scores = {};
+    document.querySelectorAll('.score-select').forEach(sel => {
+        scores[sel.name] = sel.value;
+    });
+
+    try {
+        const resp = await fetch('{{ url_for("assessment.bulk_save", assessment_id=assessment.id) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(scores),
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            // Update originals to current values
+            document.querySelectorAll('.score-select').forEach(sel => {
+                originalValues[sel.name] = sel.value;
+                sel.classList.remove('border-primary', 'border-2');
+                sel.closest('tr').classList.remove('table-info');
+            });
+            hasChanges = false;
+            const bar = document.getElementById('saveBar');
+            if (bar) bar.classList.add('d-none');
+
+            // Update progress bar
+            const pctEl = document.querySelector('.progress-bar');
+            if (pctEl && data.completion_pct !== undefined) {
+                pctEl.style.width = data.completion_pct + '%';
+                pctEl.className = 'progress-bar ' + (data.completion_pct === 100 ? 'bg-success' : data.completion_pct > 50 ? 'bg-info' : 'bg-warning');
+            }
+            const progText = document.querySelector('[data-progress-text]');
+            if (progText && data.scored_count !== undefined) {
+                progText.textContent = data.completion_pct + '% complete (' + data.scored_count + '/' + data.total_count + ' scored)';
+            }
+
+            showToast('Saved ' + data.updated + ' score change(s)', 'success');
+        } else {
+            showToast(data.error || 'Save failed', 'danger');
+        }
+    } catch (err) {
+        showToast('Network error — please try again', 'danger');
+    }
+
+    if (btn) setButtonLoading(btn, false);
+    saving = false;
+}
+
+// Ctrl+S keyboard shortcut to save
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (hasChanges) saveScoresAjax();
+    }
+});
 
 // Warn before leaving with unsaved changes
 window.addEventListener('beforeunload', function(e) {

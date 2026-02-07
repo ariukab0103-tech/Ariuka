@@ -34,6 +34,10 @@ def create_app(config_class=Config):
     db.init_app(app)
     login_manager.init_app(app)
 
+    # Gzip compression — typically 60-80% smaller HTML/JSON responses
+    from flask_compress import Compress
+    Compress(app)
+
     from app.auth.routes import auth_bp
     from app.assessment.routes import assessment_bp
     from app.dashboard.routes import dashboard_bp

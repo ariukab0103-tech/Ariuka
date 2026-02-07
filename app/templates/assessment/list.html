@@ -10,9 +10,36 @@
 </div>
 
 {% if assessments %}
+<!-- Search / Filter bar -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search assessments..." oninput="filterTable()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="statusFilter" onchange="filterTable()">
+                    <option value="">All statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="reviewed">Reviewed</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <small class="text-muted" id="resultCount">{{ assessments|length }} assessment(s)</small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" id="assessmentTable">
             <thead>
                 <tr>
                     <th>Title</th>
@@ -20,17 +47,21 @@
                     <th>Fiscal Year</th>
                     <th>Status</th>
                     <th>Completion</th>
-                    <th>Overall Score</th>
-                    <th>Created</th>
+                    <th>Score</th>
+                    <th>Updated</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in assessments %}
-                <tr>
-                    <td><strong>{{ a.title }}</strong></td>
+                <tr data-status="{{ a.status }}" data-search="{{ a.title|lower }} {{ a.entity_name|lower }} {{ a.fiscal_year|lower }}">
+                    <td>
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold">
+                            {{ a.title }}
+                        </a>
+                    </td>
                     <td>{{ a.entity_name }}</td>
-                    <td>{{ a.fiscal_year }}</td>
+                    <td><small>{{ a.fiscal_year }}</small></td>
                     <td>
                         {% if a.status == 'draft' %}
                         <span class="status-badge bg-secondary text-white">Draft</span>
@@ -57,7 +88,7 @@
                             {{ a.overall_score }}
                         </span>
                     </td>
-                    <td>{{ a.created_at.strftime('%Y-%m-%d') if a.created_at else '—' }}</td>
+                    <td><small>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</small></td>
                     <td>
                         <div class="btn-group btn-group-sm">
                             <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-outline-primary" title="View">
@@ -102,14 +133,18 @@
                     <th>My Access</th>
                     <th>Status</th>
                     <th>Completion</th>
-                    <th>Overall Score</th>
+                    <th>Score</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in shared_assessments %}
                 <tr>
-                    <td><strong>{{ a.title }}</strong></td>
+                    <td>
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold">
+                            {{ a.title }}
+                        </a>
+                    </td>
                     <td>{{ a.entity_name }}</td>
                     <td><small>{{ a.author.full_name }}</small></td>
                     <td>
@@ -167,4 +202,37 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filterTable() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('#assessmentTable tbody tr');
+    let visible = 0;
+
+    rows.forEach(function(row) {
+        const matchSearch = !search || row.dataset.search.includes(search);
+        const matchStatus = !status || row.dataset.status === status;
+        const show = matchSearch && matchStatus;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    document.getElementById('resultCount').textContent = visible + ' assessment(s)';
+}
+
+// Focus search on Ctrl+F (override browser find for in-page search)
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        const input = document.getElementById('searchInput');
+        if (input) {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
+    }
+});
+</script>
 {% endblock %}
