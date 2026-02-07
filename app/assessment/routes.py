@@ -85,6 +85,9 @@ def create():
         title = request.form.get("title", "").strip()
         entity_name = request.form.get("entity_name", "").strip()
         fiscal_year = request.form.get("fiscal_year", "").strip()
+        fy_end_month = int(request.form.get("fy_end_month", "3"))
+        if fy_end_month not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
+            fy_end_month = 3
 
         if not title or not entity_name or not fiscal_year:
             flash("All fields are required.", "danger")
@@ -93,6 +96,7 @@ def create():
                 title=title,
                 entity_name=entity_name,
                 fiscal_year=fiscal_year,
+                fy_end_month=fy_end_month,
                 user_id=current_user.id,
                 status="draft",
             )
@@ -203,6 +207,11 @@ def edit_settings(assessment_id):
     title = request.form.get("title", "").strip()
     entity_name = request.form.get("entity_name", "").strip()
     fiscal_year = request.form.get("fiscal_year", "").strip()
+    fy_end_month_str = request.form.get("fy_end_month", "3").strip()
+    try:
+        fy_end_month = int(fy_end_month_str)
+    except (ValueError, TypeError):
+        fy_end_month = 3
 
     if not title or not entity_name or not fiscal_year:
         flash("Title, entity name, and fiscal year are required.", "danger")
@@ -218,6 +227,9 @@ def edit_settings(assessment_id):
     if assessment.fiscal_year != fiscal_year:
         assessment.fiscal_year = fiscal_year
         changed.append("fiscal year")
+    if getattr(assessment, "fy_end_month", 3) != fy_end_month:
+        assessment.fy_end_month = fy_end_month
+        changed.append("FY end month")
 
     if changed:
         db.session.commit()
@@ -671,7 +683,7 @@ Return ONLY valid JSON."""
 Assess this evidence against the criterion requirement. Be specific about what the evidence demonstrates and what's missing."""
 
         def _call_api():
-            client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+            client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
             return client.messages.create(
                 model="claude-haiku-4-5-20251001",
                 max_tokens=1500,
@@ -681,7 +693,7 @@ Assess this evidence against the criterion requirement. Be specific about what t
 
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call_api)
-            api_response = future.result(timeout=60)
+            api_response = future.result(timeout=50)
 
         import json as _json
         response_text = api_response.content[0].text.strip()
@@ -944,6 +956,60 @@ def delete_assessment(assessment_id):
     return redirect(url_for("assessment.list_assessments"))
 
 
+@assessment_bp.route("/<int:assessment_id>/raci")
+@login_required
+def raci_matrix(assessment_id):
+    """B1: Generate RACI matrix for the assessment."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    from app.raci import generate_raci, DEPARTMENTS
+    raci_data = generate_raci(assessment, responses)
+
+    return render_template(
+        "assessment/raci.html",
+        assessment=assessment,
+        departments=raci_data["departments"],
+        criteria=raci_data["criteria"],
+        dept_workload=raci_data["dept_workload"],
+        priority_actions=raci_data["priority_actions"],
+        obligation_labels=OBLIGATION_LABELS,
+    )
+
+
+@assessment_bp.route("/<int:assessment_id>/relief-advisor")
+@login_required
+def relief_advisor(assessment_id):
+    """B3: Transitional Relief Advisor — dynamic filtering by FY and scores."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    from app.relief_advisor import generate_relief_plan
+    relief_data = generate_relief_plan(assessment, responses)
+
+    return render_template(
+        "assessment/relief_advisor.html",
+        assessment=assessment,
+        relief_items=relief_data["relief_items"],
+        summary=relief_data["summary"],
+        japan_items=relief_data["japan_items"],
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+    )
+
+
 def _get_next_criterion(current_id):
     """Get the next criterion ID in sequence."""
     ids = [c["id"] for c in SSBJ_CRITERIA]
@@ -1013,7 +1079,7 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
     system_prompt = """You are an expert SSBJ/ISSB sustainability auditor comparing a consultant's report against our SSBJ gap assessment results.
 
 Key SSBJ facts:
-- 25 criteria: Governance(5), Strategy(6), Risk Management(5), Metrics & Targets(9)
+- 26 criteria: Governance(5), Strategy(7), Risk Management(5), Metrics & Targets(9)
 - Mandatory(SHALL) vs Recommended(SHOULD) vs Interpretive
 - Limited assurance scope (first 2 yrs): Scope 1&2, Governance, Risk Management (ISSA 5000)
 - Value chain (STR-01,02), Scope 3 all 15 categories (MET-03), GHG Intensity (MET-08), Climate Remuneration (MET-09) = MANDATORY
@@ -1034,7 +1100,7 @@ Return ONLY JSON:
 
     def _call_api():
         """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
-        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
         return client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=8192,
@@ -1043,10 +1109,10 @@ Return ONLY JSON:
         )
 
     try:
-        # Run in separate thread with hard 90s timeout
+        # Run in separate thread — keep timeout under Render's ~60s proxy limit
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call_api)
-            response = future.result(timeout=90)
+            response = future.result(timeout=50)
 
         response_text = response.content[0].text.strip()
 
@@ -1118,7 +1184,7 @@ Return ONLY JSON:
         return results, all_matched_ids, comparison
 
     except FuturesTimeout:
-        logger.warning("AI consultant analysis timed out (90s), falling back to keyword matching")
+        logger.warning("AI consultant analysis timed out (50s), falling back to keyword matching")
         return None
     except BaseException as e:
         # Catch BaseException to handle SystemExit from Gunicorn SIGABRT
@@ -1564,15 +1630,31 @@ def review_consultant(assessment_id):
         import logging, traceback
         logging.getLogger(__name__).error(f"Consultant review error: {e}\n{traceback.format_exc()}")
         flash(f"Analysis error: {type(e).__name__}: {e}", "danger")
+        results = None
+        summary = None
+        roadmap_comparison = None
 
-    return render_template(
-        "assessment/review_consultant.html",
-        assessment=assessment,
-        results=results,
-        summary=summary,
-        consultant_text=consultant_text,
-        roadmap_comparison=roadmap_comparison,
-    )
+    try:
+        return render_template(
+            "assessment/review_consultant.html",
+            assessment=assessment,
+            results=results,
+            summary=summary,
+            consultant_text=consultant_text,
+            roadmap_comparison=roadmap_comparison,
+        )
+    except Exception as e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"Consultant review render error: {e}\n{traceback.format_exc()}")
+        flash(f"Display error: {type(e).__name__}: {e}. Try keyword mode (uncheck AI).", "danger")
+        return render_template(
+            "assessment/review_consultant.html",
+            assessment=assessment,
+            results=None,
+            summary=None,
+            consultant_text=consultant_text,
+            roadmap_comparison=None,
+        )
 
 
 def _compare_with_roadmap(our_roadmap, consultant_results, matched_ids, criteria_map):

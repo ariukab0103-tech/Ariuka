@@ -129,9 +129,26 @@ def generate_roadmap(assessment, responses_list):
     if not compliance_year:
         compliance_year = date.today().year + 2  # default: 2 years from now
 
-    # Compliance date = end of fiscal year (March 31 for Japanese companies)
-    compliance_date = date(compliance_year, 3, 31)
-    assurance_date = date(compliance_year + 1, 3, 31)
+    # Determine FY end month (A1: support non-March FY ends like December)
+    fy_end_month = getattr(assessment, "fy_end_month", 3) or 3
+    # Last day of the FY end month
+    import calendar
+    fy_end_day = calendar.monthrange(compliance_year, fy_end_month)[1]
+
+    # For non-March FY: adjust the compliance year
+    # "FY2026 (ending March 2027)" with March FY → March 2027
+    # Same selection with December FY → December 2026 (earlier by 3 months)
+    if fy_end_month != 3:
+        if fy_end_month < 3:
+            adjusted_year = compliance_year  # Jan/Feb still same calendar year
+        else:
+            adjusted_year = compliance_year - 1  # Apr-Dec: one year earlier
+    else:
+        adjusted_year = compliance_year
+    fy_end_day = calendar.monthrange(adjusted_year, fy_end_month)[1]
+
+    compliance_date = date(adjusted_year, fy_end_month, fy_end_day)
+    assurance_date = date(adjusted_year + 1, fy_end_month, fy_end_day)
     today = date.today()
 
     months_remaining = (compliance_date.year - today.year) * 12 + (compliance_date.month - today.month)

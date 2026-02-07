@@ -140,6 +140,16 @@
                     <small><i class="bi bi-gear me-1"></i><strong>Internal Controls Required:</strong> {{ gap.criterion.internal_controls }}</small>
                 </div>
                 {% endif %}
+                {% if gap.criterion.transitional_relief %}
+                <div class="alert alert-success mt-2 mb-0 py-2">
+                    <small><i class="bi bi-clock-history me-1"></i><strong>Year 1 Transitional Relief:</strong> {{ gap.criterion.transitional_relief }}</small>
+                </div>
+                {% endif %}
+                {% if gap.criterion.japan_note %}
+                <div class="alert alert-primary mt-2 mb-0 py-2">
+                    <small><i class="bi bi-flag me-1"></i><strong>SSBJ Japan-Specific:</strong> {{ gap.criterion.japan_note }}</small>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -262,6 +272,9 @@
                         <code>{{ c.id }}</code>
                         {% if c.la_scope == 'in_scope' %}
                         <br><span class="badge bg-danger bg-opacity-75" style="font-size: 0.55em;"><i class="bi bi-shield-check"></i></span>
+                        {% endif %}
+                        {% if c.transitional_relief %}
+                        <br><span class="badge bg-success bg-opacity-75" style="font-size: 0.55em;" title="{{ c.transitional_relief }}"><i class="bi bi-clock-history"></i> Relief</span>
                         {% endif %}
                     </td>
                     <td>

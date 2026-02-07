@@ -64,6 +64,20 @@
                     <p class="mb-0" style="white-space: pre-line;">{{ criterion.internal_controls }}</p>
                 </div>
                 {% endif %}
+
+                {% if criterion.transitional_relief %}
+                <div class="alert alert-success mt-3">
+                    <h6 class="alert-heading"><i class="bi bi-clock-history me-1"></i>Year 1 Transitional Relief</h6>
+                    <p class="mb-0">{{ criterion.transitional_relief }}</p>
+                </div>
+                {% endif %}
+
+                {% if criterion.japan_note %}
+                <div class="alert alert-primary mt-3">
+                    <h6 class="alert-heading"><i class="bi bi-flag me-1"></i>SSBJ Japan-Specific</h6>
+                    <p class="mb-0">{{ criterion.japan_note }}</p>
+                </div>
+                {% endif %}
             </div>
         </div>
 

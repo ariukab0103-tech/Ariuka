@@ -43,6 +43,12 @@
         <a href="{{ url_for('assessment.review_consultant', assessment_id=assessment.id) }}" class="btn btn-outline-info">
             <i class="bi bi-clipboard2-check me-1"></i>Review Consultant Report
         </a>
+        <a href="{{ url_for('assessment.raci_matrix', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-diagram-3 me-1"></i>RACI
+        </a>
+        <a href="{{ url_for('assessment.relief_advisor', assessment_id=assessment.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-clock-history me-1"></i>Relief Advisor
+        </a>
         {% endif %}
         {% if can_manage %}
         <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">
@@ -79,16 +85,25 @@
                     <input type="text" class="form-control" id="edit_entity" name="entity_name"
                            value="{{ assessment.entity_name }}" required>
                 </div>
-                <div class="col-md-4 mb-3">
-                    <label for="edit_fiscal" class="form-label">Fiscal Year (affects roadmap timeline)</label>
+                <div class="col-md-3 mb-3">
+                    <label for="edit_fiscal" class="form-label">Fiscal Year (affects roadmap)</label>
                     <select class="form-select" id="edit_fiscal" name="fiscal_year" required>
-                        <option value="FY2025 (ending March 2026)" {% if 'FY2025' in assessment.fiscal_year %}selected{% endif %}>FY2025 (ending March 2026) — Voluntary</option>
-                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 (ending March 2027) — Phase 1 (¥3T+), assurance from March 2028</option>
-                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 (ending March 2028) — Phase 2 (¥1T+), assurance from March 2029</option>
-                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 (ending March 2029) — Phase 3 (¥500B+), assurance from March 2030</option>
-                        <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029 (ending March 2030)</option>
+                        <option value="FY2025 (ending March 2026)" {% if 'FY2025' in assessment.fiscal_year %}selected{% endif %}>FY2025 — Voluntary</option>
+                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 — Phase 1 (¥3T+)</option>
+                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 — Phase 2 (¥1T+)</option>
+                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 — Phase 3 (¥500B+)</option>
+                        <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029</option>
                     </select>
-                    <div class="form-text">Changing the fiscal year recalculates the roadmap timeline and urgency level.</div>
+                </div>
+                <div class="col-md-1 mb-3">
+                    <label for="edit_fy_end_month" class="form-label">FY End</label>
+                    <select class="form-select" id="edit_fy_end_month" name="fy_end_month">
+                        {% set current_fy_month = assessment.fy_end_month or 3 %}
+                        <option value="3" {% if current_fy_month == 3 %}selected{% endif %}>3月</option>
+                        <option value="6" {% if current_fy_month == 6 %}selected{% endif %}>6月</option>
+                        <option value="9" {% if current_fy_month == 9 %}selected{% endif %}>9月</option>
+                        <option value="12" {% if current_fy_month == 12 %}selected{% endif %}>12月</option>
+                    </select>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary btn-sm">
@@ -223,6 +238,8 @@
             <span class="text-muted">|</span>
             <small><span class="badge bg-danger bg-opacity-75"><i class="bi bi-shield-check me-1"></i>In LA Scope</span> Directly assured</small>
             <small><span class="badge bg-warning text-dark bg-opacity-75"><i class="bi bi-shield me-1"></i>LA Supporting</span></small>
+            <span class="text-muted">|</span>
+            <small><span class="badge bg-success bg-opacity-75"><i class="bi bi-clock-history me-1"></i>Year 1 Relief</span> Transitional relief available</small>
         </div>
     </div>
 </div>
@@ -404,6 +421,9 @@
                 <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
                     <td>
                         <code>{{ c.id }}</code>
+                        {% if c.transitional_relief %}
+                        <br><span class="badge bg-success bg-opacity-75" style="font-size: 0.55em;" title="{{ c.transitional_relief }}"><i class="bi bi-clock-history"></i> Relief</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% set ob = obligation_labels.get(c.obligation, {}) %}
