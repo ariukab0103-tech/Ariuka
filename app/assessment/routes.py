@@ -715,8 +715,203 @@ def _get_next_criterion(current_id):
 
 
 # =========================================================================
-# Consultant Roadmap Review
+# Consultant Report Review (AI-Powered with Keyword Fallback)
 # =========================================================================
+
+
+def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, roadmap_data):
+    """Use Claude AI to analyze consultant report against SSBJ requirements and our assessment.
+
+    Returns (results, all_matched_ids, comparison) or None if AI unavailable.
+    """
+    import json as _json
+    import re
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return None
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+    except Exception:
+        return None
+
+    # Build context: criteria + our scores
+    criteria_context = []
+    for c in SSBJ_CRITERIA:
+        resp = responses_map.get(c["id"])
+        score = resp.score if resp and resp.score is not None else None
+        score_str = f"{score}/5" if score is not None else "Not scored"
+        criteria_context.append(
+            f"{c['id']} | {c['pillar']} | {c['category']} | "
+            f"Obligation: {c['obligation']} | LA Scope: {c['la_scope']} | "
+            f"Our Score: {score_str}\n"
+            f"  Requirement: {c['requirement']}\n"
+            f"  Minimum Action: {c.get('minimum_action', 'N/A')}"
+        )
+    criteria_text = "\n\n".join(criteria_context)
+
+    # Build roadmap context
+    roadmap_context = ""
+    if roadmap_data:
+        la_critical = roadmap_data.get("gaps", {}).get("la_critical", [])
+        la_ids = [g["id"] for g in la_critical]
+        roadmap_context = (
+            f"Timeline: {roadmap_data.get('months_remaining', '?')} months remaining | "
+            f"Urgency: {roadmap_data.get('urgency', '?')} | "
+            f"Total gaps (score<3): {roadmap_data.get('gaps', {}).get('total_gaps', '?')} | "
+            f"LA-critical gaps: {len(la_critical)} ({', '.join(la_ids)})"
+        )
+
+    # Truncate consultant text if needed
+    max_chars = 30000
+    truncated = consultant_text[:max_chars] if len(consultant_text) > max_chars else consultant_text
+
+    system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You are comparing an external consultant's report/proposal against:
+1. Our own SSBJ gap assessment tool results (scores per criterion)
+2. Our compliance roadmap (phases, timeline, urgency)
+3. SSBJ minimum compliance requirements
+
+You know:
+- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
+- 25 SSBJ criteria across 4 pillars: Governance (5), Strategy (6), Risk Management (5), Metrics & Targets (9)
+- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive requirements
+- Limited assurance scope (first 2 years): Scope 1 & 2 GHG, Governance, and Risk Management (ISSA 5000)
+- Value chain analysis (STR-01, STR-02) and Scope 3 all 15 categories (MET-03) are MANDATORY
+- GHG Intensity (MET-08) and Climate Remuneration (MET-09) are mandatory under IFRS S2
+- Carbon offsets do NOT reduce reported Scope 1/2 emissions — they are NOT part of SSBJ compliance
+- Reasonable assurance is NOT being considered — limited assurance only
+- ISSA 5000 replaces ISAE 3000/3410 from Dec 2026
+
+Your task: Compare the consultant's report against OUR assessment results and roadmap. For each distinct suggestion/recommendation/finding in the consultant's report:
+1. Does it MATCH our tool's findings? If our score is low for that criterion, the consultant is aligned.
+2. Does it DEVIATE from our results? If our score is already >=3 but consultant flags it, it may be redundant.
+3. Is it BEYOND minimum SSBJ compliance? Flag anything that goes beyond what SSBJ actually requires.
+4. Is it UNNECESSARY for SSBJ? (e.g., carbon offsets, blockchain, ESG ratings, real-time dashboards)
+5. Does the consultant MISS something our tool identified as a gap?
+
+Classify each: essential (matches SSBJ mandatory + our gap), recommended (useful but beyond minimum), already_covered (our score already >=3), out_of_scope (not SSBJ related), unnecessary (actively wrong or misleading for SSBJ).
+
+Also compare the consultant's overall approach with our roadmap — timeline, priorities, scope."""
+
+    user_prompt = f"""OUR TOOL'S ASSESSMENT RESULTS (scores per SSBJ criterion):
+{criteria_text}
+
+OUR ROADMAP STATUS:
+{roadmap_context}
+
+CONSULTANT'S REPORT/PROPOSAL TO REVIEW:
+{truncated}
+
+Compare the consultant's report against our assessment results and SSBJ requirements. For each distinct recommendation/finding in the consultant's report, determine if it:
+- Aligns with our gaps (score < 3 on relevant criterion) = essential
+- Goes beyond minimum SSBJ compliance = recommended
+- Targets something we already cover (score >= 3) = already_covered
+- Is not related to any SSBJ requirement = out_of_scope
+- Is misleading or unnecessary for SSBJ (e.g., carbon offsets, ESG ratings) = unnecessary
+
+Return ONLY a JSON object:
+{{
+  "suggestions": [
+    {{
+      "text": "Brief summary of this suggestion (max 2 sentences)",
+      "verdict": "essential|recommended|already_covered|out_of_scope|unnecessary",
+      "matched_criteria": ["GOV-01", "GOV-02"],
+      "explanation": "How this compares to our assessment score and SSBJ minimum requirements. Reference specific criterion scores."
+    }}
+  ],
+  "overall_comparison": {{
+    "critical_observations": [
+      {{
+        "type": "danger|warning|success|info",
+        "title": "Short title",
+        "detail": "Explanation comparing consultant vs our tool results"
+      }}
+    ],
+    "differences": [
+      {{
+        "area": "Area name (e.g., Timeline, Scope, Prioritization)",
+        "our_approach": "What our tool/roadmap identifies",
+        "consultant_note": "How the consultant's approach differs and whether the deviation is justified"
+      }}
+    ],
+    "missing_from_consultant": ["SSBJ criterion IDs the consultant does NOT address but our tool flags as gaps"]
+  }}
+}}
+
+IMPORTANT: Return ONLY valid JSON. No markdown, no commentary outside JSON."""
+
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Extract JSON (handle potential markdown code blocks)
+        if response_text.startswith("```"):
+            response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
+            response_text = re.sub(r'\n?```\s*$', '', response_text)
+
+        ai_result = _json.loads(response_text)
+
+        # Convert AI results to our standard format
+        results = []
+        all_matched_ids = set()
+        verdict_colors = {
+            "essential": ("danger", "exclamation-triangle-fill"),
+            "recommended": ("warning", "info-circle"),
+            "already_covered": ("success", "check-circle"),
+            "out_of_scope": ("secondary", "question-circle"),
+            "unnecessary": ("secondary", "x-circle"),
+        }
+
+        for item in ai_result.get("suggestions", []):
+            verdict = item.get("verdict", "out_of_scope")
+            color, icon = verdict_colors.get(verdict, ("secondary", "question-circle"))
+            matched_ids = item.get("matched_criteria", [])
+            all_matched_ids.update(matched_ids)
+
+            # Build matched criteria details
+            mc_details = []
+            for cid in matched_ids:
+                c = criteria_map.get(cid)
+                if c:
+                    resp = responses_map.get(cid)
+                    mc_details.append(_criterion_summary(c, resp))
+
+            results.append({
+                "text": item.get("text", ""),
+                "verdict": verdict,
+                "explanation": item.get("explanation", ""),
+                "matched_criteria": mc_details,
+                "icon": icon,
+                "color": color,
+            })
+
+        # Build comparison from AI output
+        overall = ai_result.get("overall_comparison", {})
+        comparison = {
+            "our_urgency": roadmap_data.get("urgency", "") if roadmap_data else "",
+            "our_months": roadmap_data.get("months_remaining", 0) if roadmap_data else 0,
+            "our_total_gaps": roadmap_data.get("gaps", {}).get("total_gaps", 0) if roadmap_data else 0,
+            "our_la_critical": len(roadmap_data.get("gaps", {}).get("la_critical", [])) if roadmap_data else 0,
+            "our_phases": len(roadmap_data.get("phases", [])) if roadmap_data else 0,
+            "critical_observations": overall.get("critical_observations", []),
+            "differences": overall.get("differences", []),
+        }
+
+        return results, all_matched_ids, comparison
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"AI consultant analysis failed: {e}")
+        return None
+
 
 def _build_keyword_index():
     """Build keyword-to-criterion mapping for matching consultant suggestions.
@@ -1048,7 +1243,7 @@ def _check_missing_essentials(criteria_map, responses_map, matched_ids):
 @assessment_bp.route("/<int:assessment_id>/review-consultant", methods=["GET", "POST"])
 @login_required
 def review_consultant(assessment_id):
-    """Review external consultant suggestions against SSBJ minimum viable requirements."""
+    """Review external consultant report/proposal against SSBJ requirements using AI analysis."""
     assessment = db.session.get(Assessment, assessment_id)
     denied = _require_access(assessment, "view")
     if denied:
@@ -1058,6 +1253,7 @@ def review_consultant(assessment_id):
     consultant_text = ""
     summary = None
     roadmap_comparison = None
+    analysis_method = "none"
 
     if request.method == "POST":
         consultant_text = request.form.get("consultant_text", "").strip()
@@ -1082,42 +1278,55 @@ def review_consultant(assessment_id):
             flash("Please paste text or upload a document with the consultant's suggestions.", "warning")
         else:
             import re
-            # Build matching infrastructure
-            keyword_index = _build_keyword_index()
             criteria_map = {c["id"]: c for c in SSBJ_CRITERIA}
             responses_map = {r.criterion_id: r for r in assessment.responses.all()}
 
-            # Parse suggestions (split by newlines, numbered items, or bullet points)
-            lines = re.split(r"\n+", consultant_text)
-            suggestions = []
-            for line in lines:
-                cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
-                if len(cleaned) > 10:  # skip very short lines
-                    suggestions.append(cleaned)
-
-            # Match and classify each suggestion
-            results = []
-            all_matched_ids = set()
-            for suggestion in suggestions:
-                matches = _match_suggestion_to_criteria(suggestion, keyword_index, criteria_map)
-                classification = _classify_suggestion(suggestion, matches, criteria_map, responses_map)
-                results.append({
-                    "text": suggestion,
-                    **classification,
-                })
-                for cid, _ in matches:
-                    all_matched_ids.add(cid)
-
-            # Find missing essentials
-            missing = _check_missing_essentials(criteria_map, responses_map, all_matched_ids)
-
-            # Generate our roadmap for comparison
+            # Generate our roadmap for comparison context
             from app.roadmap import generate_roadmap
+            our_roadmap = None
             responses_list = assessment.responses.filter(Response.score.isnot(None)).all()
             if responses_list:
                 our_roadmap = generate_roadmap(assessment, responses_list)
-                # Build roadmap comparison — what our roadmap says vs consultant
-                roadmap_comparison = _compare_with_roadmap(our_roadmap, results, all_matched_ids, criteria_map)
+
+            # Try AI-powered analysis first
+            ai_result = _ai_analyze_consultant_report(
+                consultant_text, criteria_map, responses_map, our_roadmap
+            )
+
+            if ai_result is not None:
+                # AI analysis succeeded
+                results, all_matched_ids, roadmap_comparison = ai_result
+                analysis_method = "ai"
+            else:
+                # Fallback to keyword matching
+                analysis_method = "keyword"
+                keyword_index = _build_keyword_index()
+
+                # Parse suggestions (split by newlines, numbered items, or bullet points)
+                lines = re.split(r"\n+", consultant_text)
+                suggestions = []
+                for line in lines:
+                    cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
+                    if len(cleaned) > 10:
+                        suggestions.append(cleaned)
+
+                results = []
+                all_matched_ids = set()
+                for suggestion in suggestions:
+                    matches = _match_suggestion_to_criteria(suggestion, keyword_index, criteria_map)
+                    classification = _classify_suggestion(suggestion, matches, criteria_map, responses_map)
+                    results.append({
+                        "text": suggestion,
+                        **classification,
+                    })
+                    for cid, _ in matches:
+                        all_matched_ids.add(cid)
+
+                if our_roadmap:
+                    roadmap_comparison = _compare_with_roadmap(our_roadmap, results, all_matched_ids, criteria_map)
+
+            # Find missing essentials (works for both AI and keyword)
+            missing = _check_missing_essentials(criteria_map, responses_map, all_matched_ids)
 
             # Summary statistics
             verdicts = [r["verdict"] for r in results]
@@ -1133,6 +1342,7 @@ def review_consultant(assessment_id):
                     (len(all_matched_ids) / len(SSBJ_CRITERIA)) * 100
                 ) if SSBJ_CRITERIA else 0,
                 "total_criteria": len(SSBJ_CRITERIA),
+                "analysis_method": analysis_method,
             }
 
     return render_template(
