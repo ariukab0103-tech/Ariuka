@@ -43,6 +43,12 @@
         <a href="{{ url_for('assessment.review_consultant', assessment_id=assessment.id) }}" class="btn btn-outline-info">
             <i class="bi bi-clipboard2-check me-1"></i>Review Consultant Report
         </a>
+        <a href="{{ url_for('assessment.raci_matrix', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-diagram-3 me-1"></i>RACI
+        </a>
+        <a href="{{ url_for('assessment.relief_advisor', assessment_id=assessment.id) }}" class="btn btn-outline-success">
+            <i class="bi bi-clock-history me-1"></i>Relief Advisor
+        </a>
         {% endif %}
         {% if can_manage %}
         <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">

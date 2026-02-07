@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}RACI Matrix - {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-diagram-3 me-2"></i>RACI Matrix</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }}</p>
+    </div>
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-danger me-2">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+        </button>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <small class="fw-bold text-muted me-1">RACI Legend:</small>
+            <small><span class="badge raci-r">R</span> Responsible — does the work</small>
+            <small><span class="badge raci-a">A</span> Accountable — approves/owns</small>
+            <small><span class="badge raci-c">C</span> Consulted — provides input</small>
+            <small><span class="badge raci-i">I</span> Informed — kept updated</small>
+            <span class="text-muted">|</span>
+            <small><span class="badge bg-danger bg-opacity-75">LA In Scope</span> Limited assurance critical</small>
+        </div>
+    </div>
+</div>
+
+<!-- Priority Actions -->
+{% if priority_actions %}
+<div class="card mb-4" style="border: 1px solid rgba(239,68,68,0.4);">
+    <div class="card-header" style="background: var(--gradient-red);">
+        <i class="bi bi-exclamation-triangle me-2 text-white"></i>
+        <span class="text-white fw-bold">Priority Actions: LA In-Scope Gaps ({{ priority_actions|length }})</span>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">These criteria are in limited assurance scope but scored below threshold (3). The departments listed below should take immediate action.</p>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Criterion</th>
+                        <th>Score</th>
+                        <th>Gap</th>
+                        <th>Responsible (do the work)</th>
+                        <th>Accountable (approve)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for action in priority_actions %}
+                    <tr>
+                        <td>
+                            <code>{{ action.criterion_id }}</code>
+                            <small class="text-muted d-block">{{ action.category }}</small>
+                        </td>
+                        <td>
+                            {% if action.score is not none %}
+                            <span class="score-badge score-{{ action.score }}">{{ action.score }}</span>
+                            {% else %}
+                            <span class="score-badge score-0">—</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-danger">+{{ action.gap }} needed</span></td>
+                        <td>
+                            {% for dept in action.responsible %}
+                            <span class="badge raci-r me-1">{{ dept }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for dept in action.accountable %}
+                            <span class="badge raci-a me-1">{{ dept }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Department Workload Summary -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Department Workload Summary</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th class="text-center"><span class="badge raci-r">R</span></th>
+                        <th class="text-center"><span class="badge raci-a">A</span></th>
+                        <th class="text-center"><span class="badge raci-c">C</span></th>
+                        <th class="text-center"><span class="badge raci-i">I</span></th>
+                        <th class="text-center">Total Involvement</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for code, name in departments %}
+                    {% set w = dept_workload[code] %}
+                    {% set total = w.R + w.A + w.C + w.I %}
+                    {% if total > 0 %}
+                    <tr>
+                        <td><strong>{{ name }}</strong></td>
+                        <td class="text-center">{% if w.R %}<span class="fw-bold text-danger">{{ w.R }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="text-center">{% if w.A %}<span class="fw-bold" style="color: var(--accent-yellow);">{{ w.A }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="text-center">{% if w.C %}<span style="color: var(--accent-blue);">{{ w.C }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="text-center">{% if w.I %}<span class="text-muted">{{ w.I }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td class="text-center">
+                            <div class="progress" style="height: 8px; min-width: 100px;">
+                                <div class="progress-bar bg-danger" style="width: {{ (w.R / 26 * 100) | round }}%"></div>
+                                <div class="progress-bar bg-warning" style="width: {{ (w.A / 26 * 100) | round }}%"></div>
+                                <div class="progress-bar bg-info" style="width: {{ (w.C / 26 * 100) | round }}%"></div>
+                                <div class="progress-bar bg-secondary" style="width: {{ (w.I / 26 * 100) | round }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ total }}</small>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Full RACI Matrix -->
+{% set pillar_order = ['Governance', 'Strategy', 'Risk Management', 'Metrics & Targets'] %}
+{% for pillar in pillar_order %}
+{% set pillar_criteria = criteria | selectattr('pillar', 'equalto', pillar) | list %}
+{% if pillar_criteria %}
+<div class="pillar-header">
+    <h5 class="mb-0">
+        {% if pillar == 'Governance' %}<i class="bi bi-building me-2"></i>
+        {% elif pillar == 'Strategy' %}<i class="bi bi-compass me-2"></i>
+        {% elif pillar == 'Risk Management' %}<i class="bi bi-shield-exclamation me-2"></i>
+        {% elif pillar == 'Metrics & Targets' %}<i class="bi bi-graph-up me-2"></i>
+        {% endif %}
+        {{ pillar }}
+    </h5>
+</div>
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 raci-table">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">ID</th>
+                        <th>Category</th>
+                        <th style="width: 50px;">Score</th>
+                        {% for code, name in departments %}
+                        <th class="text-center raci-dept-header" title="{{ name }}">
+                            <small>{{ name.split('/')[0].split(' ')[0][:4] }}</small>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in pillar_criteria %}
+                    <tr{% if row.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
+                        <td>
+                            <code>{{ row.id }}</code>
+                            {% if row.la_scope == 'in_scope' %}
+                            <br><span class="badge bg-danger bg-opacity-75" style="font-size: 0.5em;"><i class="bi bi-shield-check"></i></span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ row.category }}</small></td>
+                        <td>
+                            {% if row.score is not none %}
+                            <span class="score-badge score-{{ row.score }}">{{ row.score }}</span>
+                            {% else %}
+                            <span class="score-badge score-0">—</span>
+                            {% endif %}
+                        </td>
+                        {% for code, name in departments %}
+                        <td class="text-center">
+                            {% set role = row.dept_roles.get(code, '') %}
+                            {% if role == 'R' %}
+                            <span class="badge raci-r" title="Responsible">R</span>
+                            {% elif role == 'A' %}
+                            <span class="badge raci-a" title="Accountable">A</span>
+                            {% elif role == 'C' %}
+                            <span class="badge raci-c" title="Consulted">C</span>
+                            {% elif role == 'I' %}
+                            <span class="badge raci-i" title="Informed">I</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+.raci-r { background-color: #dc3545 !important; color: white; font-weight: bold; }
+.raci-a { background-color: #ffc107 !important; color: #212529; font-weight: bold; }
+.raci-c { background-color: #0d6efd !important; color: white; }
+.raci-i { background-color: #6c757d !important; color: white; }
+.raci-dept-header { font-size: 0.7em; writing-mode: horizontal-tb; min-width: 45px; }
+.raci-table th, .raci-table td { padding: 0.35rem 0.3rem; vertical-align: middle; }
+@media print {
+    .raci-table { font-size: 0.7em; }
+    .raci-dept-header { min-width: 30px; }
+}
+</style>
+{% endblock %}

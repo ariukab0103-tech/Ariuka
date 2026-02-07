@@ -956,6 +956,60 @@ def delete_assessment(assessment_id):
     return redirect(url_for("assessment.list_assessments"))
 
 
+@assessment_bp.route("/<int:assessment_id>/raci")
+@login_required
+def raci_matrix(assessment_id):
+    """B1: Generate RACI matrix for the assessment."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    from app.raci import generate_raci, DEPARTMENTS
+    raci_data = generate_raci(assessment, responses)
+
+    return render_template(
+        "assessment/raci.html",
+        assessment=assessment,
+        departments=raci_data["departments"],
+        criteria=raci_data["criteria"],
+        dept_workload=raci_data["dept_workload"],
+        priority_actions=raci_data["priority_actions"],
+        obligation_labels=OBLIGATION_LABELS,
+    )
+
+
+@assessment_bp.route("/<int:assessment_id>/relief-advisor")
+@login_required
+def relief_advisor(assessment_id):
+    """B3: Transitional Relief Advisor — dynamic filtering by FY and scores."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    from app.relief_advisor import generate_relief_plan
+    relief_data = generate_relief_plan(assessment, responses)
+
+    return render_template(
+        "assessment/relief_advisor.html",
+        assessment=assessment,
+        relief_items=relief_data["relief_items"],
+        summary=relief_data["summary"],
+        japan_items=relief_data["japan_items"],
+        obligation_labels=OBLIGATION_LABELS,
+        la_scope_labels=LA_SCOPE_LABELS,
+    )
+
+
 def _get_next_criterion(current_id):
     """Get the next criterion ID in sequence."""
     ids = [c["id"] for c in SSBJ_CRITERIA]
