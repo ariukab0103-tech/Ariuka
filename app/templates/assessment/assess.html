@@ -183,8 +183,10 @@
                 <span><i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents & AI Assessment</span>
                 <form method="POST" action="{{ url_for('assessment.ai_assess_criterion', assessment_id=assessment.id, criterion_id=criterion.id) }}"
                       class="d-inline" id="aiAssessForm">
+                    <input type="hidden" name="current_evidence" id="aiEvidence" value="">
+                    <input type="hidden" name="current_notes" id="aiNotes" value="">
                     <button type="submit" class="btn btn-sm btn-primary" id="aiAssessBtn"
-                            onclick="this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>Analyzing...';this.form.submit();">
+                            onclick="document.getElementById('aiEvidence').value=document.getElementById('evidence').value;document.getElementById('aiNotes').value=document.getElementById('notes').value;this.disabled=true;this.innerHTML='<span class=\'spinner-border spinner-border-sm me-1\'></span>Analyzing...';">
                         <i class="bi bi-robot me-1"></i>AI Assess This Criterion
                     </button>
                 </form>

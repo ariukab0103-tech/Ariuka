@@ -594,9 +594,22 @@ def ai_assess_criterion(assessment_id, criterion_id):
     # Gather evidence: criterion attachments + evidence text + assessment-level docs
     evidence_parts = []
 
-    # 1. User-typed evidence
-    if response.evidence:
-        evidence_parts.append(f"USER EVIDENCE:\n{response.evidence}")
+    # 1. User-typed evidence (prefer current form text over saved DB value)
+    current_evidence = request.form.get("current_evidence", "").strip()
+    current_notes = request.form.get("current_notes", "").strip()
+    user_evidence = current_evidence or (response.evidence or "")
+    if user_evidence:
+        evidence_parts.append(f"USER EVIDENCE:\n{user_evidence}")
+    if current_notes:
+        evidence_parts.append(f"USER NOTES:\n{current_notes}")
+
+    # Also save the current typed text so it's not lost
+    if current_evidence:
+        response.evidence = current_evidence
+    if current_notes:
+        response.notes = current_notes
+    if current_evidence or current_notes:
+        db.session.commit()
 
     # 2. Per-criterion attached files
     from app.analyzer import extract_text_from_file
