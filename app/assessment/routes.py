@@ -1293,6 +1293,7 @@ def review_consultant(assessment_id):
     analysis_method = "none"
 
     if request.method == "POST":
+      try:
         consultant_text = request.form.get("consultant_text", "").strip()
 
         # Handle file upload — extract text from uploaded document
@@ -1381,6 +1382,10 @@ def review_consultant(assessment_id):
                 "total_criteria": len(SSBJ_CRITERIA),
                 "analysis_method": analysis_method,
             }
+      except Exception as e:
+        import logging, traceback
+        logging.getLogger(__name__).error(f"Consultant review error: {e}\n{traceback.format_exc()}")
+        flash(f"Analysis error: {type(e).__name__}: {e}", "danger")
 
     return render_template(
         "assessment/review_consultant.html",
