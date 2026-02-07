@@ -101,6 +101,7 @@
                     {{ roadmap.months_remaining }}
                 </div>
                 <div class="text-muted fw-bold">months to disclosure</div>
+                <small class="text-muted">by March {{ roadmap.compliance_year }}</small>
                 <div class="mt-1">
                     <span class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}success{% else %}info{% endif %} fs-6">
                         {% if roadmap.urgency == 'critical' %}CRITICAL{% elif roadmap.urgency == 'tight' %}TIGHT{% elif roadmap.urgency == 'adequate' %}ADEQUATE{% else %}COMFORTABLE{% endif %}
@@ -112,6 +113,7 @@
                     {{ roadmap.months_to_assurance }}
                 </div>
                 <div class="text-muted fw-bold">months to 1st assurance</div>
+                <small class="text-muted">by March {{ roadmap.assurance_year }}</small>
             </div>
             <div class="col-md-3 text-center border-start">
                 <div style="font-size: 2rem; font-weight: 700; color: {% if roadmap.gaps.total_gaps > 10 %}var(--accent-red){% elif roadmap.gaps.total_gaps > 5 %}var(--accent-yellow){% else %}var(--accent-green){% endif %};">
@@ -210,13 +212,13 @@
             </div>
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <div class="badge bg-danger rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Disclosure</div>
-                <div class="small text-muted">FY{{ roadmap.compliance_year }}</div>
+                <div class="badge bg-danger rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Disclosure Due</div>
+                <div class="small text-muted">March {{ roadmap.compliance_year }}</div>
             </div>
             <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <div class="badge bg-dark rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Assurance</div>
-                <div class="small text-muted">FY{{ roadmap.assurance_year }}</div>
+                <div class="badge bg-dark rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Assurance Due</div>
+                <div class="small text-muted">March {{ roadmap.assurance_year }}</div>
             </div>
         </div>
     </div>

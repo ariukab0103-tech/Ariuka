@@ -147,10 +147,11 @@ def ai_assess_all(combined_text):
     system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You know:
 - SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
 - Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive distinctions
-- Limited assurance (ISAE 3000/3410, ISSA 5000) for Scope 1 & 2 GHG
+- Limited assurance (ISSA 5000, replacing ISAE 3000/3410) for Scope 1 & 2 GHG, Governance, and Risk Management
 - 13 essential internal controls: boundary definition, emission inventory, calculation methodology, activity data controls, emission factor management, maker-checker, audit trail, reconciliation, error tracking, management sign-off, segregation of duties, access controls, documentation
 - GHG Protocol: Scope 1 (direct), Scope 2 (location + market-based), Scope 3 (15 categories)
-- Japanese timeline: Phase 1 (March 2027, ≥¥3T), Phase 2 (2028, ≥¥1T), Phase 3 (2029, ≥¥700B)
+- Japanese mandatory disclosure timeline: Phase 1 (FY ending March 2027, ≥¥3T), Phase 2 (FY ending March 2028, ≥¥1T), Phase 3 (FY ending March 2029, ≥¥500B)
+- Mandatory assurance starts ONE YEAR after mandatory disclosure: Phase 1 assurance from FY ending March 2028, Phase 2 from March 2029, Phase 3 from March 2030
 
 SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal documented processes (minimum for assurance), 4=Monitored with review cycles, 5=Leading practice.
 Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2."""
