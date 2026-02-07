@@ -1034,19 +1034,19 @@ Return ONLY JSON:
 
     def _call_api():
         """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
-        client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
         return client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=4000,
+            max_tokens=8192,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
 
     try:
-        # Run in separate thread with hard 60s timeout
+        # Run in separate thread with hard 90s timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call_api)
-            response = future.result(timeout=60)
+            response = future.result(timeout=90)
 
         response_text = response.content[0].text.strip()
 
@@ -1055,7 +1055,19 @@ Return ONLY JSON:
             response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
             response_text = re.sub(r'\n?```\s*$', '', response_text)
 
-        ai_result = _json.loads(response_text)
+        # Try to parse, with fallback for truncated JSON
+        try:
+            ai_result = _json.loads(response_text)
+        except _json.JSONDecodeError:
+            # Try to fix truncated JSON by finding last complete structure
+            fixed = response_text.rstrip().rstrip(",")
+            last_brace = fixed.rfind("}")
+            if last_brace > 0:
+                fixed = fixed[:last_brace + 1] + "}"
+                logger.warning("Attempting to salvage truncated consultant AI JSON")
+                ai_result = _json.loads(fixed)
+            else:
+                raise
 
         # Convert AI results to our standard format
         results = []
@@ -1106,7 +1118,7 @@ Return ONLY JSON:
         return results, all_matched_ids, comparison
 
     except FuturesTimeout:
-        logger.warning("AI consultant analysis timed out (60s), falling back to keyword matching")
+        logger.warning("AI consultant analysis timed out (90s), falling back to keyword matching")
         return None
     except BaseException as e:
         # Catch BaseException to handle SystemExit from Gunicorn SIGABRT
