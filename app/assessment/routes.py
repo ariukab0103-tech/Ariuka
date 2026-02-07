@@ -722,8 +722,9 @@ def _build_keyword_index():
     """Build keyword-to-criterion mapping for matching consultant suggestions.
 
     IMPORTANT: SSBJ requires disclosure across ALL four pillars even for items
-    not in initial limited assurance scope. Value chain analysis, Scope 3, risk
-    and opportunity assessment, and scenario analysis are ALL mandatory.
+    not in initial limited assurance scope. Value chain analysis, Scope 3,
+    scenario analysis, etc. are ALL mandatory.
+    Initial LA scope (first 2 years): Scope 1 & 2, Governance, Risk Management.
     """
     import re
     index = {}
@@ -774,9 +775,23 @@ def _build_keyword_index():
         if cid == "STR-05":
             keywords.update(["transition", "plan", "decarbonization", "decarbonisation",
                              "target", "pathway", "roadmap", "reduction"])
-        # Climate governance (GOV-05)
+        # Board oversight (GOV-01, GOV-02 are in LA scope)
+        if cid in ("GOV-01", "GOV-02"):
+            keywords.update(["board", "oversight", "committee", "governance", "mandate",
+                             "charter", "terms", "reference", "sustainability", "esg",
+                             "director", "directors", "responsible", "supervisory"])
+        # Management role (GOV-04 is in LA scope)
+        if cid == "GOV-04":
+            keywords.update(["management", "role", "manager", "officer", "cso",
+                             "sustainability", "responsible", "monitoring", "reporting",
+                             "cross", "functional", "working", "group"])
+        # Climate governance (GOV-05 is in LA scope)
         if cid == "GOV-05":
             keywords.update(["climate", "decision", "investment", "capital", "carbon", "pricing"])
+        # Risk integration (RSK-03 is now in LA scope)
+        if cid == "RSK-03":
+            keywords.update(["integration", "integrate", "erm", "enterprise", "overall",
+                             "combined", "unified", "framework", "holistic"])
         # Internal controls (RSK-05 is in LA scope)
         if cid == "RSK-05":
             keywords.update(["internal", "controls", "audit", "trail", "maker", "checker",
@@ -913,7 +928,7 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
     # IMPORTANT: SSBJ mandates disclosure across all pillars. Items not in initial
     # LA scope are still mandatory for disclosure — they just won't be assured in
     # the first year. Value chain analysis, Scope 3, scenario analysis, etc. are
-    # all mandatory even though initial LA covers only Scope 1 & 2.
+    # all mandatory even though initial LA covers Scope 1 & 2, Governance, and Risk Mgmt.
     obligation = best_c.get("obligation", "")
     la_scope = best_c.get("la_scope", "")
 
@@ -940,7 +955,7 @@ def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, respon
         verdict = "essential"
         explanation = (
             f"ESSENTIAL — mandatory disclosure requirement. This maps to {best_id} ({best_c.get('category', '')}). "
-            f"Not in initial limited assurance scope (Scope 1 & 2 only) but IS required for SSBJ-compliant disclosure. "
+            f"Not in initial limited assurance scope (first 2 years: Scope 1 & 2, Governance, Risk Mgmt) but IS required for SSBJ-compliant disclosure. "
             f"SSBJ allows proportionality in first year but you must address it."
         )
         color = "danger"
@@ -1117,6 +1132,7 @@ def review_consultant(assessment_id):
                 "coverage_pct": round(
                     (len(all_matched_ids) / len(SSBJ_CRITERIA)) * 100
                 ) if SSBJ_CRITERIA else 0,
+                "total_criteria": len(SSBJ_CRITERIA),
             }
 
     return render_template(
@@ -1208,7 +1224,7 @@ def _compare_with_roadmap(our_roadmap, consultant_results, matched_ids, criteria
             "area": "IT Systems",
             "our_approach": "Based on your metrics scores (<2), we recommend IT investment for GHG calculation. However, minimum viable approach is well-controlled spreadsheets.",
             "consultant_note": "If the consultant recommends expensive GHG/ESG software, verify this is proportionate to your needs. "
-                               "For initial Scope 1 & 2 only, controlled Excel workbooks can satisfy assurance requirements at fraction of the cost.",
+                               "For initial LA scope (Scope 1 & 2, Governance, Risk Mgmt), controlled Excel workbooks can satisfy assurance requirements at fraction of the cost.",
         })
 
     # Prioritization comparison

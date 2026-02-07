@@ -15,23 +15,29 @@ Each criterion has:
 - obligation: "mandatory" (SHALL - required by SSBJ), "recommended" (SHOULD - expected
   practice), or "interpretive" (entity judgment on how to comply)
 - la_scope: Whether this item is in scope for initial limited assurance
-  - "in_scope" = directly subject to limited assurance (Scope 1 & 2 and their controls)
+  - "in_scope" = directly subject to limited assurance (first 2 years: Scope 1 & 2,
+    Governance, and Risk Management per FSA July 2025 roadmap)
   - "supporting" = needed to support assurance-ready disclosures
-  - "not_in_initial_scope" = not in initial limited assurance scope (may expand later)
+  - "not_in_initial_scope" = not in initial limited assurance scope (may expand from year 3)
 - la_priority: "essential" / "important" / "nice_to_have" for minimum viable compliance
 - internal_controls: Specific internal controls needed for limited assurance (if applicable)
 - guidance: Guidance on what good practice looks like
 - assurance_focus: What a limited assurance reviewer would look for
 
 Sources:
-- FSA Roadmap on Sustainability Disclosure and Assurance (Nov 2025)
+- FSA Roadmap on Sustainability Disclosure and Assurance (July 2025, updated Nov 2025)
+- FSA Working Group Report (December 2025)
 - SSBJ Standards (March 2025)
-- ISAE 3000 / ISAE 3410 / ISSA 5000 requirements
+- ISSA 5000 (IAASB, approved Sep 2024, published Nov 2024, effective Dec 2026)
+- ISAE 3000 / ISAE 3410 (legacy standards, being replaced by ISSA 5000)
 
-Limited Assurance Scope (FSA Roadmap):
-- Initially focused on Scope 1 and Scope 2 GHG emissions only
+Limited Assurance Scope (FSA Roadmap, July 2025):
+- First 2 years: Scope 1 & 2 GHG emissions, Governance, and Risk Management
+- From 3rd year onwards: scope expansion under consideration (full SSBJ disclosures)
 - Mandatory assurance starts one year AFTER mandatory disclosure
-- Assurance scope may expand after the third year
+- Assurance level: limited assurance only (reasonable assurance NOT being considered)
+- Assurance standard: ISSA 5000 (JICPA drafting aligned domestic practice guideline)
+- Assurance providers: registration system under discussion (not limited to audit firms)
 """
 
 MATURITY_LEVELS = {
@@ -88,8 +94,8 @@ SSBJ_CRITERIA = [
         "category": "Board Oversight",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Disclose the governance body(ies) or individual(s) responsible for oversight of sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Identify specific board committees or members with sustainability oversight. Document their mandate, authority, and reporting lines.",
@@ -110,8 +116,8 @@ SSBJ_CRITERIA = [
         "category": "Board Oversight",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how the governance body's responsibilities are reflected in terms of reference, board mandates, and related policies.",
         "internal_controls": "",
         "guidance": "Ensure board charters and corporate governance policies explicitly reference sustainability oversight.",
@@ -130,8 +136,8 @@ SSBJ_CRITERIA = [
         "category": "Board Competence",
         "standard": "General (S1)",
         "obligation": "recommended",
-        "la_scope": "not_in_initial_scope",
-        "la_priority": "nice_to_have",
+        "la_scope": "supporting",
+        "la_priority": "important",
         "requirement": "Describe how the governance body ensures appropriate skills and competencies are available to oversee sustainability strategies.",
         "internal_controls": "",
         "guidance": "Document board member qualifications related to sustainability. Consider training programs.",
@@ -148,8 +154,8 @@ SSBJ_CRITERIA = [
         "category": "Management Role",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe management's role in governance processes, controls, and procedures used to monitor and oversee sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Define management roles with sustainability responsibilities. Establish clear reporting to the board.",
@@ -167,8 +173,8 @@ SSBJ_CRITERIA = [
         "category": "Climate Governance",
         "standard": "Climate (S2)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Disclose how climate-related risks and opportunities are factored into management's decision-making.",
         "internal_controls": "",
         "guidance": "Document how climate factors influence capital allocation and strategic decisions.",
@@ -306,8 +312,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Identification",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe the processes used to identify sustainability-related risks and opportunities.",
         "internal_controls": "",
         "guidance": "Establish a formal risk identification process including environmental scanning and materiality assessment.",
@@ -325,8 +331,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Assessment",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe the processes used to assess, prioritize, and monitor sustainability-related risks.",
         "internal_controls": "",
         "guidance": "Use consistent criteria for assessing likelihood and impact. Establish monitoring and escalation.",
@@ -343,8 +349,8 @@ SSBJ_CRITERIA = [
         "category": "Risk Integration",
         "standard": "General (S1)",
         "obligation": "mandatory",
-        "la_scope": "not_in_initial_scope",
-        "la_priority": "nice_to_have",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how sustainability risk management processes are integrated into overall risk management.",
         "internal_controls": "",
         "guidance": "Integrate sustainability risks into the enterprise risk management (ERM) framework.",
@@ -361,8 +367,8 @@ SSBJ_CRITERIA = [
         "category": "Climate Risk",
         "standard": "Climate (S2)",
         "obligation": "mandatory",
-        "la_scope": "supporting",
-        "la_priority": "important",
+        "la_scope": "in_scope",
+        "la_priority": "essential",
         "requirement": "Describe how climate-related risks are identified, assessed, and managed, including physical and transition risks.",
         "internal_controls": "",
         "guidance": "Cover both physical risks (acute/chronic) and transition risks (policy, technology, market, reputation).",
@@ -573,8 +579,12 @@ SSBJ_CRITERIA = [
 LIMITED_ASSURANCE_CRITERIA = [
     # =========================================================================
     # INTERNAL CONTROLS REQUIRED FOR LIMITED ASSURANCE
-    # Based on ISAE 3000 / ISAE 3410 / ISSA 5000 requirements
-    # Focused on MINIMUM requirements for Scope 1 & 2 assurance
+    # Based on ISSA 5000 (replacing ISAE 3000 / ISAE 3410)
+    # FSA Roadmap (July 2025): First 2 years scope covers:
+    #   - Scope 1 & 2 GHG emissions (LA-01 to LA-10)
+    #   - Governance disclosures (LA-11 to LA-13)
+    #   - Risk Management disclosures (LA-14 to LA-16)
+    # From 3rd year: scope expansion to full SSBJ disclosures under consideration
     # =========================================================================
     {
         "id": "LA-01",
@@ -653,8 +663,66 @@ LIMITED_ASSURANCE_CRITERIA = [
         "category": "Management Representations",
         "obligation": "essential",
         "requirement": "Management provides written representations on completeness and accuracy of GHG data.",
-        "guidance": "Management representation letter confirming: responsibility for GHG data, completeness of emission sources, accuracy of calculations, and disclosure of all known errors.",
+        "guidance": "Management representation letter confirming: responsibility for GHG data, completeness of emission sources, accuracy of calculations, and disclosure of all known errors. Under ISSA 5000, management must also confirm responsibility for the sustainability information and the internal controls over it.",
         "internal_controls": "Annual management representation letter template. Sign-off by appropriate management level.",
+    },
+    # =========================================================================
+    # GOVERNANCE ASSURANCE READINESS (in scope from year 1)
+    # FSA Roadmap: Governance disclosures are in initial LA scope
+    # Assurance provider will inquire about governance processes per IFRS S1 para 26-27
+    # =========================================================================
+    {
+        "id": "LA-11",
+        "category": "Governance Oversight Documentation",
+        "obligation": "essential",
+        "requirement": "Document the governance body(ies) or individual(s) responsible for sustainability oversight, including their mandate and authority.",
+        "guidance": "Maintain formal records showing: (1) Which body/individual has sustainability oversight responsibility, (2) Terms of reference or mandate explicitly referencing sustainability, (3) Role descriptions and reporting lines. Under ISSA 5000 limited assurance, the practitioner will inquire about governance processes and inspect supporting documentation.",
+        "internal_controls": "Formal board/committee charter with sustainability mandate. Governance structure chart. Annual review of terms of reference.",
+    },
+    {
+        "id": "LA-12",
+        "category": "Governance Reporting Evidence",
+        "obligation": "essential",
+        "requirement": "Maintain evidence of regular governance body engagement with sustainability matters: meeting minutes, briefing materials, and decision records.",
+        "guidance": "Assurance providers will seek evidence that governance oversight is not just documented on paper but actually functioning. Maintain: (1) Board/committee meeting minutes showing sustainability agenda items, (2) Briefing materials provided to the governance body, (3) Records of frequency of sustainability briefings (IFRS S1 requires disclosure of how often the body is informed), (4) Evidence of decisions or actions taken.",
+        "internal_controls": "Minimum quarterly sustainability agenda items in relevant board/committee meetings. Minutes retained for assurance period. Briefing materials archived.",
+    },
+    {
+        "id": "LA-13",
+        "category": "Management Role Documentation",
+        "obligation": "essential",
+        "requirement": "Document management's role in monitoring and overseeing sustainability-related risks and opportunities, including designated personnel and reporting to governance body.",
+        "guidance": "Clearly document: (1) Named management personnel responsible for sustainability data and reporting, (2) Their specific responsibilities and authority, (3) How management reports to the governance body on sustainability matters, (4) Evidence of management's sustainability monitoring activities. This supports IFRS S1 para 27 requirements on management's role.",
+        "internal_controls": "RACI matrix or role description for sustainability management. Evidence of management reporting to board (reports, memos, dashboards).",
+    },
+    # =========================================================================
+    # RISK MANAGEMENT ASSURANCE READINESS (in scope from year 1)
+    # FSA Roadmap: Risk Management disclosures are in initial LA scope
+    # Assurance provider will inquire about risk processes per IFRS S1 para 43
+    # =========================================================================
+    {
+        "id": "LA-14",
+        "category": "Risk Process Documentation",
+        "obligation": "essential",
+        "requirement": "Document the processes used to identify, assess, and prioritize sustainability-related risks and opportunities.",
+        "guidance": "Maintain documentation showing: (1) How sustainability risks are identified (methodology, inputs, data sources), (2) How risks are assessed (likelihood/impact criteria, scoring methodology), (3) How risks are prioritized relative to other business risks, (4) How risks are monitored over time. Under ISSA 5000 limited assurance, the practitioner will inquire about these processes and review supporting documentation.",
+        "internal_controls": "Written risk identification and assessment methodology. Risk register with documented assessment criteria. Annual review cycle.",
+    },
+    {
+        "id": "LA-15",
+        "category": "Risk Assessment Records",
+        "obligation": "essential",
+        "requirement": "Maintain records of risk assessments performed, including inputs, parameters, scope, outcomes, and risk owners.",
+        "guidance": "For each assessment cycle, retain: (1) Risk register with identified risks and opportunities, (2) Assessment scores/ratings with supporting rationale, (3) Named risk owners, (4) Monitoring status and actions taken, (5) Changes from prior period assessments. IFRS S1 para 43 requires disclosure of how processes have changed from the prior year.",
+        "internal_controls": "Dated risk register. Version history showing changes. Risk owner sign-off. Year-over-year comparison documentation.",
+    },
+    {
+        "id": "LA-16",
+        "category": "Risk Integration Evidence",
+        "obligation": "essential",
+        "requirement": "Document how sustainability risk management processes are integrated into the entity's overall risk management framework.",
+        "guidance": "The assurance provider will look for evidence that sustainability risks are not managed in isolation. Document: (1) How sustainability risks feed into enterprise risk management (ERM), (2) Whether sustainability risks are reported alongside other business risks, (3) Integration points between sustainability risk processes and existing risk governance. IFRS S1 para 43 explicitly requires this disclosure.",
+        "internal_controls": "ERM framework document showing sustainability integration. Combined risk reporting to board. Cross-reference between sustainability risk register and ERM risk register.",
     },
 ]
 
