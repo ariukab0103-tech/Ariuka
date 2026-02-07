@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SSBJ Gap Analysis Tool{% endblock %}</title>
+    <!-- Preconnect to CDNs for faster loading -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
@@ -41,6 +44,33 @@
         .pillar-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; }
         .progress { height: 8px; border-radius: 4px; }
         .table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #718096; }
+
+        /* Toast notifications */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { min-width: 280px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; }
+        .toast-success { background: #38a169; color: white; }
+        .toast-danger { background: #e53e3e; color: white; }
+        .toast-warning { background: #d69e2e; color: white; }
+        .toast-info { background: #2b6cb0; color: white; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* Loading overlay for buttons */
+        .btn-loading { pointer-events: none; opacity: 0.7; }
+        .btn-loading .spinner-border { width: 1em; height: 1em; border-width: 0.15em; }
+
+        /* Smooth transitions */
+        .table tbody tr { transition: background-color 0.2s ease; }
+        .score-select { transition: border-color 0.2s ease; }
+
+        /* Responsive table improvements */
+        @media (max-width: 768px) {
+            .sidebar { display: none !important; }
+            main { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+            .table { font-size: 0.8rem; }
+            .pillar-header { padding: 0.75rem 1rem; }
+            .pillar-header h5 { font-size: 1rem; }
+            .d-flex.gap-2 { flex-wrap: wrap; }
+        }
 
         /* Print styles for PDF export */
         @media print {
@@ -315,8 +345,68 @@
     </script>
     {% endif %}
 
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <script>
+    /* ── Global toast notifications ── */
+    function showToast(message, type, duration) {
+        type = type || 'info';
+        duration = duration || 3000;
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = 'toast toast-' + type + ' px-3 py-2 mb-2 d-flex align-items-center';
+        const icons = { success: 'check-circle-fill', danger: 'exclamation-triangle-fill', warning: 'exclamation-circle-fill', info: 'info-circle-fill' };
+        toast.innerHTML = '<i class="bi bi-' + (icons[type] || 'info-circle-fill') + ' me-2"></i><span>' + message + '</span>';
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, duration);
+    }
+
+    /* ── Auto-convert flash messages to toasts ── */
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
+            var type = 'info';
+            if (alert.classList.contains('alert-success')) type = 'success';
+            else if (alert.classList.contains('alert-danger')) type = 'danger';
+            else if (alert.classList.contains('alert-warning')) type = 'warning';
+            showToast(alert.textContent.trim(), type, 4000);
+            alert.remove();
+        });
+    });
+
+    /* ── Loading button helper ── */
+    function setButtonLoading(btn, loading) {
+        if (loading) {
+            btn._originalHtml = btn.innerHTML;
+            btn.classList.add('btn-loading');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + (btn.dataset.loadingText || 'Working...');
+        } else {
+            btn.classList.remove('btn-loading');
+            btn.innerHTML = btn._originalHtml || btn.innerHTML;
+        }
+    }
+
+    /* ── Auto-add loading state to forms ── */
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form[method="POST"]').forEach(function(form) {
+            if (form.dataset.noLoading) return;
+            form.addEventListener('submit', function() {
+                var btn = form.querySelector('button[type="submit"]');
+                if (btn && !btn.classList.contains('btn-loading')) {
+                    setButtonLoading(btn, true);
+                }
+            });
+        });
+    });
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

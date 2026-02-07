@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_from_directory, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
@@ -49,8 +49,11 @@ assessment_bp = Blueprint("assessment", __name__, url_prefix="/assessments")
 @assessment_bp.route("/")
 @login_required
 def list_assessments():
+    from sqlalchemy.orm import joinedload
     if current_user.is_admin:
-        assessments = Assessment.query.order_by(Assessment.updated_at.desc()).all()
+        assessments = Assessment.query.options(
+            joinedload(Assessment.author)
+        ).order_by(Assessment.updated_at.desc()).all()
         shared_assessments = []
     else:
         # Own assessments
@@ -59,16 +62,15 @@ def list_assessments():
             .order_by(Assessment.updated_at.desc())
             .all()
         )
-        # Assessments shared with me
-        shared_ids = [
-            a.assessment_id for a in
-            AssessmentAccess.query.filter_by(user_id=current_user.id).all()
-        ]
+        # Assessments shared with me — single efficient query
         shared_assessments = (
-            Assessment.query.filter(Assessment.id.in_(shared_ids))
+            Assessment.query
+            .join(AssessmentAccess, AssessmentAccess.assessment_id == Assessment.id)
+            .filter(AssessmentAccess.user_id == current_user.id)
+            .options(joinedload(Assessment.author))
             .order_by(Assessment.updated_at.desc())
             .all()
-        ) if shared_ids else []
+        )
     return render_template(
         "assessment/list.html",
         assessments=assessments,
@@ -125,22 +127,29 @@ def view(assessment_id):
         return denied
 
     criteria_by_pillar = get_criteria_by_pillar()
-    responses = {r.criterion_id: r for r in assessment.responses.all()}
+
+    # Single query for all responses (avoid N+1)
+    all_responses = assessment.responses.all()
+    responses = {r.criterion_id: r for r in all_responses}
     documents = assessment.documents.order_by(AssessmentDocument.uploaded_at.desc()).all()
 
-    total_count = assessment.responses.count()
-    scored_count = assessment.responses.filter(Response.score.isnot(None)).count()
+    total_count = len(all_responses)
+    scored_count = sum(1 for r in all_responses if r.score is not None)
     unanswered_count = total_count - scored_count
     ai_enabled = bool(os.environ.get("ANTHROPIC_API_KEY", ""))
     user_perm = assessment.user_permission(current_user)
     can_edit = user_perm in ("owner", "manage", "edit")
     can_manage = user_perm in ("owner", "manage")
 
-    # Team members for sharing panel
+    # Team members for sharing panel — eager-load user relationships
     team_members = []
     all_users = []
     if can_manage:
-        team_members = assessment.team_access.all()
+        from sqlalchemy.orm import joinedload
+        team_members = assessment.team_access.options(
+            joinedload(AssessmentAccess.user),
+            joinedload(AssessmentAccess.grantor),
+        ).all()
         all_users = User.query.filter(
             User.id != assessment.user_id
         ).order_by(User.full_name).all()
@@ -230,29 +239,56 @@ def assess_criterion(assessment_id, criterion_id):
 @assessment_bp.route("/<int:assessment_id>/bulk-save", methods=["POST"])
 @login_required
 def bulk_save(assessment_id):
-    """Save all inline score changes from the assessment view."""
+    """Save all inline score changes — supports both form POST and AJAX JSON."""
     assessment = db.session.get(Assessment, assessment_id)
     denied = _require_access(assessment, "edit")
     if denied:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Access denied"}), 403
         return denied
 
+    is_ajax = request.is_json
+    scores = request.get_json() if is_ajax else None
+
     updated = 0
+    scored_count = 0
+    total_count = 0
     for resp in assessment.responses.all():
+        total_count += 1
         form_key = f"score_{resp.criterion_id}"
-        score_val = request.form.get(form_key, "")
+        if is_ajax:
+            score_val = str(scores.get(form_key, "")) if scores else ""
+        else:
+            score_val = request.form.get(form_key, "")
+
         if score_val.isdigit():
             new_score = int(score_val)
             if resp.score != new_score:
                 resp.score = new_score
                 updated += 1
+            scored_count += 1
         elif score_val == "" and resp.score is not None:
             resp.score = None
             updated += 1
+        elif resp.score is not None:
+            scored_count += 1
 
     if assessment.status == "draft" and updated > 0:
         assessment.status = "in_progress"
 
     db.session.commit()
+
+    if is_ajax:
+        pct = round(scored_count / total_count * 100) if total_count else 0
+        return jsonify({
+            "ok": True,
+            "updated": updated,
+            "scored_count": scored_count,
+            "total_count": total_count,
+            "completion_pct": pct,
+            "overall_score": assessment.overall_score,
+        })
+
     if updated > 0:
         flash(f"Saved {updated} score change(s).", "success")
     else:

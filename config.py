@@ -13,6 +13,14 @@ class Config:
         _db_url = _db_url.replace("postgres://", "postgresql://", 1)
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # PostgreSQL connection pooling for speed
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,       # verify connections before using
+        "pool_recycle": 300,         # recycle connections every 5 min
+        "pool_size": 5,              # keep 5 connections ready
+        "max_overflow": 10,          # allow 10 extra under load
+    } if "DATABASE_URL" in os.environ else {}
     UPLOAD_FOLDER = os.path.join(basedir, "instance", "uploads")
     MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MB max upload
     ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "xls", "xlsx", "csv", "png", "jpg", "jpeg", "txt"}
