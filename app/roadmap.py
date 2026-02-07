@@ -413,7 +413,7 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         "management": [
             "Management sign-off on draft sustainability disclosure",
             "Board reviews draft disclosure before publication",
-            "Assess completeness: all 23 SSBJ criteria covered?",
+            "Assess completeness: all 25 SSBJ criteria covered?",
         ],
         "technical": [
             "Complete full GHG inventory calculation (Scope 1 & 2) using actual data",
