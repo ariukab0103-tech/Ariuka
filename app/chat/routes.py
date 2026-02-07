@@ -151,7 +151,8 @@ def _get_assessment_context(assessment_id):
     if not assessment_id:
         return ""
 
-    assessment = Assessment.query.get(assessment_id)
+    from app import db
+    assessment = db.session.get(Assessment, assessment_id)
     if not assessment:
         return ""
 
