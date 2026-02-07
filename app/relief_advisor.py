@@ -6,9 +6,15 @@ assessment based on:
 - Fiscal year and reporting timeline
 - Current maturity scores
 - LA scope status (in_scope, supporting, not_in_initial_scope)
+- SSBJ standard classification (No.1 General vs No.2 Climate)
 
 Provides prioritized, actionable recommendations on what can be deferred,
 simplified, or must be addressed immediately.
+
+Key transition relief sources:
+- IFRS S1 Appendix E (general transition provisions)
+- SSBJ Application Standard No.3 (Japan-specific implementation)
+- SSBJ Schedule of Differences vs ISSB (jurisdiction-specific alternatives)
 """
 
 import re
@@ -124,6 +130,41 @@ _JAPAN_ALTERNATIVES = {
         "action": "Create a mapping table between sustainability disclosures and specific line items in your annual securities report.",
         "benefit": "FSA encourages this approach — demonstrates connectivity without complex new analysis.",
     },
+    "STR-05": {
+        "alternative": "Transition plan: qualitative directional statement accepted",
+        "action": "State directional commitment (e.g., 'pursuing carbon neutrality') with high-level timeline. Detailed plan can follow in Year 2.",
+        "benefit": "No need for detailed CAPEX allocation or technology pathway analysis in Year 1.",
+    },
+    "MET-06": {
+        "alternative": "Information on size (規模に関する情報) instead of monetary amounts",
+        "action": "Describe climate-related risk/opportunity exposure by size or proportion (e.g., '% of assets in flood zones', '% revenue from carbon-intensive products') instead of quantitative JPY amounts.",
+        "benefit": "SSBJ Schedule of Differences explicitly allows this. Avoids complex financial impact quantification that most companies are not yet ready for.",
+    },
+    "STR-06": {
+        "alternative": "Information on size (規模に関する情報) for physical/transition risk assets",
+        "action": "Use qualitative size descriptions for physical risk exposure (e.g., 'X% of manufacturing capacity in high-risk regions') instead of quantified monetary values.",
+        "benefit": "SSBJ-specific concession vs ISSB — significantly reduces analytical burden for early disclosures.",
+    },
+    "RSK-03": {
+        "alternative": "Leverage existing ERM framework for climate risk integration",
+        "action": "If your ERM already identifies climate risks, cross-reference and extend the existing register rather than building a separate climate risk framework.",
+        "benefit": "Demonstrates integration without creating parallel risk systems.",
+    },
+}
+
+# Criteria that explicitly have NO transitional relief — must be addressed from Year 1
+# (Governance + Risk Management are in initial limited assurance scope)
+_NO_RELIEF_ITEMS = {
+    "GOV-01": "Governance oversight: board/committee responsibility must be documented from Year 1. In initial LA scope.",
+    "GOV-02": "Management roles: sustainability data ownership and sign-off must be defined from Year 1. In initial LA scope.",
+    "GOV-03": "Board skills: assess sustainability competence. Supporting criterion (SHOULD) but expected by assurance providers.",
+    "GOV-04": "Strategy integration: board must consider sustainability in strategic decisions. In initial LA scope.",
+    "GOV-05": "Target oversight: board must oversee target-setting process. In initial LA scope.",
+    "RSK-01": "Risk identification: document climate risk identification process from Year 1. In initial LA scope.",
+    "RSK-02": "Risk assessment: methodology for prioritizing climate risks must exist from Year 1. In initial LA scope.",
+    "RSK-03": "Risk mitigation: document risk response strategy from Year 1. In initial LA scope.",
+    "RSK-04": "ERM integration: demonstrate climate risk is part of overall risk management. In initial LA scope.",
+    "RSK-05": "Internal controls: controls over sustainability data must be in place from Year 1. In initial LA scope.",
 }
 
 
@@ -229,6 +270,24 @@ def generate_relief_plan(assessment, responses):
         }
         relief_items.append(item)
 
+    # No-relief items (GOV + RSK — must be in place from Year 1)
+    no_relief_items = []
+    for c in SSBJ_CRITERIA:
+        if c["id"] not in _NO_RELIEF_ITEMS:
+            continue
+        resp = responses.get(c["id"])
+        score = resp.score if resp and resp.score is not None else None
+        at_risk = score is not None and score < 3
+        no_relief_items.append({
+            "criterion_id": c["id"],
+            "pillar": c["pillar"],
+            "category": c["category"],
+            "la_scope": c["la_scope"],
+            "score": score,
+            "at_risk": at_risk,
+            "reason": _NO_RELIEF_ITEMS[c["id"]],
+        })
+
     # Japan-specific alternatives (always applicable)
     japan_items = []
     for c in SSBJ_CRITERIA:
@@ -248,6 +307,49 @@ def generate_relief_plan(assessment, responses):
             "benefit": alt["benefit"],
         })
 
+    # Climate-only Year 1 analysis (SSBJ No.2 focus)
+    # Under SSBJ transition provisions, companies may focus on climate (S2)
+    # disclosures in Year 1 and expand to general (S1) in Year 2.
+    s1_criteria = [c for c in SSBJ_CRITERIA if c.get("standard") == "General (S1)"]
+    s2_criteria = [c for c in SSBJ_CRITERIA if c.get("standard") == "Climate (S2)"]
+    s1_count = len(s1_criteria)
+    s2_count = len(s2_criteria)
+
+    # Count S2 gaps (climate items that need work)
+    s2_gaps = 0
+    s1_gaps = 0
+    for c in SSBJ_CRITERIA:
+        resp = responses.get(c["id"])
+        if resp and resp.score is not None and resp.score < 3:
+            if c.get("standard") == "Climate (S2)":
+                s2_gaps += 1
+            else:
+                s1_gaps += 1
+
+    # S1 items that are NOT in initial LA scope (can potentially defer)
+    s1_deferrable = [c for c in s1_criteria
+                     if c["la_scope"] != "in_scope"]
+    # S1 items IN LA scope (cannot defer even in climate-only mode)
+    s1_la_scope = [c for c in s1_criteria
+                   if c["la_scope"] == "in_scope"]
+
+    climate_only_option = {
+        "available": is_first_year,
+        "s1_total": s1_count,
+        "s2_total": s2_count,
+        "s1_gaps": s1_gaps,
+        "s2_gaps": s2_gaps,
+        "s1_deferrable_count": len(s1_deferrable),
+        "s1_la_scope_count": len(s1_la_scope),
+        "s1_deferrable": [{"id": c["id"], "category": c["category"]} for c in s1_deferrable],
+        "s1_la_scope": [{"id": c["id"], "category": c["category"]} for c in s1_la_scope],
+        "note": (
+            "SSBJ transition provisions allow climate-focused (SSBJ No.2) disclosure in Year 1. "
+            f"However, {len(s1_la_scope)} General (S1) criteria are in initial LA scope "
+            "(Governance + Risk Management) and CANNOT be deferred regardless."
+        ),
+    }
+
     summary = {
         "is_first_year": is_first_year,
         "months_to_deadline": months_to_deadline,
@@ -257,10 +359,14 @@ def generate_relief_plan(assessment, responses):
         "total_simplified": total_simplified,
         "critical_now": critical_now,
         "japan_alternatives": len(japan_items),
+        "no_relief_count": len(no_relief_items),
+        "no_relief_at_risk": len([n for n in no_relief_items if n["at_risk"]]),
     }
 
     return {
         "relief_items": relief_items,
+        "no_relief_items": no_relief_items,
         "summary": summary,
         "japan_items": japan_items,
+        "climate_only_option": climate_only_option,
     }

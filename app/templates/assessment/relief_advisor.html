@@ -245,6 +245,96 @@
 </div>
 {% endif %}
 
+<!-- No Relief: Must Address from Year 1 -->
+{% if no_relief_items %}
+<div class="card mb-4" style="border: 1px solid rgba(239,68,68,0.3);">
+    <div class="card-header">
+        <i class="bi bi-x-octagon me-2 text-danger"></i>
+        <strong>No Relief Available — Must Address from Year 1 ({{ no_relief_items|length }})</strong>
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">These criteria are in the initial limited assurance scope (Governance + Risk Management). There is <strong>no transitional relief</strong> — they must be fully in place from the first reporting year.</p>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Why No Relief</th></tr></thead>
+                <tbody>
+                    {% for item in no_relief_items %}
+                    <tr {% if item.at_risk %}style="background: rgba(239,68,68,0.06);"{% endif %}>
+                        <td><code>{{ item.criterion_id }}</code></td>
+                        <td><small>{{ item.category }}</small></td>
+                        <td>{% if item.score is not none %}<span class="score-badge score-{{ item.score }}">{{ item.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td>{% if item.at_risk %}<span class="badge bg-danger">At Risk</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
+                        <td><small class="text-muted">{{ item.reason }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Climate-Only Year 1 Option -->
+{% if climate_only_option and climate_only_option.available %}
+<div class="card mb-4" style="border: 1px solid rgba(59,130,246,0.4);">
+    <div class="card-header" style="background: var(--gradient-blue);">
+        <i class="bi bi-cloud-sun me-2 text-white"></i>
+        <span class="text-white fw-bold">Climate-Only Year 1 Option (SSBJ No.2 Focus)</span>
+    </div>
+    <div class="card-body">
+        <p class="small mb-3">{{ climate_only_option.note }}</p>
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="card"><div class="card-body text-center py-2">
+                    <div class="fw-bold" style="font-size: 1.1rem;">{{ climate_only_option.s2_total }}</div>
+                    <small class="text-muted">Climate (S2) Criteria</small>
+                    {% if climate_only_option.s2_gaps %}<br><small class="text-danger">{{ climate_only_option.s2_gaps }} gaps</small>{% endif %}
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card"><div class="card-body text-center py-2">
+                    <div class="fw-bold" style="font-size: 1.1rem;">{{ climate_only_option.s1_total }}</div>
+                    <small class="text-muted">General (S1) Criteria</small>
+                    {% if climate_only_option.s1_gaps %}<br><small class="text-danger">{{ climate_only_option.s1_gaps }} gaps</small>{% endif %}
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card" style="border-color: rgba(34,197,94,0.5);"><div class="card-body text-center py-2">
+                    <div class="fw-bold text-success" style="font-size: 1.1rem;">{{ climate_only_option.s1_deferrable_count }}</div>
+                    <small class="text-muted">S1 Items Deferrable</small>
+                </div></div>
+            </div>
+            <div class="col-md-3">
+                <div class="card" style="border-color: rgba(239,68,68,0.5);"><div class="card-body text-center py-2">
+                    <div class="fw-bold text-danger" style="font-size: 1.1rem;">{{ climate_only_option.s1_la_scope_count }}</div>
+                    <small class="text-muted">S1 Items NOT Deferrable</small>
+                    <br><small class="text-muted">(in LA scope)</small>
+                </div></div>
+            </div>
+        </div>
+
+        {% if climate_only_option.s1_deferrable %}
+        <h6 class="small fw-bold mb-2"><i class="bi bi-check-circle text-success me-1"></i>General (S1) criteria you CAN defer to Year 2:</h6>
+        <div class="d-flex flex-wrap gap-1 mb-3">
+            {% for item in climate_only_option.s1_deferrable %}
+            <span class="badge bg-success bg-opacity-75"><code class="text-white">{{ item.id }}</code> {{ item.category }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if climate_only_option.s1_la_scope %}
+        <h6 class="small fw-bold mb-2"><i class="bi bi-x-circle text-danger me-1"></i>General (S1) criteria you CANNOT defer (in LA scope):</h6>
+        <div class="d-flex flex-wrap gap-1 mb-2">
+            {% for item in climate_only_option.s1_la_scope %}
+            <span class="badge bg-danger bg-opacity-75"><code class="text-white">{{ item.id }}</code> {{ item.category }}</span>
+            {% endfor %}
+        </div>
+        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Even in "climate-only" mode, Governance and Risk Management criteria remain mandatory because they are in the initial limited assurance scope.</small>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 <!-- Year 1 vs Year 2 Comparison -->
 <div class="card mb-4">
     <div class="card-header"><i class="bi bi-arrow-left-right me-2"></i>Year 1 vs Year 2+ Requirements</div>

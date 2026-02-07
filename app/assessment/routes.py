@@ -472,13 +472,19 @@ def download_report(assessment_id):
             if criterion:
                 gaps.append({"response": r, "criterion": criterion})
 
-    # Roadmap data
+    # Roadmap data (also needed for exec summary)
     roadmap_data = None
-    if "roadmap" in sections:
+    if "roadmap" in sections or "exec" in sections:
         from app.roadmap import generate_roadmap
         scored = [r for r in all_responses if r.score is not None]
         if scored:
             roadmap_data = generate_roadmap(assessment, scored)
+
+    # Executive summary
+    exec_data = None
+    if "exec" in sections:
+        from app.executive_summary import generate_executive_summary
+        exec_data = generate_executive_summary(assessment, responses, pillar_scores, roadmap_data)
 
     # RACI data
     raci_data = None
@@ -508,6 +514,7 @@ def download_report(assessment_id):
         pillar_scores=pillar_scores,
         category_scores=category_scores,
         gaps=gaps,
+        exec_summary=exec_data,
         roadmap=roadmap_data,
         raci=raci_data,
         relief=relief_data,
@@ -1078,8 +1085,10 @@ def relief_advisor(assessment_id):
         "assessment/relief_advisor.html",
         assessment=assessment,
         relief_items=relief_data["relief_items"],
+        no_relief_items=relief_data.get("no_relief_items", []),
         summary=relief_data["summary"],
         japan_items=relief_data["japan_items"],
+        climate_only_option=relief_data.get("climate_only_option"),
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
     )
