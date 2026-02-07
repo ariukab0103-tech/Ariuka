@@ -179,9 +179,8 @@
 
         <!-- File Upload & AI Assess Section -->
         <div class="card mt-4" id="upload-section">
-            <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <span><i class="bi bi-file-earmark-arrow-up me-2"></i>Supporting Documents & AI Assessment</span>
-                {% if assessment.status in ('draft', 'in_progress') %}
                 <form method="POST" action="{{ url_for('assessment.ai_assess_criterion', assessment_id=assessment.id, criterion_id=criterion.id) }}"
                       class="d-inline" id="aiAssessForm">
                     <button type="submit" class="btn btn-sm btn-primary" id="aiAssessBtn"
@@ -189,7 +188,6 @@
                         <i class="bi bi-robot me-1"></i>AI Assess This Criterion
                     </button>
                 </form>
-                {% endif %}
             </div>
             <div class="card-body">
                 <p class="text-muted small mb-3">
@@ -198,7 +196,6 @@
                     to get an AI-powered score based on your specific evidence for this criterion.
                 </p>
 
-                {% if assessment.status in ('draft', 'in_progress') %}
                 <form method="POST" enctype="multipart/form-data"
                       action="{{ url_for('assessment.upload_file', assessment_id=assessment.id, criterion_id=criterion.id) }}">
                     <div class="mb-3">
@@ -211,7 +208,6 @@
                     </button>
                 </form>
                 <hr>
-                {% endif %}
 
                 {% set files = response.attachments.all() %}
                 {% if files %}
@@ -232,14 +228,12 @@
                             <a href="{{ url_for('assessment.download_file', attachment_id=file.id) }}" class="btn btn-sm btn-outline-success" title="Download">
                                 <i class="bi bi-download"></i>
                             </a>
-                            {% if assessment.status in ('draft', 'in_progress') %}
                             <form method="POST" action="{{ url_for('assessment.delete_file', assessment_id=assessment.id, attachment_id=file.id) }}"
                                   onsubmit="return confirm('Delete this file?');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
-                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
