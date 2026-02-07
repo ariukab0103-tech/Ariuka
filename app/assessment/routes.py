@@ -1010,6 +1010,31 @@ def relief_advisor(assessment_id):
     )
 
 
+@assessment_bp.route("/<int:assessment_id>/audit-simulator")
+@login_required
+def audit_simulator(assessment_id):
+    """C3: Assurance Readiness Simulator — mock audit walkthrough."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    from app.assurance_simulator import generate_simulation
+    sim_data = generate_simulation(assessment, responses)
+
+    return render_template(
+        "assessment/audit_simulator.html",
+        assessment=assessment,
+        ssbj_items=sim_data["ssbj_items"],
+        la_items=sim_data["la_items"],
+        readiness_summary=sim_data["readiness_summary"],
+    )
+
+
 def _get_next_criterion(current_id):
     """Get the next criterion ID in sequence."""
     ids = [c["id"] for c in SSBJ_CRITERIA]

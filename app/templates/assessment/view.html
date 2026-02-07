@@ -49,6 +49,9 @@
         <a href="{{ url_for('assessment.relief_advisor', assessment_id=assessment.id) }}" class="btn btn-outline-success">
             <i class="bi bi-clock-history me-1"></i>Relief Advisor
         </a>
+        <a href="{{ url_for('assessment.audit_simulator', assessment_id=assessment.id) }}" class="btn btn-outline-danger">
+            <i class="bi bi-shield-check me-1"></i>Mock Audit
+        </a>
         {% endif %}
         {% if can_manage %}
         <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">
