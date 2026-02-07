@@ -238,7 +238,7 @@ def ask():
 
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
         response = client.messages.create(
             model="claude-sonnet-4-5-20250929",

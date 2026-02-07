@@ -101,7 +101,7 @@ def _get_anthropic_client():
         return None
     try:
         import anthropic
-        return anthropic.Anthropic(api_key=api_key)
+        return anthropic.Anthropic(api_key=api_key, timeout=90.0)
     except Exception as e:
         logger.warning(f"Failed to create Anthropic client: {e}")
         return None

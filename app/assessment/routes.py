@@ -770,7 +770,7 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
 
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
     except Exception:
         return None
 
@@ -801,8 +801,8 @@ def _ai_analyze_consultant_report(consultant_text, criteria_map, responses_map, 
             f"LA-critical gaps: {len(la_critical)} ({', '.join(la_ids)})"
         )
 
-    # Truncate consultant text if needed
-    max_chars = 30000
+    # Truncate consultant text if needed (keep short to avoid API timeout)
+    max_chars = 15000
     truncated = consultant_text[:max_chars] if len(consultant_text) > max_chars else consultant_text
 
     system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You are comparing an external consultant's report/proposal against:
@@ -882,7 +882,7 @@ IMPORTANT: Return ONLY valid JSON. No markdown, no commentary outside JSON."""
     try:
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=8000,
+            max_tokens=4000,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
         )
