@@ -96,6 +96,11 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Evidence of formal board mandate, committee terms of reference, and documented oversight activities.",
         "minimum_action": "Designate one existing board committee (e.g., Risk Committee) as responsible for sustainability oversight. Add one line to their terms of reference: 'oversight of sustainability-related risks and opportunities.' Minute this decision.",
         "best_practice": "Dedicated Sustainability Committee with named chair, quarterly meetings, formal terms of reference, direct reporting to full board, and documented agenda items. Peers like Toyota and Sony have standalone ESG committees with published charters.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 General Requirements for Sustainability-related Disclosures", "type": "compliance"},
+            {"url": "https://www.jpx.co.jp/english/equities/listing/cg/tvdivq0000008jdy-att/nlsgeu000006gevo.pdf", "label": "JPX CG Code", "title": "Japan Corporate Governance Code - ESG Oversight", "type": "compliance"},
+            {"url": "https://global.toyota/en/sustainability/esg/governance/", "label": "Toyota ESG Governance", "title": "Toyota ESG Committee Structure (Peer Example)", "type": "best_practice"},
+        ],
     },
     {
         "id": "GOV-02",
@@ -111,6 +116,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented policies and terms of reference that explicitly include sustainability.",
         "minimum_action": "Add sustainability oversight language to existing board committee charter or corporate governance policy. One paragraph is sufficient. Have the board formally approve the revised document.",
         "best_practice": "Standalone sustainability governance policy linked to corporate governance code, annual policy review cycle, published in integrated report. Leading companies cross-reference SSBJ requirements in their governance framework.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Governance Disclosure Requirements", "type": "compliance"},
+            {"url": "https://www.wbcsd.org/Programs/Redefining-Value/ISSB/Resources/Preparing-for-ISSB", "label": "WBCSD ISSB Guide", "title": "WBCSD Guide to Preparing for ISSB Standards", "type": "best_practice"},
+        ],
     },
     {
         "id": "GOV-03",
@@ -126,6 +135,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Board skills matrix, training records.",
         "minimum_action": "Not required for minimum compliance (SHOULD, not SHALL). If desired: arrange one sustainability briefing session for the board and note it in minutes.",
         "best_practice": "Board skills matrix including ESG competencies, annual sustainability training for all directors, external sustainability advisor retained, competency gaps assessed yearly.",
+        "references": [
+            {"url": "https://www.weforum.org/publications/esg-board-governance-guidance/", "label": "WEF ESG Board Guide", "title": "WEF Principles for Board Governance of ESG", "type": "best_practice"},
+        ],
     },
     {
         "id": "GOV-04",
@@ -141,6 +153,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Organizational charts, role descriptions, evidence of management reporting to board.",
         "minimum_action": "Assign sustainability data responsibility to an existing manager (e.g., Environmental Affairs or IR). Document their role in a brief memo and establish a reporting line to the board committee.",
         "best_practice": "Dedicated Chief Sustainability Officer or equivalent, cross-functional sustainability working group, documented RACI matrix, quarterly management reports to board with KPIs.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Management Role Requirements", "type": "compliance"},
+            {"url": "https://hbr.org/2022/03/the-role-of-the-chief-sustainability-officer", "label": "HBR: CSO Role", "title": "Harvard Business Review - The Role of the Chief Sustainability Officer", "type": "best_practice"},
+        ],
     },
     {
         "id": "GOV-05",
@@ -156,6 +172,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Evidence of climate considerations in management meeting minutes and investment decisions.",
         "minimum_action": "Add a climate risk checklist item to existing capital investment approval process. Minute at least one management discussion where climate was considered in a business decision.",
         "best_practice": "Systematic climate integration in all major investment decisions, internal carbon pricing applied to CAPEX, climate risk dashboard reviewed monthly by management, shadow carbon price in financial planning.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 Climate-related Disclosures", "type": "compliance"},
+            {"url": "https://www.cdp.net/en/guidance/guidance-for-companies", "label": "CDP Guidance", "title": "CDP Climate Governance and Internal Carbon Pricing Guide", "type": "best_practice"},
+        ],
     },
     # =========================================================================
     # STRATEGY
@@ -174,6 +194,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented risk register, methodology, time horizons applied.",
         "minimum_action": "Create a simple sustainability risk register listing 5-10 key risks and opportunities. For each, note the time horizon (short/medium/long-term) and potential impact (high/medium/low). One workshop is enough.",
         "best_practice": "Comprehensive risk register integrated with ERM, quantified financial impacts, regular stakeholder engagement to identify emerging risks, quarterly review cycle, published materiality matrix.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Risks & Opportunities Disclosure", "type": "compliance"},
+            {"url": "https://www.tcfdhub.org/resource/tcfd-knowledge-hub-risk-management/", "label": "TCFD Risk Guide", "title": "TCFD Knowledge Hub - Risk Management Resources", "type": "best_practice"},
+        ],
     },
     {
         "id": "STR-02",
@@ -189,6 +213,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Value chain mapping, business model impact assessment.",
         "minimum_action": "Write a 1-2 page narrative describing how your top 3 sustainability risks affect your business model. Include a simple value chain diagram showing where risks concentrate.",
         "best_practice": "Detailed value chain mapping with dependency analysis, quantified supply chain exposure, regular supplier engagement on sustainability, dynamic assessment updated annually.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Strategy & Business Model Disclosure", "type": "compliance"},
+            {"url": "https://www.sasb.org/standards/materiality-finder/", "label": "SASB Materiality", "title": "SASB Materiality Finder - Industry Value Chain Risks", "type": "best_practice"},
+        ],
     },
     {
         "id": "STR-03",
@@ -204,6 +232,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Financial impact methodology, assumptions, connection to financial planning.",
         "minimum_action": "Provide qualitative discussion of how sustainability risks may affect financial performance. Quantification can be phased in over time per SSBJ proportionality provisions.",
         "best_practice": "Quantified financial impact analysis connected to specific P&L and balance sheet items, scenario-based financial projections, integration with medium-term business plan.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Financial Effects Disclosure", "type": "compliance"},
+            {"url": "https://www.cdsb.net/what-we-do/reporting-guidance", "label": "CDSB Guidance", "title": "CDSB Framework - Connecting Sustainability to Financial Reporting", "type": "best_practice"},
+        ],
     },
     {
         "id": "STR-04",
@@ -219,6 +251,11 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Scenario selection rationale, methodology documentation.",
         "minimum_action": "Use two off-the-shelf scenarios (e.g., IEA NZE 2050 for transition, IPCC RCP 8.5 for physical). Write a qualitative narrative on how your strategy holds up under each. SSBJ allows proportionality.",
         "best_practice": "Multiple quantified scenarios (IEA, NGFS), sector-specific modeling, financial impact quantification per scenario, board-reviewed resilience conclusions, annual update cycle.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 Scenario Analysis Requirements", "type": "compliance"},
+            {"url": "https://www.iea.org/reports/world-energy-outlook-2024", "label": "IEA WEO Scenarios", "title": "IEA World Energy Outlook - NZE & STEPS Scenarios", "type": "best_practice"},
+            {"url": "https://www.ngfs.net/ngfs-scenarios-portal/", "label": "NGFS Scenarios", "title": "NGFS Climate Scenarios for Central Banks & Supervisors", "type": "best_practice"},
+        ],
     },
     {
         "id": "STR-05",
@@ -234,6 +271,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented transition plan, evidence of board approval, progress tracking.",
         "minimum_action": "Not required for minimum compliance (interpretive). If you have any decarbonization plans, simply disclose them. If not, state that a plan is under development.",
         "best_practice": "Board-approved transition plan with milestones, CAPEX allocation, SBTi-validated targets, annual progress reporting, third-party verification of progress.",
+        "references": [
+            {"url": "https://sciencebasedtargets.org/resources/files/SBTi-Corporate-Manual.pdf", "label": "SBTi Manual", "title": "Science Based Targets Initiative - Corporate Manual", "type": "best_practice"},
+            {"url": "https://transitiontaskforce.net/", "label": "TPT Framework", "title": "Transition Plan Taskforce - Disclosure Framework", "type": "best_practice"},
+        ],
     },
     {
         "id": "STR-06",
@@ -249,6 +290,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented resilience assessment.",
         "minimum_action": "Not required for minimum compliance (SHOULD, not SHALL). A brief qualitative statement on strategy resilience is sufficient if you choose to address it.",
         "best_practice": "Comprehensive resilience assessment linked to scenario analysis, adaptation strategies with timelines, regular board review of strategy resilience.",
+        "references": [
+            {"url": "https://www.tcfdhub.org/", "label": "TCFD Hub", "title": "TCFD Knowledge Hub - Strategy Resilience Resources", "type": "best_practice"},
+        ],
     },
     # =========================================================================
     # RISK MANAGEMENT
@@ -267,6 +311,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented risk identification methodology, evidence of regular execution.",
         "minimum_action": "Conduct one formal risk identification workshop. Document the process used (who participated, what was considered, how risks were identified). Keep the output as your risk register.",
         "best_practice": "Annual structured risk identification with stakeholder engagement, emerging risk scanning, integration with materiality assessment, dynamic risk register with regular updates.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s1-general-requirements/", "label": "IFRS S1 Standard", "title": "IFRS S1 Risk Management Process Disclosure", "type": "compliance"},
+            {"url": "https://www.iso.org/iso-31000-risk-management.html", "label": "ISO 31000", "title": "ISO 31000 Risk Management Framework", "type": "best_practice"},
+        ],
     },
     {
         "id": "RSK-02",
@@ -282,6 +330,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Risk assessment criteria, risk registers, monitoring evidence.",
         "minimum_action": "Add likelihood/impact scoring to your risk register (simple 3x3 matrix is sufficient). Document how you prioritize risks. Assign an owner to each top risk.",
         "best_practice": "Quantified risk assessment with defined criteria, risk dashboard with KRIs, regular monitoring reports to management, automated alerts for threshold breaches.",
+        "references": [
+            {"url": "https://www.coso.org/guidance-on-enterprise-risk-management", "label": "COSO ERM", "title": "COSO Enterprise Risk Management Framework", "type": "best_practice"},
+        ],
     },
     {
         "id": "RSK-03",
@@ -297,6 +348,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "ERM framework showing sustainability integration.",
         "minimum_action": "Add sustainability as a risk category in your existing ERM framework. One paragraph in ERM policy describing integration is sufficient for minimum compliance.",
         "best_practice": "Full integration of sustainability risks into ERM with unified risk appetite statement, cross-functional risk committee, combined reporting to board.",
+        "references": [
+            {"url": "https://www.coso.org/guidance-on-enterprise-risk-management", "label": "COSO ERM", "title": "COSO ERM - Integrating Sustainability Risks", "type": "all"},
+        ],
     },
     {
         "id": "RSK-04",
@@ -312,6 +366,11 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Climate risk assessment documentation, physical and transition risk categorization.",
         "minimum_action": "List your climate risks in two categories: physical (acute + chronic) and transition (policy, technology, market, reputation). Assess each as high/medium/low. Document in 1-2 pages.",
         "best_practice": "Quantified climate risk assessment using TCFD framework, physical risk modeling (flood, heat stress), transition risk analysis with financial impacts, mitigation strategies per risk.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 Climate Risk Identification & Assessment", "type": "compliance"},
+            {"url": "https://www.tcfdhub.org/resource/tcfd-knowledge-hub-risk-management/", "label": "TCFD Risk Guide", "title": "TCFD Risk Management Resources", "type": "best_practice"},
+            {"url": "https://www.unepfi.org/climate-change/tcfd/", "label": "UNEP FI TCFD", "title": "UNEP FI - TCFD Implementation for Financial Institutions", "type": "best_practice"},
+        ],
     },
     {
         "id": "RSK-05",
@@ -327,6 +386,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Documented control framework, control testing evidence, data quality procedures, segregation of duties.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Assign a data owner for GHG data. (2) Write a 1-page data collection procedure. (3) Implement maker-checker: one person calculates, another reviews. (4) Keep all source documents (invoices, meter readings). (5) Create a simple reconciliation checklist. This is the bare minimum an auditor needs to see.",
         "best_practice": "Full internal control framework comparable to financial reporting (SOX-like), automated data validation, continuous monitoring, segregation of duties matrix, regular control testing by internal audit, error tracking with root cause analysis.",
+        "references": [
+            {"url": "https://www.iaasb.org/publications/international-standard-assurance-engagements-isae-3410-assurance-engagements-greenhouse-gas-statements", "label": "ISAE 3410", "title": "ISAE 3410 - Assurance on GHG Statements (Internal Control Requirements)", "type": "compliance"},
+            {"url": "https://www.coso.org/guidance-on-internal-control", "label": "COSO ICIF", "title": "COSO Internal Control - Integrated Framework", "type": "best_practice"},
+        ],
     },
     # =========================================================================
     # METRICS & TARGETS
@@ -345,6 +408,11 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Emission calculation methodology, source data, emission factors, completeness of boundary, data quality checks.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) List ALL direct emission sources (boilers, vehicles, refrigerants, etc.). (2) Write a calculation procedure: activity data x emission factor = tCO2e. (3) Use government-published emission factors (MOE Japan or DEFRA). (4) Collect activity data from fuel invoices. (5) Have someone review the calculation. (6) Keep all source documents.",
         "best_practice": "Complete GHG inventory per GHG Protocol, third-party verified data, real-time monitoring systems, automated calculation tools, emission factors reviewed annually, continuous improvement of data quality.",
+        "references": [
+            {"url": "https://ghgprotocol.org/corporate-standard", "label": "GHG Protocol", "title": "GHG Protocol Corporate Standard - Scope 1 Calculation Guide", "type": "all"},
+            {"url": "https://www.env.go.jp/earth/ondanka/santeiho/index.html", "label": "MOE Japan EFs", "title": "Japan MOE Emission Factors Database (排出係数一覧)", "type": "compliance"},
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 GHG Emissions Disclosure Requirements", "type": "compliance"},
+        ],
     },
     {
         "id": "MET-02",
@@ -360,6 +428,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Both calculation approaches, grid factors, energy consumption data evidence.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Collect electricity bills for ALL facilities. (2) Calculate location-based: kWh x grid emission factor (use Japan's area-specific factors from MOE). (3) If you buy green electricity, also calculate market-based. (4) SSBJ requires BOTH methods. (5) Have someone review. (6) Keep utility invoices.",
         "best_practice": "Automated utility data collection, both location and market-based reported, renewable energy tracking with certificates, monthly monitoring, reconciliation to financial records, third-party verification.",
+        "references": [
+            {"url": "https://ghgprotocol.org/scope_2_guidance", "label": "GHG Protocol Scope 2", "title": "GHG Protocol Scope 2 Guidance - Location vs Market-Based", "type": "all"},
+            {"url": "https://www.env.go.jp/earth/ondanka/santeiho/index.html", "label": "MOE Japan EFs", "title": "Japan MOE Grid Emission Factors by Area", "type": "compliance"},
+        ],
     },
     {
         "id": "MET-03",
@@ -375,6 +447,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Category relevance assessment, calculation methodologies, data sources, assumptions.",
         "minimum_action": "Not in initial LA scope. For minimum compliance: identify which of the 15 Scope 3 categories are material to your business. Calculate at least the top 2-3 categories using industry averages. SSBJ provides a relief period for first-year reporting.",
         "best_practice": "All 15 categories assessed, material categories calculated with primary data where possible, supplier engagement program, annual improvement in data quality, science-based targeting for Scope 3.",
+        "references": [
+            {"url": "https://ghgprotocol.org/corporate-value-chain-scope-3-standard", "label": "GHG Protocol Scope 3", "title": "GHG Protocol Scope 3 Standard - Category Guide", "type": "all"},
+            {"url": "https://www.cdp.net/en/guidance/guidance-for-companies", "label": "CDP Supply Chain", "title": "CDP Supply Chain Reporting Guidance", "type": "best_practice"},
+        ],
     },
     {
         "id": "MET-04",
@@ -390,6 +466,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Target-setting methodology, base year data, progress tracking.",
         "minimum_action": "Set at least one GHG reduction target. Define: base year, target year, whether absolute or intensity, and scope covered (at least Scope 1+2). Even a modest target is better than none for compliance.",
         "best_practice": "SBTi-validated science-based targets for 1.5°C alignment, near-term and long-term targets, interim milestones, annual progress tracking with variance analysis, net-zero commitment with roadmap.",
+        "references": [
+            {"url": "https://www.ifrs.org/issued-standards/ifrs-sustainability-standards-navigator/ifrs-s2-climate-related-disclosures/", "label": "IFRS S2 Standard", "title": "IFRS S2 Climate Target Disclosure Requirements", "type": "compliance"},
+            {"url": "https://sciencebasedtargets.org/", "label": "SBTi", "title": "Science Based Targets Initiative - Target Setting", "type": "best_practice"},
+        ],
     },
     {
         "id": "MET-05",
@@ -405,6 +485,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Industry metric selection rationale if disclosed.",
         "minimum_action": "Not required for minimum compliance (interpretive). If desired: check SASB standards for your industry and select 1-2 relevant metrics to disclose.",
         "best_practice": "Full SASB industry standard disclosure, peer benchmarking, metrics integrated into management reporting, trend analysis over 3+ years.",
+        "references": [
+            {"url": "https://www.sasb.org/standards/", "label": "SASB Standards", "title": "SASB Industry-Specific Sustainability Standards", "type": "all"},
+        ],
     },
     {
         "id": "MET-06",
@@ -420,6 +503,9 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Methodology and data sources if disclosed.",
         "minimum_action": "Not required for minimum compliance (interpretive). If desired: start with internal carbon price — even a simple estimate helps demonstrate climate integration in decision-making.",
         "best_practice": "Internal carbon price applied to all CAPEX decisions, quantified transition and physical risk amounts, climate opportunity revenue tracking, capital deployment aligned to Paris goals.",
+        "references": [
+            {"url": "https://www.cdp.net/en/climate/carbon-pricing", "label": "CDP Carbon Pricing", "title": "CDP Internal Carbon Pricing Guide", "type": "best_practice"},
+        ],
     },
     {
         "id": "MET-07",
@@ -435,6 +521,10 @@ SSBJ_CRITERIA = [
         "assurance_focus": "Data governance framework, validation procedures, reconciliation evidence, data lineage.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Create a data flow diagram: where does data come from, who enters it, who checks it. (2) Add basic validation (e.g., compare this year to last year — flag if >20% change). (3) Keep a simple error log. (4) Do a completeness check before reporting (all sites reported?).",
         "best_practice": "Formal data governance policy, automated validation rules, real-time data quality dashboards, documented data lineage from source to disclosure, regular data quality audits, continuous improvement program.",
+        "references": [
+            {"url": "https://www.iaasb.org/publications/international-standard-assurance-engagements-isae-3410-assurance-engagements-greenhouse-gas-statements", "label": "ISAE 3410", "title": "ISAE 3410 - Data Quality Requirements for GHG Assurance", "type": "compliance"},
+            {"url": "https://ghgprotocol.org/corporate-standard", "label": "GHG Protocol", "title": "GHG Protocol - Data Quality Management", "type": "best_practice"},
+        ],
     },
 ]
 
