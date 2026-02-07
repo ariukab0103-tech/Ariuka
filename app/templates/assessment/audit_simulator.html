@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% block title %}Mock Audit Simulator - {{ assessment.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-shield-check me-2"></i>Assurance Readiness Simulator</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} — Mock Limited Assurance Walkthrough (ISSA 5000)</p>
+    </div>
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-danger me-2">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+        </button>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Readiness Dashboard -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card stat-blue">
+            <div class="card-body text-center">
+                <i class="bi bi-clipboard-check stat-icon"></i>
+                <div class="stat-value" style="font-size: 1.3rem;">{{ readiness_summary.total }}</div>
+                <div class="stat-label">In-Scope Items</div>
+                <small style="color: var(--text-muted);">Subject to auditor examination</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card stat-green">
+            <div class="card-body text-center">
+                <i class="bi bi-check-circle stat-icon"></i>
+                <div class="stat-value" style="font-size: 1.3rem;">{{ readiness_summary.pass_pct }}%</div>
+                <div class="stat-label">Pass Rate</div>
+                <small style="color: var(--text-muted);">{{ readiness_summary.ready }} ready + {{ readiness_summary.borderline }} borderline</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card stat-red">
+            <div class="card-body text-center">
+                <i class="bi bi-exclamation-triangle stat-icon"></i>
+                <div class="stat-value" style="font-size: 1.3rem;">{{ readiness_summary.at_risk + readiness_summary.not_ready }}</div>
+                <div class="stat-label">Will Fail</div>
+                <small style="color: var(--text-muted);">{{ readiness_summary.at_risk }} at risk + {{ readiness_summary.not_ready }} not ready</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card stat-yellow">
+            <div class="card-body text-center">
+                <i class="bi bi-question-circle stat-icon"></i>
+                <div class="stat-value" style="font-size: 1.3rem;">{{ readiness_summary.unknown }}</div>
+                <div class="stat-label">Not Assessed</div>
+                <small style="color: var(--text-muted);">Score these criteria first</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How This Works -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex align-items-start">
+            <i class="bi bi-info-circle text-primary me-3 mt-1" style="font-size: 1.2rem;"></i>
+            <div>
+                <strong>How to use this simulator:</strong> Walk through each item below as if you were sitting with an auditor.
+                For each criterion, the auditor will <strong>ask questions</strong> (inquiry), <strong>request documents</strong> (inspection),
+                and <strong>perform analytical procedures</strong>. Items marked with <span class="badge bg-danger">red flags</span> are
+                common findings that lead to qualified opinions. Based on <strong>ISSA 5000</strong> limited assurance procedures.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SSBJ In-Scope Criteria Walkthrough -->
+<h4 class="mb-3"><i class="bi bi-person-badge me-2"></i>Auditor Walkthrough: SSBJ In-Scope Criteria</h4>
+
+{% for item in ssbj_items %}
+<div class="card mb-4" id="sim-{{ item.id }}" style="border-left: 4px solid {% if item.readiness.level == 'ready' %}#22c55e{% elif item.readiness.level == 'borderline' %}#eab308{% else %}#ef4444{% endif %};">
+    <div class="card-header d-flex justify-content-between align-items-center" role="button"
+         data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.id }}">
+        <div>
+            <code class="fs-6 me-2">{{ item.id }}</code>
+            <strong>{{ item.category }}</strong>
+            <span class="badge bg-{{ item.readiness.badge }} ms-2">{{ item.readiness.label }}</span>
+            {% if item.score is not none %}
+            <span class="score-badge score-{{ item.score }} ms-1">{{ item.score }}</span>
+            {% endif %}
+        </div>
+        <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse {% if item.readiness.level in ('at_risk', 'not_ready', 'unknown') %}show{% endif %}" id="collapse-{{ item.id }}">
+        <div class="card-body">
+            <!-- Readiness Status -->
+            <div class="alert alert-{{ item.readiness.badge }} py-2 mb-3">
+                <small><i class="bi bi-{% if item.readiness.level == 'ready' %}check-circle{% elif item.readiness.level == 'borderline' %}exclamation-triangle{% else %}x-circle{% endif %} me-1"></i>
+                {{ item.readiness.message }}</small>
+            </div>
+
+            <p class="text-muted small mb-3"><i class="bi bi-person me-1"></i><em>{{ item.auditor_intro }}</em></p>
+
+            <div class="row g-3">
+                <!-- Inquiry Questions -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);">
+                        <h6 class="mb-2"><i class="bi bi-chat-left-quote me-1 text-primary"></i>Auditor Will Ask</h6>
+                        <ol class="mb-0 ps-3">
+                            {% for q in item.inquiry %}
+                            <li class="mb-1"><small>{{ q }}</small></li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Documents Needed -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15);">
+                        <h6 class="mb-2"><i class="bi bi-folder-check me-1 text-success"></i>Documents to Prepare</h6>
+                        <ul class="list-unstyled mb-0">
+                            {% for doc in item.documents_needed %}
+                            <li class="mb-1">
+                                {% if doc.mentioned %}
+                                <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                {% else %}
+                                <i class="bi bi-circle text-muted me-1"></i>
+                                {% endif %}
+                                <small{% if doc.mentioned %} class="text-success"{% endif %}>{{ doc.document }}</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytical Procedures -->
+            <div class="mt-3 p-3 rounded" style="background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.15);">
+                <h6 class="mb-2"><i class="bi bi-graph-up me-1" style="color: #8b5cf6;"></i>Analytical Procedures</h6>
+                <small>{{ item.analytical }}</small>
+            </div>
+
+            <!-- Red Flags -->
+            <div class="mt-3 p-3 rounded" style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);">
+                <h6 class="mb-2"><i class="bi bi-flag-fill me-1 text-danger"></i>Red Flags (Common Findings)</h6>
+                <ul class="mb-0 ps-3">
+                    {% for flag in item.red_flags %}
+                    <li class="mb-1"><small class="text-danger">{{ flag }}</small></li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {% if item.internal_controls %}
+            <div class="alert alert-warning mt-3 mb-0 py-2">
+                <small><i class="bi bi-shield-lock me-1"></i><strong>Required Internal Controls:</strong> {{ item.internal_controls }}</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- LA-Specific Internal Controls -->
+<h4 class="mb-3 mt-5"><i class="bi bi-gear me-2"></i>Internal Controls Deep-Dive (Selected LA Items)</h4>
+<p class="text-muted small mb-3">These items focus on the internal controls the auditor will specifically test under ISSA 5000. They are not separate SSBJ criteria but represent the control environment the auditor expects to see.</p>
+
+{% for item in la_items %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center" role="button"
+         data-bs-toggle="collapse" data-bs-target="#collapse-{{ item.id }}">
+        <div>
+            <code class="me-2">{{ item.id }}</code>
+            <strong>{{ item.category }}</strong>
+            <span class="badge bg-{% if item.obligation == 'essential' %}danger{% else %}warning{% endif %} ms-2">{{ item.obligation | title }}</span>
+        </div>
+        <i class="bi bi-chevron-down"></i>
+    </div>
+    <div class="collapse" id="collapse-{{ item.id }}">
+        <div class="card-body">
+            <p class="text-muted small mb-3"><i class="bi bi-person me-1"></i><em>{{ item.auditor_intro }}</em></p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);">
+                        <h6 class="mb-2"><i class="bi bi-chat-left-quote me-1 text-primary"></i>Auditor Will Ask</h6>
+                        <ol class="mb-0 ps-3">
+                            {% for q in item.inquiry %}
+                            <li class="mb-1"><small>{{ q }}</small></li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded h-100" style="background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.15);">
+                        <h6 class="mb-2"><i class="bi bi-folder-check me-1 text-success"></i>Documents to Prepare</h6>
+                        <ul class="list-unstyled mb-0">
+                            {% for doc in item.documents_needed %}
+                            <li class="mb-1"><i class="bi bi-circle text-muted me-1"></i><small>{{ doc.document }}</small></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3 p-3 rounded" style="background: rgba(139,92,246,0.06); border: 1px solid rgba(139,92,246,0.15);">
+                <h6 class="mb-2"><i class="bi bi-graph-up me-1" style="color: #8b5cf6;"></i>Analytical Procedures</h6>
+                <small>{{ item.analytical }}</small>
+            </div>
+
+            <div class="mt-3 p-3 rounded" style="background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);">
+                <h6 class="mb-2"><i class="bi bi-flag-fill me-1 text-danger"></i>Red Flags</h6>
+                <ul class="mb-0 ps-3">
+                    {% for flag in item.red_flags %}
+                    <li class="mb-1"><small class="text-danger">{{ flag }}</small></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ISSA 5000 Reference -->
+<div class="card mt-4 mb-4">
+    <div class="card-header"><i class="bi bi-book me-2"></i>About ISSA 5000 Limited Assurance</div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>What is Limited Assurance?</h6>
+                <ul class="small">
+                    <li><strong>Conclusion form:</strong> "Nothing has come to our attention..." (negative assurance)</li>
+                    <li><strong>Evidence level:</strong> Less than reasonable assurance but meaningful</li>
+                    <li><strong>Procedures:</strong> Primarily inquiry and analytical procedures</li>
+                    <li><strong>Testing:</strong> Limited sample testing, not comprehensive</li>
+                    <li><strong>Effective:</strong> December 2026 (replaces ISAE 3000/3410)</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Common Outcomes in Early Years</h6>
+                <ul class="small">
+                    <li><strong>Unmodified:</strong> No material issues found — target outcome</li>
+                    <li><strong>Qualified (except for):</strong> Specific issues found but rest is acceptable — IAASB expects this to be common initially</li>
+                    <li><strong>Adverse:</strong> Pervasive material misstatement — serious, try to avoid</li>
+                    <li><strong>Disclaimer:</strong> Unable to obtain sufficient evidence — often due to lack of internal controls</li>
+                </ul>
+                <div class="alert alert-info py-2 mb-0">
+                    <small><i class="bi bi-lightbulb me-1"></i><strong>Key insight:</strong> A qualified opinion is acceptable in early years. Focus on avoiding disclaimer (insufficient controls) by ensuring RSK-05 and MET-07 are solid.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
