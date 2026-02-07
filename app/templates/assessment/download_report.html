@@ -22,7 +22,7 @@
     <h1 style="font-size: 1.8rem;">SSBJ Gap Analysis Report</h1>
     <h3 style="color: #666;">{{ assessment.entity_name }}</h3>
     <p>{{ assessment.title }} | {{ assessment.fiscal_year }}</p>
-    <p class="text-muted small">Generated {{ "now" | default("") }}{% set sections_list = [] %}{% if 'gap' in sections %}{% if sections_list.append('Gap Analysis') %}{% endif %}{% endif %}{% if 'roadmap' in sections %}{% if sections_list.append('Roadmap') %}{% endif %}{% endif %}{% if 'raci' in sections %}{% if sections_list.append('RACI') %}{% endif %}{% endif %}{% if 'relief' in sections %}{% if sections_list.append('Relief Advisor') %}{% endif %}{% endif %}{% if 'audit' in sections %}{% if sections_list.append('Mock Audit') %}{% endif %}{% endif %}
+    <p class="text-muted small">Generated {{ "now" | default("") }}{% set sections_list = [] %}{% if 'exec' in sections %}{% if sections_list.append('Executive Summary') %}{% endif %}{% endif %}{% if 'gap' in sections %}{% if sections_list.append('Gap Analysis') %}{% endif %}{% endif %}{% if 'roadmap' in sections %}{% if sections_list.append('Roadmap') %}{% endif %}{% endif %}{% if 'raci' in sections %}{% if sections_list.append('RACI') %}{% endif %}{% endif %}{% if 'relief' in sections %}{% if sections_list.append('Relief Advisor') %}{% endif %}{% endif %}{% if 'audit' in sections %}{% if sections_list.append('Mock Audit') %}{% endif %}{% endif %}
     | Sections: {{ sections_list | join(', ') }}</p>
 </div>
 
@@ -31,6 +31,7 @@
     <div class="card-header"><i class="bi bi-list-ul me-2"></i>Contents</div>
     <div class="card-body py-2">
         <div class="d-flex flex-wrap gap-2">
+            {% if 'exec' in sections %}<a href="#sec-exec" class="btn btn-sm btn-outline-dark">Executive Summary</a>{% endif %}
             {% if 'gap' in sections %}<a href="#sec-gap" class="btn btn-sm btn-outline-primary">Gap Analysis</a>{% endif %}
             {% if 'roadmap' in sections %}<a href="#sec-roadmap" class="btn btn-sm btn-outline-warning">Roadmap</a>{% endif %}
             {% if 'raci' in sections %}<a href="#sec-raci" class="btn btn-sm btn-outline-secondary">RACI Matrix</a>{% endif %}
@@ -39,6 +40,242 @@
         </div>
     </div>
 </div>
+
+{# ==================== EXECUTIVE SUMMARY ==================== #}
+{% if 'exec' in sections and exec_summary %}
+<div class="page-break-before" id="sec-exec">
+    <h3 class="mb-3"><i class="bi bi-briefcase me-2"></i>Executive Summary — Board/Management</h3>
+
+    <!-- Verdict Banner -->
+    <div class="card mb-3" style="border: 2px solid {% if exec_summary.verdict == 'on_track' %}#22c55e{% elif exec_summary.verdict == 'minor_gaps' %}#eab308{% elif exec_summary.verdict == 'action_needed' %}#f97316{% else %}#ef4444{% endif %};">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center">
+                    <div style="font-size: 2.5rem; font-weight: bold; color: {% if exec_summary.verdict == 'on_track' %}#22c55e{% elif exec_summary.verdict == 'minor_gaps' %}#eab308{% elif exec_summary.verdict == 'action_needed' %}#f97316{% else %}#ef4444{% endif %};">
+                        {{ exec_summary.overall_score }}
+                    </div>
+                    <div class="text-muted small">Overall Score (out of 5.0)</div>
+                </div>
+                <div class="col-md-9">
+                    <h4 style="color: {% if exec_summary.verdict == 'on_track' %}#22c55e{% elif exec_summary.verdict == 'minor_gaps' %}#eab308{% elif exec_summary.verdict == 'action_needed' %}#f97316{% else %}#ef4444{% endif %};">
+                        {{ exec_summary.verdict_label }}
+                    </h4>
+                    <p class="mb-0">{{ exec_summary.verdict_detail }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Numbers -->
+    <div class="row mb-3">
+        <div class="col-md-2">
+            <div class="card"><div class="card-body text-center py-2">
+                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.total_gaps }}</div>
+                <small class="text-muted">Total Gaps</small>
+            </div></div>
+        </div>
+        <div class="col-md-2">
+            <div class="card" style="border-color: rgba(239,68,68,0.5);"><div class="card-body text-center py-2">
+                <div class="fw-bold text-danger" style="font-size: 1.3rem;">{{ exec_summary.la_gaps_count }}</div>
+                <small class="text-muted">LA-Critical</small>
+            </div></div>
+        </div>
+        <div class="col-md-2">
+            <div class="card"><div class="card-body text-center py-2">
+                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.total_scored }}/{{ exec_summary.total_criteria }}</div>
+                <small class="text-muted">Assessed</small>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center py-2">
+                {% if exec_summary.months_remaining is not none %}
+                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.months_remaining }} months</div>
+                <small class="text-muted">To Compliance (FY{{ exec_summary.compliance_year }})</small>
+                {% else %}
+                <div class="fw-bold" style="font-size: 1.3rem;">—</div>
+                <small class="text-muted">Timeline TBD</small>
+                {% endif %}
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center py-2">
+                <div class="fw-bold" style="font-size: 1.3rem;">
+                    <span class="badge bg-{% if exec_summary.urgency == 'critical' %}danger{% elif exec_summary.urgency == 'tight' %}warning text-dark{% elif exec_summary.urgency == 'adequate' %}info{% else %}success{% endif %}">{{ exec_summary.urgency|upper }}</span>
+                </div>
+                <small class="text-muted">Timeline Urgency</small>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- Pillar Scores -->
+    <div class="row mb-3">
+        {% for pillar, score in exec_summary.pillar_scores.items() %}
+        <div class="col-md-3">
+            <div class="card"><div class="card-body text-center py-2">
+                <div class="fw-bold {% if score < 2 %}text-danger{% elif score < 3 %}text-warning{% else %}text-success{% endif %}" style="font-size: 1.2rem;">{{ score }}</div>
+                <small>{{ pillar }}</small>
+                {% if score < 3 %}<br><span class="badge bg-danger" style="font-size: 0.6em;">Below Threshold</span>{% endif %}
+            </div></div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Minimum Requirements -->
+    {% if exec_summary.minimum_requirements %}
+    <div class="card mb-3">
+        <div class="card-header" style="background: var(--gradient-red);"><span class="text-white fw-bold"><i class="bi bi-exclamation-octagon me-2"></i>Minimum Requirements — What Must Be Done</span></div>
+        <div class="card-body p-0">
+            {% for req in exec_summary.minimum_requirements %}
+            <div class="p-3 {% if not loop.last %}border-bottom{% endif %}">
+                <div class="d-flex align-items-start">
+                    <i class="bi {{ req.icon }} me-2 mt-1" style="font-size: 1.2rem; color: var(--accent-blue);"></i>
+                    <div class="flex-grow-1">
+                        <strong>{{ req.area }}</strong>
+                        <p class="mb-1">{{ req.what }}</p>
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>{{ req.why }}</small>
+                        <br><small class="text-danger">Gaps: {{ req.gaps | join(', ') }}</small>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-success mb-3"><i class="bi bi-check-circle me-2"></i>All criteria meet minimum threshold. Focus on maintaining quality and preparing evidence for assurance.</div>
+    {% endif %}
+
+    <!-- Investment Options -->
+    <h5 class="mt-4 mb-3"><i class="bi bi-cash-stack me-2"></i>Investment Options</h5>
+    <div class="row mb-3">
+        <!-- Option A -->
+        <div class="col-md-6">
+            <div class="card h-100" style="border-top: 3px solid var(--accent-blue);">
+                <div class="card-header">
+                    <strong>Option A: {{ exec_summary.option_a.name }}</strong>
+                    <br><small class="text-muted">{{ exec_summary.option_a.subtitle }}</small>
+                </div>
+                <div class="card-body">
+                    <h6 class="small fw-bold mb-2">Approach</h6>
+                    <ul class="ps-3 mb-3" style="font-size: 0.85em;">
+                        {% for item in exec_summary.option_a.approach %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+
+                    <h6 class="small fw-bold mb-2">Estimated Investment</h6>
+                    <table class="table table-sm mb-2" style="font-size: 0.8em;">
+                        {% for item in exec_summary.option_a.investment_items %}
+                        <tr><td>{{ item.item }}</td><td class="text-end text-nowrap"><strong>{{ item.range }}</strong></td></tr>
+                        {% endfor %}
+                    </table>
+                    <div class="text-center p-2 rounded" style="background: rgba(59,130,246,0.1);">
+                        <strong style="font-size: 1.1em;">{{ exec_summary.option_a.total_range }}</strong>
+                    </div>
+
+                    <h6 class="small fw-bold mt-3 mb-1 text-success">Advantages</h6>
+                    <ul class="ps-3 mb-2" style="font-size: 0.8em;">
+                        {% for p in exec_summary.option_a.pros %}<li>{{ p }}</li>{% endfor %}
+                    </ul>
+                    <h6 class="small fw-bold mb-1 text-danger">Limitations</h6>
+                    <ul class="ps-3 mb-2" style="font-size: 0.8em;">
+                        {% for c in exec_summary.option_a.cons %}<li>{{ c }}</li>{% endfor %}
+                    </ul>
+                    <small class="text-muted"><i class="bi bi-lightbulb me-1"></i>{{ exec_summary.option_a.best_for }}</small>
+                </div>
+            </div>
+        </div>
+        <!-- Option B -->
+        <div class="col-md-6">
+            <div class="card h-100" style="border-top: 3px solid var(--accent-green);">
+                <div class="card-header">
+                    <strong>Option B: {{ exec_summary.option_b.name }}</strong>
+                    <br><small class="text-muted">{{ exec_summary.option_b.subtitle }}</small>
+                </div>
+                <div class="card-body">
+                    <h6 class="small fw-bold mb-2">Approach</h6>
+                    <ul class="ps-3 mb-3" style="font-size: 0.85em;">
+                        {% for item in exec_summary.option_b.approach %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+
+                    <h6 class="small fw-bold mb-2">Estimated Investment</h6>
+                    <table class="table table-sm mb-2" style="font-size: 0.8em;">
+                        {% for item in exec_summary.option_b.investment_items %}
+                        <tr><td>{{ item.item }}</td><td class="text-end text-nowrap"><strong>{{ item.range }}</strong></td></tr>
+                        {% endfor %}
+                    </table>
+                    <div class="text-center p-2 rounded" style="background: rgba(34,197,94,0.1);">
+                        <strong style="font-size: 1.1em;">{{ exec_summary.option_b.total_range }}</strong>
+                    </div>
+
+                    <h6 class="small fw-bold mt-3 mb-1 text-success">Advantages</h6>
+                    <ul class="ps-3 mb-2" style="font-size: 0.8em;">
+                        {% for p in exec_summary.option_b.pros %}<li>{{ p }}</li>{% endfor %}
+                    </ul>
+                    <h6 class="small fw-bold mb-1 text-danger">Limitations</h6>
+                    <ul class="ps-3 mb-2" style="font-size: 0.8em;">
+                        {% for c in exec_summary.option_b.cons %}<li>{{ c }}</li>{% endfor %}
+                    </ul>
+                    <small class="text-muted"><i class="bi bi-lightbulb me-1"></i>{{ exec_summary.option_b.best_for }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Risks -->
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-exclamation-triangle me-2 text-warning"></i><strong>Key Risks of Delayed Action</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Risk</th><th>Potential Impact</th><th>Likelihood</th></tr></thead>
+                <tbody>
+                    {% for r in exec_summary.risks %}
+                    <tr>
+                        <td><strong>{{ r.risk }}</strong></td>
+                        <td><small>{{ r.impact }}</small></td>
+                        <td><span class="badge bg-{% if r.likelihood == 'High' %}danger{% elif r.likelihood == 'Medium' %}warning text-dark{% else %}success{% endif %}">{{ r.likelihood }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Key Decisions -->
+    {% if exec_summary.key_decisions %}
+    <div class="card mb-3">
+        <div class="card-header" style="background: var(--gradient-blue);"><span class="text-white fw-bold"><i class="bi bi-lightning-charge me-2"></i>Key Decisions Required</span></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>#</th><th>Decision</th><th>Deadline</th><th>Owner</th></tr></thead>
+                <tbody>
+                    {% for d in exec_summary.key_decisions %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ d.decision }}</td>
+                        <td><span class="badge bg-{% if 'Immediate' in d.deadline or 'week' in d.deadline %}danger{% else %}info{% endif %}">{{ d.deadline }}</span></td>
+                        <td><small>{{ d.owner }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card mb-3">
+        <div class="card-body py-2 text-center">
+            <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Investment estimates are indicative ranges based on typical Japanese listed company costs.
+                Actual costs depend on organizational complexity, number of sites, existing systems, and provider selection.
+                All estimates exclude internal staff time unless specifically noted.
+            </small>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {# ==================== GAP ANALYSIS ==================== #}
 {% if 'gap' in sections %}
