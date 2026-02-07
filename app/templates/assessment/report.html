@@ -7,7 +7,7 @@
         <h2><i class="bi bi-file-earmark-text me-2"></i>Gap Analysis Report</h2>
         <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
     </div>
-    <div>
+    <div class="no-print">
         <a href="{{ url_for('assessment.roadmap', assessment_id=assessment.id) }}" class="btn btn-warning me-2">
             <i class="bi bi-calendar3 me-1"></i>Compliance Roadmap
         </a>
@@ -23,11 +23,12 @@
 <!-- Summary Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
-        <div class="card stat-card">
+        <div class="card stat-card stat-blue">
             <div class="card-body text-center">
-                <div class="stat-value">{{ assessment.overall_score }}</div>
+                <i class="bi bi-speedometer2 stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-blue);">{{ assessment.overall_score }}</div>
                 <div class="stat-label">Overall Score</div>
-                <small class="text-muted">out of 5.0</small>
+                <small style="color: var(--text-muted);">out of 5.0</small>
             </div>
         </div>
     </div>
@@ -80,11 +81,11 @@
     {% endif %}
 {% endfor %}
 {% if la_gaps %}
-<div class="card mb-4 border-danger">
-    <div class="card-header bg-danger text-white">
-        <i class="bi bi-shield-exclamation me-2"></i>
-        PRIORITY 1: Limited Assurance Critical Gaps — Must Fix First
-        <span class="badge bg-light text-danger ms-2">{{ la_gaps|length }} items</span>
+<div class="card mb-4" style="border: 1px solid rgba(239,68,68,0.4);">
+    <div class="card-header" style="background: var(--gradient-red);">
+        <i class="bi bi-shield-exclamation me-2 text-white"></i>
+        <span class="text-white">PRIORITY 1: Limited Assurance Critical Gaps — Must Fix First</span>
+        <span class="badge ms-2" style="background: rgba(255,255,255,0.2); color: white;">{{ la_gaps|length }} items</span>
     </div>
     <div class="card-body">
         <p class="text-danger fw-bold mb-3">These items are directly in scope for limited assurance (Scope 1 & 2 GHG). An auditor WILL examine these. Fix these before anything else.</p>
@@ -100,13 +101,13 @@
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="bg-light p-3 rounded h-100">
+                        <div class="p-3 rounded h-100" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
                             <h6 class="text-success mb-2"><i class="bi bi-check-circle me-1"></i>Minimum to Comply (Target: Score 3)</h6>
                             <small>{{ gap.criterion.minimum_action }}</small>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="bg-light p-3 rounded h-100">
+                        <div class="p-3 rounded h-100" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
                             <h6 class="text-primary mb-2"><i class="bi bi-star me-1"></i>Best Practice (Score 4-5)</h6>
                             <small>{{ gap.criterion.best_practice }}</small>
                         </div>
@@ -208,7 +209,7 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr{% if c.la_scope == 'in_scope' %} class="table-danger"{% endif %}>
+                <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
                     <td>
                         <code>{{ c.id }}</code>
                         {% if c.la_scope == 'in_scope' %}
@@ -259,7 +260,9 @@ new Chart(document.getElementById('pillarChart'), {
         datasets: [{
             label: 'Current Score',
             data: Object.values(pillarScores),
-            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            backgroundColor: Object.values(pillarScores).map(v => v < 2 ? 'rgba(239,68,68,0.7)' : v < 3 ? 'rgba(249,115,22,0.7)' : 'rgba(34,197,94,0.7)'),
+            borderColor: Object.values(pillarScores).map(v => v < 2 ? '#ef4444' : v < 3 ? '#f97316' : '#22c55e'),
+            borderWidth: 1,
             borderRadius: 6
         }, {
             label: 'Limited Assurance Threshold (3.0)',
@@ -273,7 +276,7 @@ new Chart(document.getElementById('pillarChart'), {
     },
     options: {
         responsive: true,
-        scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } },
+        scales: { y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42,54,80,0.5)' } }, x: { grid: { color: 'rgba(42,54,80,0.3)' } } },
         plugins: { legend: { position: 'bottom' } }
     }
 });
@@ -288,14 +291,16 @@ new Chart(document.getElementById('categoryChart'), {
         datasets: [{
             label: 'Score',
             data: catValues,
-            backgroundColor: catValues.map(v => v < 2 ? '#fc8181' : v < 3 ? '#f6ad55' : '#68d391'),
+            backgroundColor: catValues.map(v => v < 2 ? 'rgba(239,68,68,0.7)' : v < 3 ? 'rgba(249,115,22,0.7)' : 'rgba(34,197,94,0.7)'),
+            borderColor: catValues.map(v => v < 2 ? '#ef4444' : v < 3 ? '#f97316' : '#22c55e'),
+            borderWidth: 1,
             borderRadius: 4
         }]
     },
     options: {
         indexAxis: 'y',
         responsive: true,
-        scales: { x: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } } },
+        scales: { x: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42,54,80,0.5)' } }, y: { grid: { color: 'rgba(42,54,80,0.3)' } } },
         plugins: { legend: { display: false } }
     }
 });

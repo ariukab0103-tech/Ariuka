@@ -4,12 +4,14 @@
 {% block content %}
 <div class="row justify-content-center mt-5">
     <div class="col-md-5 col-lg-4">
-        <div class="card">
+        <div class="card glow-blue" style="border: 1px solid rgba(59,130,246,0.3);">
             <div class="card-body p-4">
                 <div class="text-center mb-4">
-                    <i class="bi bi-shield-check text-primary" style="font-size: 3rem;"></i>
-                    <h3 class="mt-2">SSBJ Gap Analysis</h3>
-                    <p class="text-muted">Sign in to your account</p>
+                    <div style="width: 72px; height: 72px; margin: 0 auto; border-radius: 16px; background: var(--gradient-blue); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-shield-check" style="font-size: 2rem; color: white;"></i>
+                    </div>
+                    <h3 class="mt-3" style="background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SSBJ Gap Analysis</h3>
+                    <p style="color: var(--text-muted);">Sign in to your account</p>
                 </div>
                 <form method="POST">
                     <div class="mb-3">

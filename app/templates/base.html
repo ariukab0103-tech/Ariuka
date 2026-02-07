@@ -1,68 +1,165 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SSBJ Gap Analysis Tool{% endblock %}</title>
-    <!-- Preconnect to CDNs for faster loading -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary: #1a365d;
-            --primary-light: #2b6cb0;
-            --accent: #e53e3e;
-            --success: #38a169;
-            --warning: #d69e2e;
-            --bg: #f7fafc;
+            --bg-body: #0b0f19;
+            --bg-surface: #111827;
+            --bg-card: #1a2236;
+            --bg-card-hover: #1f2a40;
+            --border-subtle: #2a3650;
+            --border-glow: #3b82f6;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --gradient-blue: linear-gradient(135deg, #1e40af, #3b82f6);
+            --gradient-green: linear-gradient(135deg, #166534, #22c55e);
+            --gradient-red: linear-gradient(135deg, #991b1b, #ef4444);
+            --gradient-purple: linear-gradient(135deg, #581c87, #a855f7);
         }
-        body { background-color: var(--bg); font-family: 'Segoe UI', system-ui, sans-serif; }
-        .navbar { background-color: var(--primary) !important; }
-        .navbar-brand { font-weight: 700; letter-spacing: 0.5px; }
-        .sidebar { min-height: calc(100vh - 56px); background: white; border-right: 1px solid #e2e8f0; }
-        .sidebar .nav-link { color: #4a5568; padding: 0.75rem 1.25rem; border-left: 3px solid transparent; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: var(--primary); background-color: #ebf8ff; border-left-color: var(--primary-light); }
-        .sidebar .nav-link i { width: 24px; }
-        .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-        .card-header { background-color: white; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
-        .stat-card { border-left: 4px solid var(--primary-light); }
-        .stat-card .stat-value { font-size: 2rem; font-weight: 700; color: var(--primary); }
-        .stat-card .stat-label { color: #718096; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .score-badge { display: inline-block; width: 32px; height: 32px; line-height: 32px; text-align: center; border-radius: 6px; font-weight: 600; color: white; }
-        .score-0 { background-color: #e2e8f0; color: #4a5568; }
-        .score-1 { background-color: #fc8181; }
-        .score-2 { background-color: #f6ad55; }
-        .score-3 { background-color: #f6e05e; color: #744210; }
-        .score-4 { background-color: #68d391; }
-        .score-5 { background-color: #38a169; }
-        .gap-high { border-left: 4px solid #e53e3e; }
-        .gap-medium { border-left: 4px solid #d69e2e; }
-        .gap-low { border-left: 4px solid #38a169; }
-        .status-badge { font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; }
-        .pillar-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: white; border-radius: 8px; padding: 1rem 1.5rem; margin-bottom: 1rem; }
-        .progress { height: 8px; border-radius: 4px; }
-        .table th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #718096; }
 
-        /* Toast notifications */
+        * { border-color: var(--border-subtle); }
+        body { background: var(--bg-body); color: var(--text-primary); font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        /* ── Navbar ── */
+        .navbar { background: var(--bg-surface) !important; border-bottom: 1px solid var(--border-subtle); backdrop-filter: blur(12px); }
+        .navbar-brand { font-weight: 800; letter-spacing: 0.5px; background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .navbar .nav-link { color: var(--text-secondary) !important; transition: color 0.2s; }
+        .navbar .nav-link:hover { color: var(--text-primary) !important; }
+
+        /* ── Sidebar ── */
+        .sidebar { min-height: calc(100vh - 56px); background: var(--bg-surface); border-right: 1px solid var(--border-subtle); }
+        .sidebar .nav-link { color: var(--text-secondary); padding: 0.75rem 1.25rem; border-left: 3px solid transparent; transition: all 0.2s; font-size: 0.9rem; }
+        .sidebar .nav-link:hover { color: var(--text-primary); background: rgba(59, 130, 246, 0.08); border-left-color: var(--accent-blue); }
+        .sidebar .nav-link.active { color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1); border-left-color: var(--accent-cyan); font-weight: 600; }
+        .sidebar .nav-link i { width: 24px; }
+
+        /* ── Cards ── */
+        .card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.2); transition: border-color 0.3s, box-shadow 0.3s; }
+        .card:hover { border-color: rgba(59, 130, 246, 0.3); }
+        .card-header { background: transparent; border-bottom: 1px solid var(--border-subtle); font-weight: 600; color: var(--text-primary); }
+
+        /* ── Stat Cards ── */
+        .stat-card { border-left: none; border-radius: 12px; position: relative; overflow: hidden; }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 12px 0 0 12px; }
+        .stat-card.stat-blue::before { background: var(--gradient-blue); }
+        .stat-card.stat-green::before { background: var(--gradient-green); }
+        .stat-card.stat-yellow::before { background: linear-gradient(135deg, #854d0e, #eab308); }
+        .stat-card.stat-red::before { background: var(--gradient-red); }
+        .stat-card.stat-purple::before { background: var(--gradient-purple); }
+        .stat-card.stat-cyan::before { background: linear-gradient(135deg, #155e75, #06b6d4); }
+        .stat-card .stat-value { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+        .stat-card .stat-label { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-top: 0.5rem; }
+        .stat-card .stat-icon { position: absolute; top: 50%; right: 1.25rem; transform: translateY(-50%); font-size: 2.5rem; opacity: 0.08; }
+
+        /* ── Score Badges ── */
+        .score-badge { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; }
+        .score-0 { background: rgba(100, 116, 139, 0.2); color: var(--text-muted); }
+        .score-1 { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .score-2 { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); border: 1px solid rgba(249, 115, 22, 0.3); }
+        .score-3 { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); border: 1px solid rgba(234, 179, 8, 0.3); }
+        .score-4 { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); border: 1px solid rgba(34, 197, 94, 0.3); }
+        .score-5 { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
+
+        /* ── Status Badges ── */
+        .status-badge { font-size: 0.7rem; padding: 0.3rem 0.75rem; border-radius: 9999px; font-weight: 600; letter-spacing: 0.3px; }
+
+        /* ── Pillar Headers ── */
+        .pillar-header { background: var(--gradient-blue); border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.2); }
+
+        /* ── Tables ── */
+        .table { --bs-table-bg: transparent; --bs-table-hover-bg: rgba(59, 130, 246, 0.06); color: var(--text-primary); }
+        .table th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border-subtle); }
+        .table td { border-bottom: 1px solid rgba(42, 54, 80, 0.5); vertical-align: middle; }
+        .table-info { --bs-table-bg: rgba(59, 130, 246, 0.1) !important; }
+
+        /* ── Progress Bars ── */
+        .progress { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); }
+        .progress-bar { border-radius: 3px; }
+
+        /* ── Gap indicators ── */
+        .gap-high { border-left: 4px solid var(--accent-red); }
+        .gap-medium { border-left: 4px solid var(--accent-yellow); }
+        .gap-low { border-left: 4px solid var(--accent-green); }
+
+        /* ── Buttons ── */
+        .btn-primary { background: var(--gradient-blue); border: none; font-weight: 600; }
+        .btn-primary:hover { background: linear-gradient(135deg, #1e3a8a, #2563eb); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+        .btn-success { background: var(--gradient-green); border: none; }
+        .btn-outline-primary { border-color: var(--accent-blue); color: var(--accent-blue); }
+        .btn-outline-primary:hover { background: rgba(59, 130, 246, 0.15); border-color: var(--accent-blue); color: var(--accent-blue); }
+        .btn-outline-secondary { border-color: var(--border-subtle); color: var(--text-secondary); }
+        .btn-outline-secondary:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+        .btn-outline-success { border-color: var(--accent-green); color: var(--accent-green); }
+        .btn-outline-warning { border-color: var(--accent-yellow); color: var(--accent-yellow); }
+
+        /* ── Forms ── */
+        .form-control, .form-select { background: var(--bg-surface); border-color: var(--border-subtle); color: var(--text-primary); }
+        .form-control:focus, .form-select:focus { background: var(--bg-surface); border-color: var(--accent-blue); color: var(--text-primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .input-group-text { background: var(--bg-card); border-color: var(--border-subtle); color: var(--text-secondary); }
+
+        /* ── Alerts ── */
+        .alert-info { background: rgba(6, 182, 212, 0.1); border-color: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+        .alert-warning { background: rgba(234, 179, 8, 0.1); border-color: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .alert-success { background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .alert-danger { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        /* ── Toasts ── */
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast { min-width: 280px; border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; }
-        .toast-success { background: #38a169; color: white; }
-        .toast-danger { background: #e53e3e; color: white; }
-        .toast-warning { background: #d69e2e; color: white; }
-        .toast-info { background: #2b6cb0; color: white; }
+        .toast { min-width: 300px; border: none; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); animation: slideIn 0.3s ease; backdrop-filter: blur(8px); }
+        .toast-success { background: rgba(34, 197, 94, 0.9); color: white; }
+        .toast-danger { background: rgba(239, 68, 68, 0.9); color: white; }
+        .toast-warning { background: rgba(234, 179, 8, 0.9); color: #1a1a1a; }
+        .toast-info { background: rgba(59, 130, 246, 0.9); color: white; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* Loading overlay for buttons */
+        /* ── Loading ── */
         .btn-loading { pointer-events: none; opacity: 0.7; }
         .btn-loading .spinner-border { width: 1em; height: 1em; border-width: 0.15em; }
 
-        /* Smooth transitions */
+        /* ── Transitions ── */
         .table tbody tr { transition: background-color 0.2s ease; }
         .score-select { transition: border-color 0.2s ease; }
 
-        /* Responsive table improvements */
+        /* ── Dark-theme overrides for Bootstrap helpers ── */
+        .table-danger { --bs-table-bg: rgba(239,68,68,0.08) !important; --bs-table-color: var(--text-primary); }
+        .table-warning { --bs-table-bg: rgba(234,179,8,0.08) !important; --bs-table-color: var(--text-primary); }
+        .table-light { --bs-table-bg: rgba(59,130,246,0.06) !important; --bs-table-color: var(--text-primary); }
+        .list-group-item { background: transparent; border-color: var(--border-subtle); color: var(--text-primary); }
+        .list-group-item-action:hover { background: rgba(59,130,246,0.06); color: var(--text-primary); }
+        .breadcrumb { --bs-breadcrumb-divider-color: var(--text-muted); }
+        .breadcrumb-item a { color: var(--accent-cyan); text-decoration: none; }
+        .breadcrumb-item a:hover { color: var(--accent-blue); }
+        .breadcrumb-item.active { color: var(--text-muted); }
+        .form-check-input { background-color: var(--bg-surface); border-color: var(--border-subtle); }
+        .form-check-input:checked { background-color: var(--accent-blue); border-color: var(--accent-blue); }
+        .form-text { color: var(--text-muted) !important; }
+        .badge.bg-light { background: rgba(255,255,255,0.1) !important; color: var(--text-primary) !important; }
+        code { color: var(--accent-cyan); }
+        hr { border-color: var(--border-subtle); }
+        .border-start { border-color: var(--border-subtle) !important; }
+
+        /* ── Glow effects ── */
+        .glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
+        .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.15); }
+        .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.15); }
+        .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.15); }
+
+        /* ── Mobile ── */
         @media (max-width: 768px) {
             .sidebar { display: none !important; }
             main { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
@@ -72,23 +169,50 @@
             .d-flex.gap-2 { flex-wrap: wrap; }
         }
 
-        /* Print styles for PDF export */
+        /* ── Print ── */
         @media print {
-            body { background: white !important; font-size: 11px; }
-            .navbar, .sidebar, .no-print, #chat-btn, #chat-panel { display: none !important; }
-            .col-md-9, .col-lg-10 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
+            /* Reset dark theme back to clean white for PDF */
+            html, body { background: white !important; color: #1a1a1a !important; font-size: 11px; }
+            * { color: #1a1a1a !important; border-color: #ddd !important; }
+            .navbar, .sidebar, .no-print, #chatToggle, #chatPanel, .toast-container, .btn, .btn-group { display: none !important; }
+            .col-md-9, .col-lg-10, .col-md-10 { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; }
             .container-fluid { padding: 0 !important; }
-            .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
-            .card-header { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .stat-card .stat-value { font-size: 1.5rem; }
-            .badge, .score-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .gap-high, .gap-medium, .gap-low, .stat-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .table-danger, .table-warning { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .card { box-shadow: none !important; border: 1px solid #ddd !important; background: white !important; break-inside: avoid; }
+            .card-header { background: #f5f5f5 !important; color: #111 !important; border-bottom: 1px solid #ddd !important; }
+            .card-body { background: white !important; }
+            .table, .table th, .table td { color: #1a1a1a !important; border-color: #ddd !important; background: white !important; }
+            .table thead th { background: #f5f5f5 !important; color: #333 !important; }
+            .table-hover tbody tr:hover { background: #f9f9f9 !important; }
+            tr[style*="background: rgba"] { background: #fff8f8 !important; }
+            .stat-card { background: white !important; border: 1px solid #ddd !important; box-shadow: none !important; }
+            .stat-card::before { display: none !important; }
+            .stat-value { color: #111 !important; }
+            .stat-label { color: #666 !important; }
+            .stat-icon { color: #999 !important; }
+            .progress { background: #e9ecef !important; }
+            .progress-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .score-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; border: 1px solid #ccc !important; }
+            .badge, .status-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .alert { background: #f8f9fa !important; border: 1px solid #ddd !important; color: #333 !important; }
+            .text-muted, .text-secondary, [style*="color: var(--text-muted)"], [style*="color: var(--text-secondary)"] { color: #666 !important; }
+            code { color: #0d6efd !important; }
+            h1, h2, h3, h4, h5, h6 { color: #111 !important; background: none !important; -webkit-text-fill-color: #111 !important; }
+            .glow-blue, .glow-green, .glow-red, .glow-cyan { box-shadow: none !important; }
             canvas { max-height: 200px !important; }
-            a { text-decoration: none !important; color: inherit !important; }
-            h2 { font-size: 1.4rem; }
+            a { text-decoration: none !important; color: #0d6efd !important; }
+            .form-control, .form-select, input, select, textarea { display: none !important; }
+            .input-group { display: none !important; }
             @page { margin: 15mm; size: A4 landscape; }
         }
+
+        /* ── Chat panel dark theme ── */
+        .chat-msg { margin-bottom: 12px; }
+        .chat-msg-user { text-align: right; }
+        .chat-msg-user .chat-bubble { background: var(--gradient-blue); color: white; display: inline-block; padding: 8px 14px; border-radius: 14px 14px 2px 14px; max-width: 85%; text-align: left; }
+        .chat-msg-ai .chat-bubble { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-subtle); display: inline-block; padding: 8px 14px; border-radius: 14px 14px 14px 2px; max-width: 85%; text-align: left; }
+        .chat-msg-ai .chat-bubble p { margin-bottom: 0.3rem; }
+        .chat-msg-ai .chat-bubble p:last-child { margin-bottom: 0; }
+        .chat-msg-ai .chat-bubble ul, .chat-msg-ai .chat-bubble ol { margin-bottom: 0.3rem; padding-left: 1.2rem; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -105,9 +229,9 @@
                 {% if current_user.is_authenticated %}
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <span class="nav-link text-light">
+                        <span class="nav-link">
                             <i class="bi bi-person-circle me-1"></i>{{ current_user.full_name }}
-                            <span class="badge bg-light text-dark ms-1">{{ current_user.role }}</span>
+                            <span class="badge rounded-pill" style="background: rgba(59,130,246,0.2); color: var(--accent-blue); font-size: 0.65rem;">{{ current_user.role }}</span>
                         </span>
                     </li>
                     <li class="nav-item">
@@ -179,31 +303,31 @@
 
     {% if current_user.is_authenticated %}
     <!-- Floating Chat Button -->
-    <button id="chatToggle" class="btn btn-primary rounded-circle shadow-lg"
-            style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 1050; font-size: 1.4rem;"
+    <button id="chatToggle" class="btn rounded-circle shadow-lg"
+            style="position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 1050; font-size: 1.4rem; background: var(--gradient-blue); border: none; color: white;"
             title="SSBJ Expert Chat">
         <i class="bi bi-chat-dots-fill"></i>
     </button>
 
     <!-- Chat Panel -->
     <div id="chatPanel" style="display: none; position: fixed; bottom: 90px; right: 24px; width: 400px; z-index: 1050;">
-        <div class="card shadow-lg border-primary" style="height: 500px; display: flex; flex-direction: column;">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-                <span><i class="bi bi-robot me-2"></i>SSBJ Expert Advisor</span>
+        <div class="card shadow-lg glow-blue" style="height: 500px; display: flex; flex-direction: column;">
+            <div class="card-header d-flex justify-content-between align-items-center py-2" style="background: var(--gradient-blue); border-radius: 12px 12px 0 0;">
+                <span class="text-white"><i class="bi bi-robot me-2"></i>SSBJ Expert Advisor</span>
                 <button id="chatClose" class="btn btn-sm btn-outline-light py-0 px-1" title="Close">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
             <div id="chatMessages" class="card-body p-3" style="overflow-y: auto; flex: 1; font-size: 0.9rem;">
-                <div class="text-muted text-center py-3">
-                    <i class="bi bi-robot" style="font-size: 2rem;"></i>
-                    <p class="mb-1 mt-2"><strong>SSBJ Expert Advisor</strong></p>
+                <div class="text-center py-3" style="color: var(--text-muted);">
+                    <i class="bi bi-robot" style="font-size: 2rem; color: var(--accent-cyan);"></i>
+                    <p class="mb-1 mt-2" style="color: var(--text-primary);"><strong>SSBJ Expert Advisor</strong></p>
                     <small>Ask about SSBJ requirements, limited assurance, GHG reporting, internal controls, compliance priorities, and more.</small>
-                    <br><small class="text-muted">日本語でも質問できます</small>
-                    <br><small class="text-warning mt-2 d-block"><i class="bi bi-shield-exclamation me-1"></i>Messages are sent to Anthropic's API. Do not share passwords or PII. <a href="/data-security" class="text-warning">Data policy</a></small>
+                    <br><small style="color: var(--text-muted);">日本語でも質問できます</small>
+                    <br><small class="mt-2 d-block" style="color: var(--accent-yellow);"><i class="bi bi-shield-exclamation me-1"></i>Messages are sent to Anthropic's API. Do not share passwords or PII. <a href="/data-security" style="color: var(--accent-yellow);">Data policy</a></small>
                 </div>
             </div>
-            <div class="card-footer p-2">
+            <div class="card-footer p-2" style="border-top: 1px solid var(--border-subtle);">
                 <form id="chatForm" class="d-flex gap-2">
                     <input type="text" id="chatInput" class="form-control form-control-sm"
                            placeholder="Ask about SSBJ standards..." autocomplete="off">
@@ -215,16 +339,6 @@
         </div>
     </div>
 
-    <style>
-        .chat-msg { margin-bottom: 12px; }
-        .chat-msg-user { text-align: right; }
-        .chat-msg-user .chat-bubble { background-color: #2b6cb0; color: white; display: inline-block; padding: 8px 12px; border-radius: 12px 12px 2px 12px; max-width: 85%; text-align: left; }
-        .chat-msg-ai .chat-bubble { background-color: #f1f5f9; color: #1e293b; display: inline-block; padding: 8px 12px; border-radius: 12px 12px 12px 2px; max-width: 85%; text-align: left; }
-        .chat-msg-ai .chat-bubble p { margin-bottom: 0.3rem; }
-        .chat-msg-ai .chat-bubble p:last-child { margin-bottom: 0; }
-        .chat-msg-ai .chat-bubble ul, .chat-msg-ai .chat-bubble ol { margin-bottom: 0.3rem; padding-left: 1.2rem; }
-    </style>
-
     <script>
     (function() {
         const toggle = document.getElementById('chatToggle');
@@ -234,7 +348,6 @@
         const input = document.getElementById('chatInput');
         const messagesDiv = document.getElementById('chatMessages');
         const sendBtn = document.getElementById('chatSend');
-
         let chatHistory = [];
         let isOpen = false;
 
@@ -242,104 +355,45 @@
             const match = window.location.pathname.match(/\/assessments\/(\d+)/);
             return match ? parseInt(match[1]) : null;
         }
+        toggle.addEventListener('click', function() { isOpen = !isOpen; panel.style.display = isOpen ? 'block' : 'none'; if (isOpen) input.focus(); });
+        closeBtn.addEventListener('click', function() { isOpen = false; panel.style.display = 'none'; });
 
-        toggle.addEventListener('click', function() {
-            isOpen = !isOpen;
-            panel.style.display = isOpen ? 'block' : 'none';
-            if (isOpen) input.focus();
-        });
-
-        closeBtn.addEventListener('click', function() {
-            isOpen = false;
-            panel.style.display = 'none';
-        });
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function formatResponse(text) {
-            let html = escapeHtml(text);
-            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>');
-            html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-            html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
-            html = html.replace(/\n\n/g, '</p><p>');
-            html = '<p>' + html + '</p>';
-            html = html.replace(/<p>\s*<\/p>/g, '');
-            return html;
+            let h = escapeHtml(text);
+            h = h.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            h = h.replace(/^[-•]\s+(.+)$/gm, '<li>$1</li>');
+            h = h.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+            h = h.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+            h = h.replace(/\n\n/g, '</p><p>');
+            return '<p>' + h + '</p>';
         }
-
         function addMessage(role, content) {
             const div = document.createElement('div');
             div.className = role === 'user' ? 'chat-msg chat-msg-user' : 'chat-msg chat-msg-ai';
             const bubble = document.createElement('div');
             bubble.className = 'chat-bubble';
-            if (role === 'user') {
-                bubble.textContent = content;
-            } else {
-                bubble.innerHTML = formatResponse(content);
-            }
-            div.appendChild(bubble);
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            if (role === 'user') bubble.textContent = content; else bubble.innerHTML = formatResponse(content);
+            div.appendChild(bubble); messagesDiv.appendChild(div); messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-
         function showTyping() {
-            const div = document.createElement('div');
-            div.className = 'chat-msg chat-msg-ai';
-            div.id = 'typing-indicator';
-            div.innerHTML = '<div class="chat-bubble" style="color:#718096;font-style:italic;"><i class="bi bi-three-dots"></i> Thinking...</div>';
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            const div = document.createElement('div'); div.className = 'chat-msg chat-msg-ai'; div.id = 'typing-indicator';
+            div.innerHTML = '<div class="chat-bubble" style="color:var(--text-muted);font-style:italic;"><i class="bi bi-three-dots"></i> Thinking...</div>';
+            messagesDiv.appendChild(div); messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-
-        function removeTyping() {
-            const el = document.getElementById('typing-indicator');
-            if (el) el.remove();
-        }
+        function removeTyping() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
 
         form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const question = input.value.trim();
-            if (!question) return;
-
-            addMessage('user', question);
-            input.value = '';
-            sendBtn.disabled = true;
-            showTyping();
-
+            e.preventDefault(); const question = input.value.trim(); if (!question) return;
+            addMessage('user', question); input.value = ''; sendBtn.disabled = true; showTyping();
             try {
-                const res = await fetch('/chat/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        question: question,
-                        assessment_id: getAssessmentId(),
-                        history: chatHistory,
-                    }),
-                });
-
-                removeTyping();
-                const data = await res.json();
-
-                if (data.answer) {
-                    addMessage('assistant', data.answer);
-                    chatHistory.push({ role: 'user', content: question });
-                    chatHistory.push({ role: 'assistant', content: data.answer });
-                    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-                } else {
-                    addMessage('assistant', 'Error: ' + (data.error || 'ANTHROPIC_API_KEY not set. Add it in Render environment variables.'));
-                }
-            } catch (err) {
-                removeTyping();
-                addMessage('assistant', 'Connection error. Please try again.');
-            }
-
-            sendBtn.disabled = false;
-            input.focus();
+                const res = await fetch('/chat/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, assessment_id: getAssessmentId(), history: chatHistory }) });
+                removeTyping(); const data = await res.json();
+                if (data.answer) { addMessage('assistant', data.answer); chatHistory.push({ role: 'user', content: question }); chatHistory.push({ role: 'assistant', content: data.answer }); if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20); }
+                else { addMessage('assistant', 'Error: ' + (data.error || 'ANTHROPIC_API_KEY not set.')); }
+            } catch (err) { removeTyping(); addMessage('assistant', 'Connection error. Please try again.'); }
+            sendBtn.disabled = false; input.focus();
         });
     })();
     </script>
@@ -354,22 +408,15 @@
     <script>
     /* ── Global toast notifications ── */
     function showToast(message, type, duration) {
-        type = type || 'info';
-        duration = duration || 3000;
+        type = type || 'info'; duration = duration || 3000;
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
         toast.className = 'toast toast-' + type + ' px-3 py-2 mb-2 d-flex align-items-center';
         const icons = { success: 'check-circle-fill', danger: 'exclamation-triangle-fill', warning: 'exclamation-circle-fill', info: 'info-circle-fill' };
         toast.innerHTML = '<i class="bi bi-' + (icons[type] || 'info-circle-fill') + ' me-2"></i><span>' + message + '</span>';
         container.appendChild(toast);
-        setTimeout(function() {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(function() { toast.remove(); }, 300);
-        }, duration);
+        setTimeout(function() { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; toast.style.transition = 'all 0.3s ease'; setTimeout(function() { toast.remove(); }, 300); }, duration);
     }
-
     /* ── Auto-convert flash messages to toasts ── */
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.alert-dismissible').forEach(function(alert) {
@@ -377,35 +424,28 @@
             if (alert.classList.contains('alert-success')) type = 'success';
             else if (alert.classList.contains('alert-danger')) type = 'danger';
             else if (alert.classList.contains('alert-warning')) type = 'warning';
-            showToast(alert.textContent.trim(), type, 4000);
-            alert.remove();
+            showToast(alert.textContent.trim(), type, 4000); alert.remove();
         });
     });
-
     /* ── Loading button helper ── */
     function setButtonLoading(btn, loading) {
-        if (loading) {
-            btn._originalHtml = btn.innerHTML;
-            btn.classList.add('btn-loading');
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + (btn.dataset.loadingText || 'Working...');
-        } else {
-            btn.classList.remove('btn-loading');
-            btn.innerHTML = btn._originalHtml || btn.innerHTML;
-        }
+        if (loading) { btn._originalHtml = btn.innerHTML; btn.classList.add('btn-loading'); btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + (btn.dataset.loadingText || 'Working...'); }
+        else { btn.classList.remove('btn-loading'); btn.innerHTML = btn._originalHtml || btn.innerHTML; }
     }
-
     /* ── Auto-add loading state to forms ── */
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('form[method="POST"]').forEach(function(form) {
             if (form.dataset.noLoading) return;
-            form.addEventListener('submit', function() {
-                var btn = form.querySelector('button[type="submit"]');
-                if (btn && !btn.classList.contains('btn-loading')) {
-                    setButtonLoading(btn, true);
-                }
-            });
+            form.addEventListener('submit', function() { var btn = form.querySelector('button[type="submit"]'); if (btn && !btn.classList.contains('btn-loading')) setButtonLoading(btn, true); });
         });
     });
+
+    /* ── Chart.js dark theme defaults ── */
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(42, 54, 80, 0.5)';
+        Chart.defaults.plugins.legend.labels.color = '#94a3b8';
+    }
     </script>
     {% block extra_scripts %}{% endblock %}
 </body>

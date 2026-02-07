@@ -14,7 +14,7 @@
         top: 0;
         bottom: 0;
         width: 3px;
-        background: linear-gradient(to bottom, #2b6cb0, #e53e3e, #1a365d);
+        background: linear-gradient(to bottom, var(--accent-blue), var(--accent-red), var(--accent-purple));
     }
     .timeline-phase {
         position: relative;
@@ -40,15 +40,15 @@
         padding-left: 12px;
         margin-bottom: 12px;
     }
-    .task-category.management { border-color: #2b6cb0; }
-    .task-category.technical { border-color: #38a169; }
-    .task-category.assurance { border-color: #d69e2e; }
+    .task-category.management { border-color: var(--accent-blue); }
+    .task-category.technical { border-color: var(--accent-green); }
+    .task-category.assurance { border-color: var(--accent-yellow); }
     .task-category ul { margin-bottom: 0; padding-left: 1.2rem; }
-    .task-category li { font-size: 0.875rem; margin-bottom: 4px; }
-    .urgency-critical { background: linear-gradient(135deg, #fff5f5, #fed7d7); border-color: #fc8181; }
-    .urgency-tight { background: linear-gradient(135deg, #fffff0, #fefcbf); border-color: #f6e05e; }
-    .urgency-adequate { background: linear-gradient(135deg, #f0fff4, #c6f6d5); border-color: #68d391; }
-    .urgency-comfortable { background: linear-gradient(135deg, #ebf8ff, #bee3f8); border-color: #63b3ed; }
+    .task-category li { font-size: 0.875rem; margin-bottom: 4px; color: var(--text-secondary); }
+    .urgency-critical { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.4); }
+    .urgency-tight { background: rgba(234,179,8,0.08); border-color: rgba(234,179,8,0.4); }
+    .urgency-adequate { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.4); }
+    .urgency-comfortable { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.4); }
     .current-marker {
         position: absolute;
         left: -46px;
@@ -93,7 +93,7 @@
     <div class="card-body">
         <div class="row align-items-center">
             <div class="col-md-3 text-center">
-                <div style="font-size: 3rem; font-weight: 700; color: {% if roadmap.urgency == 'critical' %}#e53e3e{% elif roadmap.urgency == 'tight' %}#d69e2e{% else %}#2b6cb0{% endif %};">
+                <div style="font-size: 3rem; font-weight: 700; color: {% if roadmap.urgency == 'critical' %}var(--accent-red){% elif roadmap.urgency == 'tight' %}var(--accent-yellow){% else %}var(--accent-blue){% endif %};">
                     {{ roadmap.months_remaining }}
                 </div>
                 <div class="text-muted fw-bold">months to disclosure</div>
@@ -104,13 +104,13 @@
                 </div>
             </div>
             <div class="col-md-3 text-center border-start">
-                <div style="font-size: 2rem; font-weight: 700; color: #1a365d;">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);">
                     {{ roadmap.months_to_assurance }}
                 </div>
                 <div class="text-muted fw-bold">months to 1st assurance</div>
             </div>
             <div class="col-md-3 text-center border-start">
-                <div style="font-size: 2rem; font-weight: 700; color: {% if roadmap.gaps.total_gaps > 10 %}#e53e3e{% elif roadmap.gaps.total_gaps > 5 %}#d69e2e{% else %}#38a169{% endif %};">
+                <div style="font-size: 2rem; font-weight: 700; color: {% if roadmap.gaps.total_gaps > 10 %}var(--accent-red){% elif roadmap.gaps.total_gaps > 5 %}var(--accent-yellow){% else %}var(--accent-green){% endif %};">
                     {{ roadmap.gaps.total_gaps }}
                 </div>
                 <div class="text-muted fw-bold">gaps to close</div>
@@ -269,7 +269,7 @@
                     <!-- Management & Governance -->
                     <div class="col-md-4">
                         <div class="task-category management">
-                            <h6 class="mb-2" style="color: #2b6cb0;">
+                            <h6 class="mb-2" style="color: var(--accent-blue);">
                                 <i class="bi bi-people me-1"></i>Management & Governance
                             </h6>
                             <ul>
@@ -284,7 +284,7 @@
                     <!-- Technical & IT -->
                     <div class="col-md-4">
                         <div class="task-category technical">
-                            <h6 class="mb-2" style="color: #38a169;">
+                            <h6 class="mb-2" style="color: var(--accent-green);">
                                 <i class="bi bi-gear me-1"></i>Technical & IT
                             </h6>
                             <ul>
@@ -302,7 +302,7 @@
                     <!-- Assurance -->
                     <div class="col-md-4">
                         <div class="task-category assurance">
-                            <h6 class="mb-2" style="color: #d69e2e;">
+                            <h6 class="mb-2" style="color: var(--accent-yellow);">
                                 <i class="bi bi-shield-check me-1"></i>Assurance Readiness
                             </h6>
                             <ul>

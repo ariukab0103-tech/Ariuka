@@ -5,18 +5,18 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2>{{ assessment.title }}</h2>
-        <p class="text-muted mb-0">
+        <p class="mb-0" style="color: var(--text-secondary);">
             {{ assessment.entity_name }} | {{ assessment.fiscal_year }} |
             {% if assessment.status == 'draft' %}
             <span class="status-badge bg-secondary text-white">Draft</span>
             {% elif assessment.status == 'in_progress' %}
-            <span class="status-badge bg-warning text-dark">In Progress</span>
+            <span class="status-badge" style="background: rgba(234,179,8,0.2); color: var(--accent-yellow);">In Progress</span>
             {% elif assessment.status == 'completed' %}
-            <span class="status-badge bg-success text-white">Completed</span>
+            <span class="status-badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Completed</span>
             {% elif assessment.status == 'under_review' %}
-            <span class="status-badge bg-info text-white">Under Review</span>
+            <span class="status-badge" style="background: rgba(6,182,212,0.2); color: var(--accent-cyan);">Under Review</span>
             {% elif assessment.status == 'reviewed' %}
-            <span class="status-badge bg-primary text-white">Reviewed</span>
+            <span class="status-badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Reviewed</span>
             {% endif %}
         </p>
     </div>
@@ -54,9 +54,9 @@
 
 <!-- Document Upload & Auto-Assess Section -->
 {% if assessment.status in ('draft', 'in_progress') and can_edit %}
-<div class="card mb-4 border-primary">
-    <div class="card-header bg-primary text-white">
-        <i class="bi bi-cloud-arrow-up me-2"></i>Upload Documents & Auto-Assess
+<div class="card mb-4" style="border: 1px solid rgba(59,130,246,0.3);">
+    <div class="card-header" style="background: var(--gradient-blue); border-radius: 11px 11px 0 0;">
+        <i class="bi bi-cloud-arrow-up me-2 text-white"></i><span class="text-white">Upload Documents & Auto-Assess</span>
     </div>
     <div class="card-body">
         <div class="row">
@@ -262,7 +262,7 @@
                 </thead>
                 <tbody>
                     <!-- Owner row -->
-                    <tr class="table-light">
+                    <tr style="background: rgba(59,130,246,0.06);">
                         <td>
                             <i class="bi bi-person-fill text-primary me-1"></i>
                             <strong>{{ assessment.author.full_name }}</strong>
@@ -352,7 +352,7 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr{% if c.la_scope == 'in_scope' %} class="table-danger table-active"{% endif %}>
+                <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
                     <td>
                         <code>{{ c.id }}</code>
                     </td>

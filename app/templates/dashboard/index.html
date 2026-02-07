@@ -2,38 +2,47 @@
 {% block title %}Dashboard - SSBJ Gap Analysis{% endblock %}
 
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h2>
+    <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Assessment
+    </a>
+</div>
 
 <!-- Stats Row -->
-<div class="row mb-4">
+<div class="row mb-4 g-3">
     <div class="col-md-3">
-        <div class="card stat-card">
+        <div class="card stat-card stat-blue">
             <div class="card-body">
-                <div class="stat-value">{{ stats.total_assessments }}</div>
+                <i class="bi bi-clipboard-check stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-blue);">{{ stats.total_assessments }}</div>
                 <div class="stat-label">Total Assessments</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card" style="border-left-color: var(--warning);">
+        <div class="card stat-card stat-yellow">
             <div class="card-body">
-                <div class="stat-value" style="color: var(--warning);">{{ stats.in_progress }}</div>
+                <i class="bi bi-hourglass-split stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-yellow);">{{ stats.in_progress }}</div>
                 <div class="stat-label">In Progress</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card" style="border-left-color: var(--success);">
+        <div class="card stat-card stat-green">
             <div class="card-body">
-                <div class="stat-value" style="color: var(--success);">{{ stats.completed }}</div>
+                <i class="bi bi-check-circle stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-green);">{{ stats.completed }}</div>
                 <div class="stat-label">Completed</div>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card stat-card" style="border-left-color: var(--accent);">
+        <div class="card stat-card stat-purple">
             <div class="card-body">
-                <div class="stat-value" style="color: var(--accent);">{{ stats.reviewed }}</div>
+                <i class="bi bi-search stat-icon"></i>
+                <div class="stat-value" style="color: var(--accent-purple);">{{ stats.reviewed }}</div>
                 <div class="stat-label">Reviewed</div>
             </div>
         </div>
@@ -47,6 +56,7 @@
         <i class="bi bi-bar-chart me-2"></i>Pillar Scores by Assessment
     </div>
     <div class="card-body p-0">
+        <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
@@ -71,13 +81,13 @@
                         {% if a.status == 'draft' %}
                         <span class="status-badge bg-secondary text-white">Draft</span>
                         {% elif a.status == 'in_progress' %}
-                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        <span class="status-badge" style="background: rgba(234,179,8,0.2); color: var(--accent-yellow);">In Progress</span>
                         {% elif a.status == 'completed' %}
-                        <span class="status-badge bg-success text-white">Completed</span>
+                        <span class="status-badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Completed</span>
                         {% elif a.status == 'under_review' %}
-                        <span class="status-badge bg-info text-white">Under Review</span>
+                        <span class="status-badge" style="background: rgba(6,182,212,0.2); color: var(--accent-cyan);">Under Review</span>
                         {% elif a.status == 'reviewed' %}
-                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        <span class="status-badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Reviewed</span>
                         {% endif %}
                     </td>
                     <td class="text-center">
@@ -104,6 +114,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
@@ -143,7 +154,7 @@
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Pillar Scores</div>
-            <div class="card-body text-center text-muted py-5">
+            <div class="card-body text-center py-5" style="color: var(--text-muted);">
                 <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
                 <p class="mt-2">No scored assessments yet. Upload documents and run auto-assess to see results.</p>
             </div>
@@ -152,7 +163,7 @@
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header"><i class="bi bi-bullseye me-2"></i>Maturity Target</div>
-            <div class="card-body text-center text-muted py-5">
+            <div class="card-body text-center py-5" style="color: var(--text-muted);">
                 <i class="bi bi-bullseye" style="font-size: 3rem;"></i>
                 <p class="mt-2">Complete an assessment to see the maturity radar.</p>
             </div>
@@ -171,6 +182,7 @@
     </div>
     <div class="card-body p-0">
         {% if assessments %}
+        <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
@@ -187,34 +199,40 @@
             <tbody>
                 {% for a in assessments[:10] %}
                 <tr>
-                    <td><strong>{{ a.title }}</strong></td>
+                    <td>
+                        <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="text-decoration-none fw-bold" style="color: var(--accent-cyan);">
+                            {{ a.title }}
+                        </a>
+                    </td>
                     <td>{{ a.entity_name }}</td>
                     <td>{{ a.fiscal_year }}</td>
                     <td>
                         {% if a.status == 'draft' %}
                         <span class="status-badge bg-secondary text-white">Draft</span>
                         {% elif a.status == 'in_progress' %}
-                        <span class="status-badge bg-warning text-dark">In Progress</span>
+                        <span class="status-badge" style="background: rgba(234,179,8,0.2); color: var(--accent-yellow);">In Progress</span>
                         {% elif a.status == 'completed' %}
-                        <span class="status-badge bg-success text-white">Completed</span>
+                        <span class="status-badge" style="background: rgba(34,197,94,0.2); color: var(--accent-green);">Completed</span>
                         {% elif a.status == 'under_review' %}
-                        <span class="status-badge bg-info text-white">Under Review</span>
+                        <span class="status-badge" style="background: rgba(6,182,212,0.2); color: var(--accent-cyan);">Under Review</span>
                         {% elif a.status == 'reviewed' %}
-                        <span class="status-badge bg-primary text-white">Reviewed</span>
+                        <span class="status-badge" style="background: rgba(59,130,246,0.2); color: var(--accent-blue);">Reviewed</span>
                         {% endif %}
                     </td>
                     <td>
-                        <div class="progress" style="width: 80px;">
-                            <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress" style="width: 80px;">
+                                <div class="progress-bar {% if a.completion_pct == 100 %}bg-success{% elif a.completion_pct > 50 %}bg-info{% else %}bg-warning{% endif %}" style="width: {{ a.completion_pct }}%"></div>
+                            </div>
+                            <small>{{ a.completion_pct }}%</small>
                         </div>
-                        <small class="text-muted">{{ a.completion_pct }}%</small>
                     </td>
                     <td>
                         <span class="score-badge score-{{ (a.overall_score | round | int) if a.overall_score else 0 }}">
                             {{ a.overall_score }}
                         </span>
                     </td>
-                    <td>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</td>
+                    <td><small>{{ a.updated_at.strftime('%Y-%m-%d') if a.updated_at else '—' }}</small></td>
                     <td>
                         <a href="{{ url_for('assessment.view', assessment_id=a.id) }}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i>
@@ -224,8 +242,9 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
-        <div class="text-center py-5 text-muted">
+        <div class="text-center py-5" style="color: var(--text-muted);">
             <i class="bi bi-clipboard-check" style="font-size: 3rem;"></i>
             <p class="mt-2">No assessments yet. Create your first SSBJ gap assessment.</p>
             <a href="{{ url_for('assessment.create') }}" class="btn btn-primary">
@@ -243,16 +262,18 @@
 const assessmentDetails = {{ assessment_details | tojson }};
 const allPillars = {{ all_pillars | tojson }};
 const chartColors = [
-    '#2b6cb0', '#38a169', '#d69e2e', '#e53e3e', '#805ad5',
-    '#dd6b20', '#319795', '#d53f8c', '#3182ce', '#48bb78'
+    '#3b82f6', '#22c55e', '#eab308', '#ef4444', '#a855f7',
+    '#f97316', '#06b6d4', '#ec4899', '#6366f1', '#14b8a6'
 ];
 
 // ---- Grouped Bar Chart: each assessment's pillar scores side by side ----
 const datasets = assessmentDetails.map((a, i) => ({
     label: a.title + ' (' + a.fiscal_year + ')',
     data: allPillars.map(p => a.pillar_scores[p] || 0),
-    backgroundColor: chartColors[i % chartColors.length],
-    borderRadius: 4
+    backgroundColor: chartColors[i % chartColors.length] + 'cc',
+    borderColor: chartColors[i % chartColors.length],
+    borderWidth: 1,
+    borderRadius: 6
 }));
 
 // Add target line
@@ -260,7 +281,7 @@ datasets.push({
     label: 'Target (3.0)',
     data: allPillars.map(() => 3),
     type: 'line',
-    borderColor: '#e53e3e',
+    borderColor: '#ef4444',
     borderDash: [5, 5],
     pointRadius: 0,
     fill: false,
@@ -273,7 +294,8 @@ new Chart(document.getElementById('comparisonChart'), {
     options: {
         responsive: true,
         scales: {
-            y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+            y: { beginAtZero: true, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(42, 54, 80, 0.5)' } },
+            x: { grid: { color: 'rgba(42, 54, 80, 0.3)' } }
         },
         plugins: {
             legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
@@ -302,16 +324,21 @@ function renderRadar(idx) {
             }, {
                 label: 'Target (Limited Assurance Ready)',
                 data: allPillars.map(() => 3),
-                borderColor: '#e53e3e',
-                backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
                 borderDash: [5, 5],
-                pointBackgroundColor: '#e53e3e'
+                pointBackgroundColor: '#ef4444'
             }]
         },
         options: {
             responsive: true,
             scales: {
-                r: { beginAtZero: true, max: 5, ticks: { stepSize: 1 } }
+                r: {
+                    beginAtZero: true, max: 5, ticks: { stepSize: 1, backdropColor: 'transparent' },
+                    grid: { color: 'rgba(42, 54, 80, 0.5)' },
+                    angleLines: { color: 'rgba(42, 54, 80, 0.5)' },
+                    pointLabels: { color: '#94a3b8' }
+                }
             },
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
