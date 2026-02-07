@@ -60,6 +60,7 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.5; }
     }
+    .bg-purple { background-color: #7c3aed !important; }
     @media print {
         .timeline::before { background: #333 !important; }
         .timeline-dot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -133,38 +134,35 @@
 <div class="card mb-4">
     <div class="card-header"><i class="bi bi-signpost me-2"></i>Key Milestones</div>
     <div class="card-body">
-        <div class="row text-center">
+        <div class="row text-center g-1">
             <div class="col">
-                <div class="badge bg-primary rounded-pill px-3 py-2 mb-1">TODAY</div>
+                <div class="badge bg-primary rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">TODAY</div>
                 <div class="small text-muted">{{ roadmap.today.strftime('%b %Y') }}</div>
             </div>
+            <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <i class="bi bi-arrow-right text-muted"></i>
+                <div class="badge bg-info rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Start Talking to Assurance Providers</div>
+                <div class="small text-muted">~3 months</div>
             </div>
+            <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <div class="badge bg-info rounded-pill px-3 py-2 mb-1">Assurance Provider Selected</div>
-                <div class="small text-muted">~6 months</div>
+                <div class="badge bg-success rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Provider Selected</div>
+                <div class="small text-muted">~6-9 months</div>
             </div>
+            <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <i class="bi bi-arrow-right text-muted"></i>
+                <div class="badge bg-warning text-dark rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">Pre-Assurance Review</div>
+                <div class="small text-muted">~15-18 months</div>
             </div>
+            <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <div class="badge bg-warning text-dark rounded-pill px-3 py-2 mb-1">Dry Run Complete</div>
-                <div class="small text-muted">~12-18 months</div>
+                <div class="badge bg-danger rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Disclosure</div>
+                <div class="small text-muted">FY{{ roadmap.compliance_year }}</div>
             </div>
+            <div class="col-auto d-flex align-items-center"><i class="bi bi-chevron-right text-muted"></i></div>
             <div class="col">
-                <i class="bi bi-arrow-right text-muted"></i>
-            </div>
-            <div class="col">
-                <div class="badge bg-danger rounded-pill px-3 py-2 mb-1">1st Disclosure</div>
-                <div class="small text-muted">FY{{ roadmap.compliance_year }} ({{ roadmap.compliance_date.strftime('%b %Y') }})</div>
-            </div>
-            <div class="col">
-                <i class="bi bi-arrow-right text-muted"></i>
-            </div>
-            <div class="col">
-                <div class="badge bg-dark rounded-pill px-3 py-2 mb-1">1st Assurance</div>
-                <div class="small text-muted">FY{{ roadmap.assurance_year }} ({{ roadmap.assurance_date.strftime('%b %Y') }})</div>
+                <div class="badge bg-dark rounded-pill px-2 py-2 mb-1" style="font-size: 0.7em;">1st Assurance</div>
+                <div class="small text-muted">FY{{ roadmap.assurance_year }}</div>
             </div>
         </div>
     </div>
@@ -257,12 +255,12 @@
     <div class="timeline-phase">
         <div class="timeline-dot bg-{{ phase.color }}">{{ phase.number }}</div>
         <div class="card {% if phase.number == 1 %}border-primary{% endif %}">
-            <div class="card-header d-flex justify-content-between align-items-center {% if phase.number == 5 %}bg-danger text-white{% elif phase.number == 6 %}bg-dark text-white{% endif %}">
+            <div class="card-header d-flex justify-content-between align-items-center {% if phase.number == 5 %}bg-purple text-white{% elif phase.number == 6 %}bg-danger text-white{% elif phase.number == 7 %}bg-dark text-white{% endif %}">
                 <span>
                     <strong>Phase {{ phase.number }}: {{ phase.title }}</strong>
-                    <br><small {% if phase.number in (5, 6) %}class="text-white-50"{% else %}class="text-muted"{% endif %}>{{ phase.subtitle }}</small>
+                    <br><small {% if phase.number in (5, 6, 7) %}class="text-white-50"{% else %}class="text-muted"{% endif %}>{{ phase.subtitle }}</small>
                 </span>
-                <span class="badge bg-{% if phase.number in (5, 6) %}light text-dark{% else %}{{ phase.color }}{% endif %}">{{ phase.duration }}</span>
+                <span class="badge bg-{% if phase.number in (5, 6, 7) %}light text-dark{% else %}{{ phase.color }}{% endif %}">{{ phase.duration }}</span>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -317,6 +315,83 @@
         </div>
     </div>
 {% endfor %}
+</div>
+
+<!-- Pre-Assurance Readiness Section -->
+<div class="card mt-4 mb-4 border-2" style="border-color: rgba(168,85,247,0.4) !important;">
+    <div class="card-header text-white" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+        <i class="bi bi-search me-2"></i>Pre-Assurance Readiness
+        <span class="badge bg-light text-dark ms-2">
+            {% if roadmap.pre_assurance.engagement_urgency == 'critical' %}ACT NOW
+            {% elif roadmap.pre_assurance.engagement_urgency == 'important' %}START SOON
+            {% else %}PLAN AHEAD{% endif %}
+        </span>
+    </div>
+    <div class="card-body">
+        <!-- When to Start Talking -->
+        <div class="alert {% if roadmap.pre_assurance.engagement_urgency == 'critical' %}alert-danger{% elif roadmap.pre_assurance.engagement_urgency == 'important' %}alert-warning{% else %}alert-info{% endif %} mb-4">
+            <h6 class="alert-heading mb-1">
+                <i class="bi bi-clock me-1"></i>When to Start Talking to Assurance Providers
+            </h6>
+            <p class="mb-0">{{ roadmap.pre_assurance.engagement_message }}</p>
+        </div>
+
+        <!-- Assurance Engagement Timeline -->
+        <h6 class="mb-3"><i class="bi bi-calendar-event me-1"></i>Typical Assurance Engagement Timeline</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th style="width: 35%;">When</th>
+                        <th>What to Do</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in roadmap.pre_assurance.timeline %}
+                    <tr>
+                        <td><strong>{{ step.when }}</strong></td>
+                        <td>{{ step.what }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Readiness Checklist -->
+        <h6 class="mb-3"><i class="bi bi-clipboard-check me-1"></i>Pre-Assurance Readiness Checklist</h6>
+        <div class="mb-4">
+            {% for item in roadmap.pre_assurance.checklist %}
+            <div class="d-flex align-items-start mb-2 p-2 rounded" style="background: var(--bg-surface);">
+                {% if item.status == 'ready' %}
+                <i class="bi bi-check-circle-fill text-success me-2 mt-1 flex-shrink-0"></i>
+                {% elif item.status == 'not_ready' %}
+                <i class="bi bi-x-circle-fill text-danger me-2 mt-1 flex-shrink-0"></i>
+                {% else %}
+                <i class="bi bi-dash-circle text-warning me-2 mt-1 flex-shrink-0"></i>
+                {% endif %}
+                <div>
+                    <strong class="{% if item.priority == 'critical' %}text-danger{% elif item.priority == 'done' %}text-success{% endif %}">
+                        {{ item.item }}
+                    </strong>
+                    <br><small class="text-muted">{{ item.detail }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Provider Selection Criteria -->
+        <h6 class="mb-3"><i class="bi bi-building me-1"></i>How to Select an Assurance Provider</h6>
+        <div class="row g-2">
+            {% for pc in roadmap.pre_assurance.provider_criteria %}
+            <div class="col-md-6">
+                <div class="p-2 rounded h-100" style="background: var(--bg-surface); border: 1px solid var(--border-subtle);">
+                    <strong class="d-block" style="font-size: 0.85em;"><i class="bi bi-check2 text-success me-1"></i>{{ pc.criterion }}</strong>
+                    <small class="text-muted">{{ pc.why }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 
 <!-- Assurance Provider Discussion Guide -->

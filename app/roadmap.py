@@ -94,6 +94,7 @@ def generate_roadmap(assessment, responses_list):
     - urgency: 'critical' / 'tight' / 'adequate' / 'comfortable'
     - phases: list of phase dicts with tasks
     - summary: overall readiness summary
+    - pre_assurance: pre-assurance engagement guidance
     """
     compliance_year = _extract_year(assessment.fiscal_year)
     if not compliance_year:
@@ -125,6 +126,9 @@ def generate_roadmap(assessment, responses_list):
         compliance_date, assurance_date, today, months_remaining, gaps
     )
 
+    # Pre-assurance engagement guidance
+    pre_assurance = _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, compliance_date)
+
     # Summary
     summary = _generate_summary(gaps, months_remaining, urgency)
 
@@ -140,6 +144,7 @@ def generate_roadmap(assessment, responses_list):
         "phases": phases,
         "gaps": gaps,
         "summary": summary,
+        "pre_assurance": pre_assurance,
     }
 
 
@@ -154,6 +159,7 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Secure budget allocation for SSBJ compliance project",
             "Appoint a Sustainability Disclosure Project Owner (executive sponsor)",
             "Establish cross-functional working group (Finance, Legal, IR, Operations, ESG)",
+            "Include assurance engagement fees in budget planning (¥5M-¥30M+ depending on complexity)",
         ],
         "technical": [
             "Complete current gap assessment and baseline scoring",
@@ -161,9 +167,11 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Inventory existing IT systems that hold sustainability data (ERP, utility management, etc.)",
         ],
         "assurance": [
-            "Research potential assurance providers (Big 4, mid-tier firms with ISAE 3000 experience)",
+            "BEGIN NOW: Research potential assurance providers (Big 4, mid-tier firms with ISAE 3000/3410 experience)",
+            "Create shortlist of 3-5 providers — check their SSBJ/ISSB experience in Japan",
             "Understand limited assurance scope: Scope 1 & 2 GHG only in initial phase",
             "Review ISAE 3000/3410 and ISSA 5000 requirements at high level",
+            "Contact providers for informal introduction calls — don't wait until Phase 3",
         ],
     }
 
@@ -193,8 +201,10 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         "technical": [],
         "assurance": [
             "Send RFP to 2-3 assurance providers for limited assurance engagement",
-            "Schedule introductory meeting with shortlisted firms",
+            "Schedule introductory meetings with shortlisted assurance firms",
             "Discuss assurance scope, timeline, and evidence expectations",
+            "Ask about pre-assurance readiness review service (most firms offer this)",
+            "Compare fees, team experience, and advisory support during preparation",
         ],
     }
 
@@ -238,9 +248,11 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         ],
         "technical": [],
         "assurance": [
-            "Select and formally engage assurance provider",
+            "IMPORTANT: Select and formally engage assurance provider by month 6-9",
+            "Sign engagement letter for pre-assurance readiness review",
             "Pre-engagement planning meeting: agree scope, materiality, evidence requirements",
-            "Assurance provider reviews your internal controls design (advisory, not assurance yet)",
+            "Assurance provider reviews your internal controls design (advisory, not assurance)",
+            "Receive feedback on control gaps — adjust processes before dry run",
         ],
     }
 
@@ -320,8 +332,49 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         "tasks": p4_tasks,
     })
 
-    # Phase 5: First Disclosure (Months 18-24 / Compliance Year)
+    # Phase 5: Pre-Assurance Readiness (Months 15-21)
     p5_tasks = {
+        "management": [
+            "Schedule formal pre-assurance readiness review with your assurance provider",
+            "Ensure management understands the assurance process and their role in it",
+            "Identify key personnel who will interface with auditors (data owners, reviewers, approvers)",
+            "Prepare internal FAQ: what auditors will ask, what evidence they need, common pitfalls",
+        ],
+        "technical": [
+            "Complete mock audit: walk through the full evidence trail as if you are the auditor",
+            "Verify all Scope 1 source data is traceable: fuel invoice → activity data → emission factor → tCO2e",
+            "Verify all Scope 2 source data is traceable: utility bill → kWh → grid factor → tCO2e",
+            "Test internal controls: does maker-checker work? Are reviews documented with dates and signatures?",
+            "Prepare organized evidence binders/folders for each in-scope criterion",
+            "Run completeness check: all sites, all emission sources, all months accounted for?",
+        ],
+        "assurance": [
+            "Assurance provider conducts pre-assurance readiness review (formal or advisory)",
+            "Walk-through of data collection, calculation, and reporting processes",
+            "Provider identifies control gaps, missing documentation, or methodology issues",
+            "Receive written readiness assessment report with specific remediation items",
+            "Remediate ALL findings before first disclosure — this is your last chance to fix issues",
+            "Confirm engagement terms: timing, team, fees, deliverables for formal assurance",
+        ],
+    }
+
+    if gaps["la_critical"]:
+        p5_tasks["technical"].append(
+            f"CRITICAL: Re-assess {len(gaps['la_critical'])} LA-critical items — all must be at score 3+ before assurance"
+        )
+
+    phases.append({
+        "number": 5,
+        "title": "Pre-Assurance Readiness",
+        "subtitle": "Mock audit, provider readiness review, remediation",
+        "duration": "Months 15-21",
+        "icon": "bi-search",
+        "color": "purple",
+        "tasks": p5_tasks,
+    })
+
+    # Phase 6: First Disclosure (Months 18-24 / Compliance Year)
+    p6_tasks = {
         "management": [
             "Final board approval of sustainability disclosure",
             "CEO/CFO sign-off on disclosed information",
@@ -334,55 +387,216 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Archive all supporting evidence with complete audit trail",
         ],
         "assurance": [
-            "Assurance provider is on standby for post-disclosure engagement",
-            "Ensure evidence packages are organized for handoff to auditor",
-            "Prepare management representation letter template",
-        ],
-    }
-
-    phases.append({
-        "number": 5,
-        "title": "First Mandatory Disclosure",
-        "subtitle": f"Publish SSBJ-compliant disclosure (FY{compliance_date.year})",
-        "duration": f"Compliance Year ({compliance_date.year})",
-        "icon": "bi-file-earmark-text",
-        "color": "danger",
-        "tasks": p5_tasks,
-    })
-
-    # Phase 6: First Limited Assurance (Year + 1)
-    p6_tasks = {
-        "management": [
-            "Board informed of upcoming assurance engagement and timeline",
-            "Designate internal liaison team for auditor interactions",
-            "Budget for assurance engagement fees",
-        ],
-        "technical": [
-            "Provide complete evidence packages to assurance provider",
-            "Respond to information requests and clarification queries",
-            "Support site visits if required by assurance provider",
-            "Address any findings or adjustments identified during assurance",
-        ],
-        "assurance": [
-            "Formal limited assurance engagement begins (ISAE 3000 / ISSA 5000)",
-            "Assurance procedures: inquiry, analytical review, limited testing",
-            "Scope: Scope 1 & 2 GHG emissions quantification and disclosure",
-            "Receive assurance report — target: unqualified conclusion",
-            "Plan for scope expansion in subsequent years",
+            "Share final disclosure draft with assurance provider for awareness",
+            "Ensure evidence packages are organized and ready for formal engagement",
+            "Prepare management representation letter",
+            "Confirm assurance engagement start date (typically 1-3 months after disclosure filing)",
         ],
     }
 
     phases.append({
         "number": 6,
+        "title": "First Mandatory Disclosure",
+        "subtitle": f"Publish SSBJ-compliant disclosure (FY{compliance_date.year})",
+        "duration": f"Compliance Year ({compliance_date.year})",
+        "icon": "bi-file-earmark-text",
+        "color": "danger",
+        "tasks": p6_tasks,
+    })
+
+    # Phase 7: First Limited Assurance (Year + 1)
+    p7_tasks = {
+        "management": [
+            "Board informed of assurance engagement kickoff and expected timeline",
+            "Designate internal liaison team for day-to-day auditor interactions",
+            "Prepare for management inquiry sessions (auditor interviews with CFO, data owners, reviewers)",
+        ],
+        "technical": [
+            "Provide complete evidence packages to assurance provider on day one",
+            "Respond to information requests promptly (target 2-3 business days turnaround)",
+            "Support site visits if required by assurance provider",
+            "Address any findings or adjustments identified during fieldwork",
+            "Track and resolve all auditor queries in a formal tracker",
+        ],
+        "assurance": [
+            "Formal limited assurance engagement begins (ISAE 3000 / ISAE 3410 / ISSA 5000)",
+            "Assurance procedures: inquiry, analytical review, recalculation, limited testing of controls",
+            "Scope: Scope 1 & 2 GHG emissions quantification and related disclosures",
+            "Draft assurance report reviewed by management before finalization",
+            "Receive assurance report — target: unqualified (clean) conclusion",
+            "Debrief with provider: lessons learned, improvement areas for Year 2",
+            "Plan for scope expansion in subsequent years (Scope 3, broader sustainability topics)",
+        ],
+    }
+
+    phases.append({
+        "number": 7,
         "title": "First Limited Assurance",
         "subtitle": f"Auditor examines Scope 1 & 2 (FY{assurance_date.year})",
         "duration": f"Assurance Year ({assurance_date.year})",
         "icon": "bi-shield-check",
         "color": "dark",
-        "tasks": p6_tasks,
+        "tasks": p7_tasks,
     })
 
     return phases
+
+
+def _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, compliance_date):
+    """Generate pre-assurance engagement guidance based on assessment results."""
+
+    # When to start talking to assurance providers
+    if months_remaining > 18:
+        engagement_urgency = "recommended"
+        engagement_message = (
+            "You have adequate time. Start informal conversations with assurance providers now "
+            "to understand expectations. Formal engagement by month 6-9 is ideal."
+        )
+    elif months_remaining > 12:
+        engagement_urgency = "important"
+        engagement_message = (
+            "Timeline is getting tight. Begin assurance provider discussions immediately. "
+            "Aim to select a provider within 2-3 months and commission a pre-assurance readiness review."
+        )
+    else:
+        engagement_urgency = "critical"
+        engagement_message = (
+            "URGENT: You should already be talking to assurance providers. Contact firms immediately "
+            "and fast-track a pre-assurance readiness review. Consider engaging your financial auditor "
+            "who already knows your organization."
+        )
+
+    # Pre-assurance readiness checklist based on gaps
+    checklist = []
+
+    # Check LA-critical items
+    if gaps["la_critical"]:
+        checklist.append({
+            "item": f"Close {len(gaps['la_critical'])} limited assurance critical gaps (currently below score 3)",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "Auditors will directly examine these items. All must reach score 3 (Defined) minimum.",
+        })
+    else:
+        checklist.append({
+            "item": "All LA-scope items meet minimum threshold",
+            "status": "ready",
+            "priority": "done",
+            "detail": "In-scope items are at or above score 3.",
+        })
+
+    # Internal controls check
+    has_controls_gap = any(
+        g["id"] == "RSK-05" for g in gaps.get("risk", [])
+    )
+    if has_controls_gap:
+        checklist.append({
+            "item": "Establish internal controls for GHG data (RSK-05 below threshold)",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "Auditors REQUIRE documented internal controls: data ownership, maker-checker review, audit trail, reconciliation.",
+        })
+    else:
+        checklist.append({
+            "item": "Internal controls framework in place",
+            "status": "ready",
+            "priority": "done",
+            "detail": "Controls are documented. Ensure they are operating effectively.",
+        })
+
+    # Data quality check
+    has_dq_gap = any(
+        g["id"] == "MET-07" for g in gaps.get("metrics", [])
+    )
+    if has_dq_gap:
+        checklist.append({
+            "item": "Implement data quality management (MET-07 below threshold)",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "Auditors need to see: data flow diagram, validation rules, error log, completeness checks.",
+        })
+    else:
+        checklist.append({
+            "item": "Data quality processes documented",
+            "status": "ready",
+            "priority": "done",
+            "detail": "Data governance is in place. Maintain evidence of ongoing quality checks.",
+        })
+
+    # Scope 1 & 2 completeness
+    has_s1_gap = any(g["id"] == "MET-01" for g in gaps.get("metrics", []))
+    has_s2_gap = any(g["id"] == "MET-02" for g in gaps.get("metrics", []))
+    if has_s1_gap or has_s2_gap:
+        missing = []
+        if has_s1_gap:
+            missing.append("Scope 1")
+        if has_s2_gap:
+            missing.append("Scope 2")
+        checklist.append({
+            "item": f"Complete {' & '.join(missing)} GHG calculation process",
+            "status": "not_ready",
+            "priority": "critical",
+            "detail": "These are the CORE items for limited assurance. Need documented methodology, verified data, and reviewed calculations.",
+        })
+    else:
+        checklist.append({
+            "item": "Scope 1 & 2 GHG calculation processes established",
+            "status": "ready",
+            "priority": "done",
+            "detail": "Calculation processes are in place. Ensure audit trail is complete.",
+        })
+
+    # General readiness items
+    checklist.extend([
+        {
+            "item": "Evidence filing system organized for auditor access",
+            "status": "pending",
+            "priority": "important",
+            "detail": "Organize evidence by criterion, year, and source. Auditor should be able to trace any number back to source.",
+        },
+        {
+            "item": "Management representation letter template prepared",
+            "status": "pending",
+            "priority": "important",
+            "detail": "Management must formally represent completeness and accuracy of GHG data. Prepare template in advance.",
+        },
+        {
+            "item": "Key personnel identified and briefed for auditor inquiries",
+            "status": "pending",
+            "priority": "important",
+            "detail": "Auditors will interview data owners, reviewers, and management. Prepare them for typical questions.",
+        },
+    ])
+
+    # Assurance provider selection criteria
+    provider_criteria = [
+        {"criterion": "ISAE 3000/3410 or ISSA 5000 certification", "why": "Mandatory standard for sustainability assurance engagements"},
+        {"criterion": "Experience with Japanese SSBJ standards", "why": "SSBJ has Japan-specific requirements that differ from global ISSB"},
+        {"criterion": "Industry experience in your sector", "why": "Sector-specific emission sources and calculation methods matter"},
+        {"criterion": "Pre-assurance advisory service available", "why": "Best practice: provider reviews your readiness BEFORE formal engagement"},
+        {"criterion": "Team continuity year-over-year", "why": "Consistent team reduces ramp-up time and builds institutional knowledge"},
+        {"criterion": "Relationship with your financial auditor", "why": "If same firm or cooperative firms, evidence sharing is easier"},
+    ]
+
+    # Typical engagement timeline
+    timeline = [
+        {"when": "12-18 months before assurance", "what": "Informal provider conversations, understand requirements"},
+        {"when": "9-12 months before assurance", "what": "Send RFP, receive proposals, select provider"},
+        {"when": "6-9 months before assurance", "what": "Sign engagement letter, pre-assurance readiness review"},
+        {"when": "3-6 months before assurance", "what": "Remediate findings from readiness review, prepare evidence"},
+        {"when": "1-3 months before assurance", "what": "Final preparation, mock audit, confirm engagement logistics"},
+        {"when": "Assurance period (4-8 weeks)", "what": "Fieldwork: inquiry, testing, recalculation, site visits if needed"},
+        {"when": "After fieldwork", "what": "Draft report review, management response, final assurance report issued"},
+    ]
+
+    return {
+        "engagement_urgency": engagement_urgency,
+        "engagement_message": engagement_message,
+        "checklist": checklist,
+        "provider_criteria": provider_criteria,
+        "timeline": timeline,
+        "months_to_assurance": months_to_assurance,
+    }
 
 
 def _generate_summary(gaps, months_remaining, urgency):

@@ -104,6 +104,8 @@
                                   placeholder="Additional notes, observations, or action items for improvement...">{{ response.notes or '' }}</textarea>
                     </div>
 
+                    {% set current_score = response.score if response.score is not none else 0 %}
+
                     <!-- Minimum Compliance Actions -->
                     {% if criterion.minimum_action %}
                     <div class="alert alert-warning mt-3 mb-3">
@@ -113,13 +115,19 @@
                         <p style="white-space: pre-line; font-size: 0.9em;">{{ criterion.minimum_action }}</p>
                         {% if criterion.references %}
                         <div class="mt-2">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-link-45deg me-1"></i>References for your current score ({{ current_score }}):</small>
+                            {% set has_refs = [] %}
                             {% for ref in criterion.references %}
-                            {% if ref.type == 'compliance' or ref.type == 'all' %}
-                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success py-0 px-2 me-1 mb-1">
+                            {% if (ref.type == 'compliance' or ref.type == 'all') and current_score in ref.for_scores %}
+                            {% if has_refs.append(1) %}{% endif %}
+                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success py-0 px-2 me-1 mb-1" title="{{ ref.title }}">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
                             </a>
                             {% endif %}
                             {% endfor %}
+                            {% if not has_refs %}
+                            <small class="text-muted">No additional compliance references needed at this level.</small>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -134,13 +142,19 @@
                         <p style="white-space: pre-line; font-size: 0.9em;">{{ criterion.best_practice }}</p>
                         {% if criterion.references %}
                         <div class="mt-2">
+                            <small class="text-muted d-block mb-1"><i class="bi bi-link-45deg me-1"></i>Recommended at your level:</small>
+                            {% set has_bp_refs = [] %}
                             {% for ref in criterion.references %}
-                            {% if ref.type == 'best_practice' or ref.type == 'all' %}
-                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2 me-1 mb-1">
+                            {% if (ref.type == 'best_practice' or ref.type == 'all') and current_score in ref.for_scores %}
+                            {% if has_bp_refs.append(1) %}{% endif %}
+                            <a href="{{ ref.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2 me-1 mb-1" title="{{ ref.title }}">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>{{ ref.label }}
                             </a>
                             {% endif %}
                             {% endfor %}
+                            {% if not has_bp_refs %}
+                            <small class="text-muted">Score higher to unlock advanced best practice references.</small>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
