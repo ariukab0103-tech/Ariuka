@@ -246,7 +246,7 @@ Keep the summary factual and concise (no commentary)."""
 Provide a structured summary organized by the 4 categories above."""
 
     def _call_api():
-        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        client = anthropic.Anthropic(api_key=api_key, timeout=40.0)
         return client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=4000,
@@ -256,7 +256,7 @@ Provide a structured summary organized by the 4 categories above."""
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(_call_api)
-        response = future.result(timeout=90)
+        response = future.result(timeout=45)
 
     return response.content[0].text.strip()
 
@@ -337,7 +337,7 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
     def _call_api():
         """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
-        client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
+        client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
         return client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=8192,
@@ -346,10 +346,10 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
         )
 
     try:
-        # Run in separate thread with hard 90s timeout
+        # Run in separate thread — keep under Render's ~60s proxy timeout
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(_call_api)
-            response = future.result(timeout=90)
+            response = future.result(timeout=50)
 
         # Check if output was truncated (stop_reason != "end_turn")
         stop_reason = response.stop_reason
@@ -391,7 +391,7 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
         return results
 
     except FuturesTimeout:
-        logger.warning("AI assessment timed out (90s)")
+        logger.warning("AI assessment timed out (50s)")
         raise RuntimeError("AI assessment timed out. Please try again.") from None
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse AI response as JSON: {e}")
