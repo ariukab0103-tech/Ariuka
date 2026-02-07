@@ -106,11 +106,19 @@ def create_app(config_class=Config):
         except Exception:
             pass
         # Get the original exception if available
-        original = getattr(error, 'original_exception', None) or getattr(error, 'description', error)
-        error_detail = f"{type(original).__name__}: {original}" if original != error else str(error)
-        logger.error(f"500 error: {error_detail}\n{traceback.format_exc()}")
-        return render_template_string("""
-        <!DOCTYPE html>
+        try:
+            original = getattr(error, 'original_exception', None) or getattr(error, 'description', error)
+            error_detail = f"{type(original).__name__}: {original}" if original != error else str(error)
+            tb = traceback.format_exc()
+        except Exception:
+            error_detail = "Unknown error"
+            tb = ""
+        logger.error(f"500 error: {error_detail}\n{tb}")
+        # Use plain string formatting to avoid any Jinja2 issues in the error handler
+        from markupsafe import escape
+        safe_detail = escape(error_detail)
+        safe_tb = escape(tb) if tb and tb != "NoneType: None\n" else ""
+        html = f"""<!DOCTYPE html>
         <html><head><title>Error</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         </head><body class="bg-light">
@@ -119,14 +127,15 @@ def create_app(config_class=Config):
                 <div class="card-header bg-danger text-white"><h5 class="mb-0">Server Error</h5></div>
                 <div class="card-body">
                     <p>Something went wrong. The error has been logged.</p>
-                    <p class="text-muted small mb-2"><strong>Error:</strong> {{ error_detail }}</p>
+                    <p class="text-muted small mb-2"><strong>Error:</strong> {safe_detail}</p>
+                    {"<pre class='text-muted small' style='white-space:pre-wrap;max-height:300px;overflow:auto'>" + str(safe_tb) + "</pre>" if safe_tb else ""}
                     <p class="text-muted small">Check <a href="/health">/health</a> to verify database connectivity.</p>
                     <a href="/" class="btn btn-primary mt-2">Go to Dashboard</a>
                     <a href="/health" class="btn btn-outline-secondary mt-2">Check Health</a>
                 </div>
             </div>
-        </div></body></html>
-        """, error_detail=error_detail), 500
+        </div></body></html>"""
+        return html, 500
 
     with app.app_context():
         try:
