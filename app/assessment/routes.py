@@ -697,3 +697,395 @@ def _get_next_criterion(current_id):
     except ValueError:
         pass
     return None
+
+
+# =========================================================================
+# Consultant Roadmap Review
+# =========================================================================
+
+def _build_keyword_index():
+    """Build keyword-to-criterion mapping for matching consultant suggestions."""
+    import re
+    index = {}
+    for c in SSBJ_CRITERIA:
+        keywords = set()
+        # Extract meaningful keywords from requirement, minimum_action, category
+        for field in ("requirement", "minimum_action", "best_practice", "category", "guidance"):
+            text = c.get(field, "")
+            words = re.findall(r"[a-zA-Z]{4,}", text.lower())
+            keywords.update(words)
+        # Add specific domain keywords per pillar/topic
+        if "scope 1" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
+            keywords.update(["scope1", "scope", "direct", "emissions", "ghg", "greenhouse"])
+        if "scope 2" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
+            keywords.update(["scope2", "indirect", "electricity", "purchased"])
+        if "scope 3" in (c.get("requirement", "") + c.get("minimum_action", "")).lower():
+            keywords.update(["scope3", "value", "chain", "supply"])
+        if c["pillar"] == "Governance":
+            keywords.update(["board", "governance", "oversight", "committee"])
+        if c["pillar"] == "Strategy":
+            keywords.update(["strategy", "scenario", "transition", "climate"])
+        if c["pillar"] == "Risk Management":
+            keywords.update(["risk", "controls", "internal", "management"])
+        if c["pillar"] == "Metrics & Targets":
+            keywords.update(["metrics", "targets", "data", "calculation", "emissions"])
+        index[c["id"]] = keywords
+    return index
+
+
+def _match_suggestion_to_criteria(suggestion_text, keyword_index, criteria_map):
+    """Match a single suggestion to relevant SSBJ criteria.
+
+    Returns list of (criterion_id, relevance_score) tuples.
+    """
+    import re
+    words = set(re.findall(r"[a-zA-Z]{4,}", suggestion_text.lower()))
+    # Also check for explicit criterion IDs like GOV-01, MET-03
+    explicit_ids = re.findall(r"(GOV|STR|RSK|MET)-\d{2}", suggestion_text.upper())
+
+    matches = []
+    for cid, kw_set in keyword_index.items():
+        overlap = len(words & kw_set)
+        # Bonus for explicit criterion ID mention
+        if cid in explicit_ids:
+            overlap += 20
+        if overlap >= 3:  # minimum threshold
+            matches.append((cid, overlap))
+
+    matches.sort(key=lambda x: x[1], reverse=True)
+    return matches[:3]  # top 3 matches
+
+
+def _classify_suggestion(suggestion_text, matched_criteria, criteria_map, responses_map):
+    """Classify a consultant suggestion and give an opinion.
+
+    Returns dict with:
+    - verdict: "essential" / "recommended" / "already_covered" / "out_of_scope" / "unnecessary"
+    - explanation: why
+    - matched_criteria: list of matched criterion details
+    """
+    import re
+    text_lower = suggestion_text.lower()
+
+    # Check for commonly unnecessary or over-engineered consultant suggestions
+    unnecessary_patterns = [
+        (r"blockchain|nft|web3", "Blockchain/NFT technology is not required for SSBJ compliance. This is a common consultant upsell. Standard databases and spreadsheets with audit trails are fully sufficient for assurance purposes."),
+        (r"real.?time\s+dashboard", "Real-time dashboards are nice-to-have but not required. SSBJ requires annual disclosure, not real-time monitoring. Consultants may suggest this to increase project scope and fees."),
+        (r"ai.?powered|machine\s+learning|artificial\s+intelligence", "AI/ML tools are not required for SSBJ compliance. Manual processes with proper controls are fully acceptable. This may be consultant-driven technology upselling."),
+        (r"carbon\s+offset|carbon\s+credit|offset\s+purchase", "Carbon offsets/credits are NOT part of Scope 1 & 2 reporting under SSBJ. Purchasing offsets does not reduce your reported emissions. If a consultant suggests this for compliance, they may be confusing emission reporting with carbon neutrality claims."),
+        (r"comprehensive\s+esg\s+platform|all.in.one\s+esg|esg\s+software\s+suite", "A comprehensive ESG platform is overkill for initial SSBJ compliance. Start with controlled spreadsheets for Scope 1 & 2, then upgrade later. Consultants often bundle expensive software into their proposals."),
+        (r"scope\s*3.*full|complete\s+scope\s*3|all.*scope\s*3\s+categories", "Full Scope 3 reporting across all 15 categories is NOT required in initial SSBJ compliance. Initial limited assurance covers only Scope 1 & 2. Consultants may push comprehensive Scope 3 to extend engagement duration."),
+        (r"cdp.*report|sustainability\s+rating|esg\s+rating|sustainalytics|msci\s+esg", "ESG ratings and CDP reporting are separate from SSBJ mandatory disclosure. While useful, they are NOT required for compliance. Consultants may bundle these to increase project scope."),
+    ]
+    for pattern, reason in unnecessary_patterns:
+        if re.search(pattern, text_lower):
+            return {
+                "verdict": "unnecessary",
+                "explanation": reason,
+                "matched_criteria": [],
+                "icon": "x-circle",
+                "color": "secondary",
+            }
+
+    if not matched_criteria:
+        return {
+            "verdict": "out_of_scope",
+            "explanation": "This suggestion does not clearly map to any SSBJ disclosure requirement. It may be general consulting advice rather than SSBJ-specific.",
+            "matched_criteria": [],
+            "icon": "question-circle",
+            "color": "secondary",
+        }
+
+    # Get the best-matching criterion
+    best_id = matched_criteria[0][0]
+    best_c = criteria_map.get(best_id, {})
+    resp = responses_map.get(best_id)
+
+    # Check if already covered (score >= 3)
+    if resp and resp.score is not None and resp.score >= 3:
+        return {
+            "verdict": "already_covered",
+            "explanation": f"Your assessment already scores {best_c.get('category', best_id)} at {resp.score}/5. This suggestion may be redundant — you've already met the minimum threshold.",
+            "matched_criteria": [_criterion_summary(best_c, resp)],
+            "icon": "check-circle",
+            "color": "success",
+        }
+
+    # Determine necessity based on obligation and LA scope
+    if best_c.get("obligation") == "mandatory" and best_c.get("la_scope") == "in_scope":
+        verdict = "essential"
+        explanation = f"ESSENTIAL for compliance. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory AND in limited assurance scope. Your auditor will examine this."
+        color = "danger"
+        icon = "exclamation-triangle-fill"
+    elif best_c.get("obligation") == "mandatory":
+        verdict = "essential"
+        explanation = f"ESSENTIAL. This maps to {best_id} ({best_c.get('category', '')}) which is mandatory under SSBJ. Must be addressed."
+        color = "danger"
+        icon = "exclamation-triangle"
+    elif best_c.get("la_scope") == "in_scope":
+        verdict = "essential"
+        explanation = f"ESSENTIAL. While the obligation level is '{best_c.get('obligation', '')}', this is in limited assurance scope. Auditors will look at it."
+        color = "danger"
+        icon = "exclamation-triangle"
+    elif best_c.get("obligation") == "recommended":
+        verdict = "recommended"
+        explanation = f"RECOMMENDED but not strictly required. Maps to {best_id} ({best_c.get('category', '')}). Good practice but you could defer this if budget/time is tight."
+        color = "warning"
+        icon = "info-circle"
+    else:
+        verdict = "recommended"
+        explanation = f"NICE TO HAVE. Maps to {best_id} ({best_c.get('category', '')}). Interpretive requirement — implement if resources allow."
+        color = "info"
+        icon = "lightbulb"
+
+    # Add score context
+    if resp and resp.score is not None:
+        explanation += f" Current score: {resp.score}/5."
+        if resp.score < 2:
+            explanation += " Significant work needed."
+        elif resp.score < 3:
+            explanation += " Getting close to threshold."
+
+    criterion_details = [_criterion_summary(best_c, resp)]
+    # Add secondary matches
+    for cid, _ in matched_criteria[1:]:
+        c2 = criteria_map.get(cid, {})
+        r2 = responses_map.get(cid)
+        criterion_details.append(_criterion_summary(c2, r2))
+
+    return {
+        "verdict": verdict,
+        "explanation": explanation,
+        "matched_criteria": criterion_details,
+        "icon": icon,
+        "color": color,
+    }
+
+
+def _criterion_summary(criterion, response):
+    """Build a summary dict for display."""
+    return {
+        "id": criterion.get("id", ""),
+        "category": criterion.get("category", ""),
+        "pillar": criterion.get("pillar", ""),
+        "obligation": criterion.get("obligation", ""),
+        "la_scope": criterion.get("la_scope", ""),
+        "la_priority": criterion.get("la_priority", ""),
+        "minimum_action": criterion.get("minimum_action", ""),
+        "score": response.score if response and response.score is not None else None,
+    }
+
+
+def _check_missing_essentials(criteria_map, responses_map, matched_ids):
+    """Find SSBJ essential items NOT covered by any consultant suggestion."""
+    missing = []
+    for c in SSBJ_CRITERIA:
+        if c["id"] in matched_ids:
+            continue
+        resp = responses_map.get(c["id"])
+        score = resp.score if resp and resp.score is not None else None
+        # Only flag if mandatory or in LA scope AND below threshold
+        if (c["obligation"] == "mandatory" or c["la_scope"] == "in_scope") and (score is None or score < 3):
+            missing.append({
+                "id": c["id"],
+                "category": c["category"],
+                "pillar": c["pillar"],
+                "obligation": c["obligation"],
+                "la_scope": c["la_scope"],
+                "minimum_action": c.get("minimum_action", ""),
+                "score": score,
+            })
+    return missing
+
+
+@assessment_bp.route("/<int:assessment_id>/review-consultant", methods=["GET", "POST"])
+@login_required
+def review_consultant(assessment_id):
+    """Review external consultant suggestions against SSBJ minimum viable requirements."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    results = None
+    consultant_text = ""
+    summary = None
+    roadmap_comparison = None
+
+    if request.method == "POST":
+        consultant_text = request.form.get("consultant_text", "").strip()
+
+        # Handle file upload — extract text from uploaded document
+        uploaded_file = request.files.get("consultant_file")
+        if uploaded_file and uploaded_file.filename:
+            try:
+                from app.analyzer import extract_text_from_file
+                stored_name, original_name, file_size = _save_uploaded_file(uploaded_file)
+                filepath = os.path.join(current_app.config["UPLOAD_FOLDER"], stored_name)
+                extracted = extract_text_from_file(filepath)
+                if extracted:
+                    consultant_text = (consultant_text + "\n\n" + extracted).strip()
+                # Clean up temp file
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except Exception as e:
+                flash(f"Could not extract text from uploaded file: {e}", "warning")
+
+        if not consultant_text:
+            flash("Please paste text or upload a document with the consultant's suggestions.", "warning")
+        else:
+            import re
+            # Build matching infrastructure
+            keyword_index = _build_keyword_index()
+            criteria_map = {c["id"]: c for c in SSBJ_CRITERIA}
+            responses_map = {r.criterion_id: r for r in assessment.responses.all()}
+
+            # Parse suggestions (split by newlines, numbered items, or bullet points)
+            lines = re.split(r"\n+", consultant_text)
+            suggestions = []
+            for line in lines:
+                cleaned = re.sub(r"^[\s\-\*\d\.\)]+", "", line).strip()
+                if len(cleaned) > 10:  # skip very short lines
+                    suggestions.append(cleaned)
+
+            # Match and classify each suggestion
+            results = []
+            all_matched_ids = set()
+            for suggestion in suggestions:
+                matches = _match_suggestion_to_criteria(suggestion, keyword_index, criteria_map)
+                classification = _classify_suggestion(suggestion, matches, criteria_map, responses_map)
+                results.append({
+                    "text": suggestion,
+                    **classification,
+                })
+                for cid, _ in matches:
+                    all_matched_ids.add(cid)
+
+            # Find missing essentials
+            missing = _check_missing_essentials(criteria_map, responses_map, all_matched_ids)
+
+            # Generate our roadmap for comparison
+            from app.roadmap import generate_roadmap
+            responses_list = assessment.responses.filter(Response.score.isnot(None)).all()
+            if responses_list:
+                our_roadmap = generate_roadmap(assessment, responses_list)
+                # Build roadmap comparison — what our roadmap says vs consultant
+                roadmap_comparison = _compare_with_roadmap(our_roadmap, results, all_matched_ids, criteria_map)
+
+            # Summary statistics
+            verdicts = [r["verdict"] for r in results]
+            summary = {
+                "total": len(results),
+                "essential": verdicts.count("essential"),
+                "recommended": verdicts.count("recommended"),
+                "already_covered": verdicts.count("already_covered"),
+                "out_of_scope": verdicts.count("out_of_scope"),
+                "unnecessary": verdicts.count("unnecessary"),
+                "missing_essentials": missing,
+                "coverage_pct": round(
+                    (len(all_matched_ids) / len(SSBJ_CRITERIA)) * 100
+                ) if SSBJ_CRITERIA else 0,
+            }
+
+    return render_template(
+        "assessment/review_consultant.html",
+        assessment=assessment,
+        results=results,
+        summary=summary,
+        consultant_text=consultant_text,
+        roadmap_comparison=roadmap_comparison,
+    )
+
+
+def _compare_with_roadmap(our_roadmap, consultant_results, matched_ids, criteria_map):
+    """Compare consultant suggestions against our generated roadmap.
+
+    Returns a comparison dict highlighting differences and critical analysis.
+    """
+    comparison = {
+        "our_urgency": our_roadmap["urgency"],
+        "our_months": our_roadmap["months_remaining"],
+        "our_total_gaps": our_roadmap["gaps"]["total_gaps"],
+        "our_la_critical": len(our_roadmap["gaps"]["la_critical"]),
+        "our_phases": len(our_roadmap["phases"]),
+        "differences": [],
+        "critical_observations": [],
+    }
+
+    consultant_essential = [r for r in consultant_results if r["verdict"] == "essential"]
+    consultant_unnecessary = [r for r in consultant_results if r["verdict"] in ("unnecessary", "out_of_scope")]
+    consultant_already = [r for r in consultant_results if r["verdict"] == "already_covered"]
+
+    # Critical observation: consultant suggesting unnecessary items
+    if consultant_unnecessary:
+        comparison["critical_observations"].append({
+            "type": "warning",
+            "title": "Unnecessary / Out-of-Scope Suggestions",
+            "detail": f"The consultant includes {len(consultant_unnecessary)} suggestion(s) that are not required for SSBJ compliance. "
+                      f"This may indicate scope creep or upselling. Ask the consultant to justify each item against specific SSBJ requirements.",
+        })
+
+    # Critical observation: already covered items
+    if consultant_already:
+        comparison["critical_observations"].append({
+            "type": "info",
+            "title": "Suggestions for Areas You've Already Addressed",
+            "detail": f"{len(consultant_already)} suggestion(s) target areas where your assessment score is already at or above the threshold (score 3+). "
+                      f"Ask the consultant whether these are truly necessary improvements or if they're padding the proposal.",
+        })
+
+    # Critical observation: missing LA-critical items
+    la_critical_ids = {g["id"] for g in our_roadmap["gaps"]["la_critical"]}
+    consultant_covers_la = la_critical_ids & matched_ids
+    missed_la = la_critical_ids - matched_ids
+    if missed_la:
+        missed_details = [f"{cid} ({criteria_map[cid]['category']})" for cid in missed_la if cid in criteria_map]
+        comparison["critical_observations"].append({
+            "type": "danger",
+            "title": "Consultant MISSES Limited Assurance Critical Items",
+            "detail": f"The consultant's roadmap does not address {len(missed_la)} items that are in limited assurance scope and below threshold: "
+                      f"{', '.join(missed_details)}. These will be directly examined by auditors. This is a significant gap in the consultant's proposal.",
+        })
+    elif la_critical_ids:
+        comparison["critical_observations"].append({
+            "type": "success",
+            "title": "LA-Critical Items Covered",
+            "detail": f"The consultant's suggestions cover all {len(la_critical_ids)} limited assurance critical items. Good.",
+        })
+
+    # Timeline comparison
+    comparison["differences"].append({
+        "area": "Timeline Approach",
+        "our_approach": f"Our roadmap uses a {our_roadmap['urgency']} timeline ({our_roadmap['months_remaining']} months) with {len(our_roadmap['phases'])} dynamically compressed phases. "
+                        f"Phase durations adapt to your actual deadline.",
+        "consultant_note": "Check whether the consultant's timeline accounts for your specific compliance date and adjusts urgency accordingly. "
+                           "Many consultants use generic 18-24 month templates regardless of actual deadline.",
+    })
+
+    # Pre-assurance comparison
+    comparison["differences"].append({
+        "area": "Pre-Assurance Readiness",
+        "our_approach": "Our roadmap includes dedicated pre-assurance phase: when to engage providers, readiness checklist based on your actual gaps, "
+                        "provider selection criteria, and engagement timeline.",
+        "consultant_note": "Does the consultant address assurance provider engagement timing? Many roadmaps focus on disclosure preparation but ignore the assurance engagement process.",
+    })
+
+    # IT recommendation comparison
+    if our_roadmap["gaps"]["it_needed"]:
+        comparison["differences"].append({
+            "area": "IT Systems",
+            "our_approach": "Based on your metrics scores (<2), we recommend IT investment for GHG calculation. However, minimum viable approach is well-controlled spreadsheets.",
+            "consultant_note": "If the consultant recommends expensive GHG/ESG software, verify this is proportionate to your needs. "
+                               "For initial Scope 1 & 2 only, controlled Excel workbooks can satisfy assurance requirements at fraction of the cost.",
+        })
+
+    # Prioritization comparison
+    comparison["differences"].append({
+        "area": "Prioritization",
+        "our_approach": f"Our roadmap prioritizes {our_roadmap['gaps']['total_gaps']} gaps with {len(our_roadmap['gaps']['la_critical'])} LA-critical items first. "
+                        f"Tasks are ordered by assurance impact.",
+        "consultant_note": "Check if the consultant's priority matches SSBJ requirements. LA-scope items (Scope 1 & 2 GHG) must come first. "
+                           "If the consultant prioritizes governance or strategy over metrics, they may not understand the limited assurance focus.",
+    })
+
+    return comparison

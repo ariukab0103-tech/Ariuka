@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}Review Consultant Roadmap: {{ assessment.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .verdict-card {
+        border-left: 4px solid;
+        margin-bottom: 1rem;
+        transition: all 0.2s ease;
+    }
+    .verdict-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .verdict-essential { border-left-color: var(--bs-danger); }
+    .verdict-recommended { border-left-color: var(--bs-warning); }
+    .verdict-already_covered { border-left-color: var(--bs-success); }
+    .verdict-out_of_scope { border-left-color: var(--bs-secondary); }
+    .verdict-unnecessary { border-left-color: var(--bs-dark); }
+    .verdict-badge { font-size: 0.7em; padding: 3px 8px; }
+    .comparison-card { border-left: 4px solid var(--bs-info); }
+    .suggestion-text {
+        font-style: italic;
+        padding: 8px 12px;
+        background: var(--bg-surface, rgba(255,255,255,0.03));
+        border-radius: 6px;
+        margin-bottom: 8px;
+    }
+    @media print {
+        .no-print { display: none !important; }
+        .verdict-card { break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-clipboard2-check me-2"></i>Review Consultant Roadmap</h2>
+        <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }}</p>
+    </div>
+    <div>
+        {% if results %}
+        <button onclick="window.print()" class="btn btn-danger me-2">
+            <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+        </button>
+        {% endif %}
+        <a href="{{ url_for('assessment.roadmap', assessment_id=assessment.id) }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-calendar3 me-1"></i>Our Roadmap
+        </a>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Input Form -->
+<div class="card mb-4 no-print">
+    <div class="card-header">
+        <i class="bi bi-upload me-2"></i>Paste or Upload Consultant Suggestions
+    </div>
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="consultant_text" class="form-label">
+                    Paste consultant's roadmap, recommendations, or action items:
+                </label>
+                <textarea class="form-control" id="consultant_text" name="consultant_text"
+                          rows="10" placeholder="Paste each suggestion on a separate line, e.g.:
+
+1. Establish board-level ESG committee with quarterly meetings
+2. Implement comprehensive GHG calculation software (Zeroboard or Persefoni)
+3. Conduct scenario analysis for climate transition risks
+4. Hire dedicated sustainability manager
+5. Develop full Scope 3 value chain emissions inventory
+6. Purchase carbon offsets to achieve carbon neutrality
+...">{{ consultant_text }}</textarea>
+                <div class="form-text">Each line will be analyzed as a separate suggestion. Numbered lists, bullet points, and plain text are all supported.</div>
+            </div>
+            <div class="mb-3">
+                <label for="consultant_file" class="form-label">
+                    Or upload a consultant document (PDF, DOCX, TXT, XLSX):
+                </label>
+                <input type="file" class="form-control" id="consultant_file" name="consultant_file"
+                       accept=".pdf,.docx,.txt,.xlsx,.csv">
+                <div class="form-text">Text will be extracted from the document and analyzed alongside any pasted text.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search me-1"></i>Analyze Against SSBJ Requirements
+            </button>
+        </form>
+    </div>
+</div>
+
+{% if results %}
+<!-- Summary Dashboard -->
+<div class="card mb-4">
+    <div class="card-header"><i class="bi bi-bar-chart me-2"></i>Analysis Summary</div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col">
+                <div style="font-size: 2rem; font-weight: 700;">{{ summary.total }}</div>
+                <div class="text-muted fw-bold">Suggestions Analyzed</div>
+            </div>
+            <div class="col border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--bs-danger);">{{ summary.essential }}</div>
+                <div class="text-muted fw-bold">Essential</div>
+                <small class="text-muted">Must do</small>
+            </div>
+            <div class="col border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--bs-warning);">{{ summary.recommended }}</div>
+                <div class="text-muted fw-bold">Recommended</div>
+                <small class="text-muted">Nice to have</small>
+            </div>
+            <div class="col border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--bs-success);">{{ summary.already_covered }}</div>
+                <div class="text-muted fw-bold">Already Covered</div>
+                <small class="text-muted">Redundant</small>
+            </div>
+            <div class="col border-start">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--bs-secondary);">{{ summary.out_of_scope + summary.unnecessary }}</div>
+                <div class="text-muted fw-bold">Not Required</div>
+                <small class="text-muted">Question these</small>
+            </div>
+        </div>
+        <div class="mt-3">
+            <div class="progress" style="height: 24px;">
+                {% if summary.total > 0 %}
+                <div class="progress-bar bg-danger" style="width: {{ (summary.essential / summary.total * 100)|round }}%"
+                     title="Essential">{{ summary.essential }}</div>
+                <div class="progress-bar bg-warning" style="width: {{ (summary.recommended / summary.total * 100)|round }}%"
+                     title="Recommended">{{ summary.recommended }}</div>
+                <div class="progress-bar bg-success" style="width: {{ (summary.already_covered / summary.total * 100)|round }}%"
+                     title="Already Covered">{{ summary.already_covered }}</div>
+                <div class="progress-bar bg-secondary" style="width: {{ ((summary.out_of_scope + summary.unnecessary) / summary.total * 100)|round }}%"
+                     title="Not Required">{{ summary.out_of_scope + summary.unnecessary }}</div>
+                {% endif %}
+            </div>
+            <div class="mt-2 text-center">
+                <small class="text-muted">
+                    Consultant covers <strong>{{ summary.coverage_pct }}%</strong> of 23 SSBJ criteria
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if roadmap_comparison %}
+<!-- Roadmap Comparison -->
+<div class="card mb-4 border-info border-2">
+    <div class="card-header bg-info text-white">
+        <i class="bi bi-arrow-left-right me-2"></i>Comparison: Our Roadmap vs Consultant
+    </div>
+    <div class="card-body">
+        <!-- Critical Observations -->
+        {% for obs in roadmap_comparison.critical_observations %}
+        <div class="alert alert-{{ obs.type }} mb-3">
+            <h6 class="alert-heading mb-1">
+                <i class="bi bi-{% if obs.type == 'danger' %}exclamation-triangle-fill{% elif obs.type == 'warning' %}exclamation-circle{% elif obs.type == 'success' %}check-circle-fill{% else %}info-circle{% endif %} me-1"></i>
+                {{ obs.title }}
+            </h6>
+            <p class="mb-0 small">{{ obs.detail }}</p>
+        </div>
+        {% endfor %}
+
+        <!-- Side-by-side differences -->
+        <h6 class="mt-4 mb-3"><i class="bi bi-diagram-3 me-1"></i>Key Differences</h6>
+        {% for diff in roadmap_comparison.differences %}
+        <div class="card comparison-card mb-3">
+            <div class="card-body py-2">
+                <h6 class="mb-2"><strong>{{ diff.area }}</strong></h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small class="d-block text-primary fw-bold mb-1"><i class="bi bi-house me-1"></i>Our Roadmap:</small>
+                        <small class="text-muted">{{ diff.our_approach }}</small>
+                    </div>
+                    <div class="col-md-6 border-start">
+                        <small class="d-block text-warning fw-bold mb-1"><i class="bi bi-building me-1"></i>Ask the Consultant:</small>
+                        <small class="text-muted">{{ diff.consultant_note }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Why they might suggest differently -->
+        <div class="alert alert-light border mt-3">
+            <h6 class="mb-2"><i class="bi bi-lightbulb me-1"></i>Why Consultants May Suggest Differently</h6>
+            <ul class="small mb-0">
+                <li><strong>Broader scope:</strong> Consultants often propose comprehensive ESG programs, not just SSBJ minimum compliance. This drives larger engagements and fees.</li>
+                <li><strong>Risk aversion:</strong> Consultants may recommend "best practice" items beyond what's strictly required, to protect themselves if something goes wrong.</li>
+                <li><strong>Software partnerships:</strong> Some consultants have revenue-sharing arrangements with ESG software vendors. Verify whether recommended tools are proportionate.</li>
+                <li><strong>Generic templates:</strong> Many proposals are based on ISSB/TCFD templates rather than SSBJ-specific requirements, missing Japan-specific nuances.</li>
+                <li><strong>Timeline padding:</strong> Longer projects = higher fees. Verify that the timeline is calibrated to YOUR compliance deadline, not a generic 2-year plan.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Missing Essentials Warning -->
+{% if summary.missing_essentials %}
+<div class="card mb-4 border-danger border-2">
+    <div class="card-header bg-danger text-white">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        GAPS: {{ summary.missing_essentials|length }} Essential Items NOT in Consultant's Proposal
+    </div>
+    <div class="card-body">
+        <p class="mb-3">The following mandatory/LA-scope items are below threshold in your assessment but the consultant does not address them:</p>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Category</th>
+                        <th>Pillar</th>
+                        <th>Obligation</th>
+                        <th>LA Scope</th>
+                        <th>Your Score</th>
+                        <th>Minimum Action Needed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in summary.missing_essentials %}
+                    <tr>
+                        <td><strong>{{ item.id }}</strong></td>
+                        <td>{{ item.category }}</td>
+                        <td><span class="badge bg-{% if item.pillar == 'Governance' %}primary{% elif item.pillar == 'Strategy' %}info{% elif item.pillar == 'Risk Management' %}warning{% else %}success{% endif %}">{{ item.pillar }}</span></td>
+                        <td><span class="badge bg-{% if item.obligation == 'mandatory' %}danger{% else %}warning{% endif %}">{{ item.obligation }}</span></td>
+                        <td>
+                            {% if item.la_scope == 'in_scope' %}
+                            <span class="badge bg-danger">In LA Scope</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ item.la_scope }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.score is not none %}
+                            <span class="badge bg-{% if item.score < 2 %}danger{% elif item.score < 3 %}warning{% else %}success{% endif %}">{{ item.score }}/5</span>
+                            {% else %}
+                            <span class="badge bg-dark">Not scored</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ item.minimum_action[:150] }}{% if item.minimum_action|length > 150 %}...{% endif %}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Detailed Results -->
+<h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Detailed Analysis of Each Suggestion</h4>
+
+{% for result in results %}
+<div class="card verdict-card verdict-{{ result.verdict }}">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="suggestion-text flex-grow-1 me-3">
+                "{{ result.text }}"
+            </div>
+            <span class="badge verdict-badge bg-{{ result.color }} flex-shrink-0">
+                {% if result.verdict == 'essential' %}ESSENTIAL
+                {% elif result.verdict == 'recommended' %}RECOMMENDED
+                {% elif result.verdict == 'already_covered' %}ALREADY COVERED
+                {% elif result.verdict == 'out_of_scope' %}OUT OF SCOPE
+                {% elif result.verdict == 'unnecessary' %}NOT REQUIRED
+                {% endif %}
+            </span>
+        </div>
+        <p class="mb-2 small">
+            <i class="bi bi-{{ result.icon }} me-1 text-{{ result.color }}"></i>
+            {{ result.explanation }}
+        </p>
+        {% if result.matched_criteria %}
+        <div class="mt-2">
+            {% for mc in result.matched_criteria %}
+            <div class="d-inline-flex align-items-center me-3 mb-1">
+                <span class="badge bg-{% if mc.obligation == 'mandatory' %}danger{% elif mc.obligation == 'recommended' %}warning{% else %}secondary{% endif %} me-1" style="font-size: 0.65em;">{{ mc.id }}</span>
+                <small class="text-muted">{{ mc.category }}</small>
+                {% if mc.score is not none %}
+                <span class="badge bg-{% if mc.score < 3 %}danger{% else %}success{% endif %} ms-1" style="font-size: 0.6em;">{{ mc.score }}/5</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if result.matched_criteria[0].minimum_action %}
+        <details class="mt-2">
+            <summary class="small text-muted" style="cursor: pointer;">
+                <i class="bi bi-info-circle me-1"></i>What SSBJ actually requires (minimum action)
+            </summary>
+            <div class="mt-1 p-2 rounded small" style="background: var(--bg-surface, rgba(255,255,255,0.03));">
+                {{ result.matched_criteria[0].minimum_action }}
+            </div>
+        </details>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

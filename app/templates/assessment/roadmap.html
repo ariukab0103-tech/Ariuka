@@ -77,6 +77,9 @@
         <p class="text-muted mb-0">{{ assessment.title }} | {{ assessment.entity_name }} | Target: FY{{ roadmap.compliance_year }}</p>
     </div>
     <div>
+        <a href="{{ url_for('assessment.review_consultant', assessment_id=assessment.id) }}" class="btn btn-outline-info me-2">
+            <i class="bi bi-clipboard2-check me-1"></i>Review Consultant
+        </a>
         <button onclick="window.print()" class="btn btn-danger me-2">
             <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
         </button>
