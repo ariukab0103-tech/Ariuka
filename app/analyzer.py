@@ -916,30 +916,27 @@ def auto_assess_all(combined_text):
     """
     Synchronous entry point for auto-assessment.
 
-    Uses the batched parallel pipeline (ai_assess_all_streaming) internally,
-    consuming all events and returning the final results.
-    Includes content-hash caching — repeat calls return instantly.
+    Calls ai_assess_all() directly — the proven single-API-call approach
+    that works reliably on Render. Includes content-hash caching.
 
     Returns (results_dict, method_used, error_message).
     - results_dict: {criterion_id: (score, evidence, notes)}
     - method_used: "ai" | "ai_cached" | "keyword"
     - error_message: None if success, or string describing failures
     """
-    results = {}
-    method = "keyword"
-    error_msg = None
+    # Check cache first
+    cached = get_cached_results(combined_text)
+    if cached:
+        return cached, "ai_cached", None
 
-    for event in ai_assess_all_streaming(combined_text):
-        if event["type"] == "done":
-            results = event.get("results", {})
-            method = event.get("method", "ai")
-            errors = event.get("errors")
-            if errors:
-                error_msg = "; ".join(f"Batch {k}: {v}" for k, v in errors.items())
+    try:
+        results = ai_assess_all(combined_text)
+        if results:
+            _cache_results(combined_text, results)
+            return results, "ai", None
+    except Exception as e:
+        logger.error(f"AI assessment failed: {e}")
+        return keyword_assess_all(combined_text), "keyword", str(e)
 
-    if not results:
-        # Total failure — fall back to keyword
-        results = keyword_assess_all(combined_text)
-        method = "keyword"
-
-    return results, method, error_msg
+    # No API key or anthropic not installed
+    return keyword_assess_all(combined_text), "keyword", None
