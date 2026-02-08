@@ -489,116 +489,27 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
 
 # ---------------------------------------------------------------------------
-# Parallel batch scoring (batches of 5 criteria, 2 concurrent workers)
+# Streaming assessment with SSE keepalive
 # ---------------------------------------------------------------------------
-
-_SCORING_SYSTEM_PROMPT = """You are an expert SSBJ/ISSB sustainability auditor. You know:
-- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
-- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive distinctions
-- Limited assurance (ISSA 5000, replacing ISAE 3000/3410) for Scope 1 & 2 GHG, Governance, and Risk Management
-- 13 essential internal controls: boundary definition, emission inventory, calculation methodology, activity data controls, emission factor management, maker-checker, audit trail, reconciliation, error tracking, management sign-off, segregation of duties, access controls, documentation
-- GHG Protocol: Scope 1 (direct), Scope 2 (location + market-based), Scope 3 (15 categories)
-- Japanese mandatory disclosure timeline: Phase 1 (FY ending March 2027, >=3T), Phase 2 (FY ending March 2028, >=1T), Phase 3 (FY ending March 2029, >=500B)
-- Mandatory assurance starts ONE YEAR after mandatory disclosure: Phase 1 assurance from FY ending March 2028, Phase 2 from March 2029, Phase 3 from March 2030
-
-SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal documented processes (minimum for assurance), 4=Monitored with review cycles, 5=Leading practice.
-Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
-IMPORTANT: Keep evidence and notes very brief (1 short sentence each) to stay within token limits."""
-
-
-def _make_batch_criteria(criteria_batch):
-    """Build criteria description text for a batch prompt."""
-    parts = []
-    for c in criteria_batch:
-        parts.append(
-            f"- {c['id']} ({c['pillar']} / {c['category']}): {c['requirement']}\n"
-            f"  Obligation: {c['obligation']} | LA Scope: {c['la_scope']}\n"
-            f"  Guidance: {c['guidance']}"
-        )
-    return "\n\n".join(parts)
-
-
-def _ai_assess_batch(scoring_text, criteria_batch, client, is_large):
-    """Score a single batch of criteria against the document text.
-
-    Runs synchronously (called inside ThreadPoolExecutor).
-    Args:
-        scoring_text: Document text or summary to assess against.
-        criteria_batch: List of criterion dicts for this batch.
-        client: Shared anthropic.Anthropic client instance.
-        is_large: Whether the document was summarized (affects prompt label).
-    Returns dict: {criterion_id: (score, evidence, notes)}
-    Raises on failure so the caller can handle per-batch errors.
-    """
-    criteria_text = _make_batch_criteria(criteria_batch)
-    doc_label = "DOCUMENT SUMMARY" if is_large else "DOCUMENTS"
-    ids_list = ", ".join(c["id"] for c in criteria_batch)
-
-    user_prompt = (
-        f"Assess this content against each criterion below. Return ONLY a JSON array.\n\n"
-        f"CRITERIA:\n{criteria_text}\n\n"
-        f"{doc_label}:\n{scoring_text}\n\n"
-        f'For each of the {len(criteria_batch)} criteria ({ids_list}) return: '
-        f'{{"id": "XXX-NN", "score": 0-5, "evidence": "brief (1 sentence)", '
-        f'"notes": "improvement needed (1 sentence)"}}\n'
-        f"Return ONLY valid JSON array, no other text."
-    )
-
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=2000,
-        system=_SCORING_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
-
-    text = response.content[0].text.strip()
-    if text.startswith("```"):
-        text = re.sub(r'^```(?:json)?\s*\n?', '', text)
-        text = re.sub(r'\n?```\s*$', '', text)
-
-    try:
-        items = json.loads(text)
-    except json.JSONDecodeError:
-        # Try to salvage truncated JSON
-        fixed = text.rstrip().rstrip(",")
-        last_brace = fixed.rfind("}")
-        if last_brace > 0:
-            items = json.loads(fixed[:last_brace + 1] + "]")
-        else:
-            raise
-
-    results = {}
-    for item in items:
-        cid = item.get("id", "")
-        score = max(0, min(5, int(item.get("score", 0))))
-        evidence = f"[AI Assessment] {item.get('evidence', '')}"
-        notes = item.get("notes", "")
-        results[cid] = (score, evidence, notes)
-    return results
-
-
-def _split_batches(criteria_list, size=5):
-    """Split criteria into batches of `size`."""
-    return [criteria_list[i:i + size] for i in range(0, len(criteria_list), size)]
 
 
 def ai_assess_all_streaming(combined_text, batch_indices=None):
-    """Generator that yields progress events during batched parallel assessment.
+    """Generator that yields progress events during AI assessment.
+
+    Uses a SINGLE API call to score all 25 criteria (same proven approach
+    as ai_assess_all that was working in production) but wrapped in a
+    background thread so we can yield keepalive events and prevent
+    Render's proxy from killing the SSE connection.
 
     Args:
         combined_text: Full document text to assess.
-        batch_indices: Optional list of 0-indexed batch numbers to retry.
-                       None = run all batches (normal flow).
+        batch_indices: Ignored (kept for API compatibility with route).
 
     Yields dicts with "type" key:
-        start, pass1_start, pass1_progress, pass1_done, pass1_fallback,
-        pass2_start, pass2_progress, batch_done, batch_error, done
-
-    All long-running phases yield keepalive events every few seconds to
-    prevent Render's proxy from killing the SSE connection (~60s idle
-    timeout).
+        cached, start, pass1_start, pass1_progress, pass1_done,
+        pass1_fallback, pass2_start, pass2_progress, batch_done, done
     """
-    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+    from concurrent.futures import ThreadPoolExecutor
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
@@ -613,42 +524,33 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
         yield {"type": "done", "results": results, "method": "keyword"}
         return
 
-    # Create ONE shared Anthropic client for all API calls (Pass 1 + Pass 2).
-    # Previously each batch created its own client (~5 concurrent SSL contexts
-    # + httpx connection pools) causing OOM on Render.
-    shared_client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
-
     total = len(SSBJ_CRITERIA)
 
-    # Check cache (only for full assessment, not partial retries)
-    if batch_indices is None:
-        cached = get_cached_results(combined_text)
-        if cached:
-            yield {"type": "cached", "scored": len(cached), "total": total}
-            yield {"type": "done", "results": cached, "method": "ai_cached"}
-            return
+    # Check cache
+    cached = get_cached_results(combined_text)
+    if cached:
+        yield {"type": "cached", "scored": len(cached), "total": total}
+        yield {"type": "done", "results": cached, "method": "ai_cached"}
+        return
 
     yield {"type": "start", "total": total}
+
+    # ONE client for the entire assessment
+    client = anthropic.Anthropic(api_key=api_key, timeout=90.0)
 
     # ---- Pass 1: summarize large documents ----
     is_large = len(combined_text) > 30000
     if is_large:
         yield {"type": "pass1_start"}
         try:
-            # Run Pass 1 in a single background thread so we can yield
-            # keepalive events.  _summarize_document now accepts the shared
-            # client directly (no nested ThreadPoolExecutor inside it).
-            with ThreadPoolExecutor(max_workers=1) as pass1_exec:
-                pass1_future = pass1_exec.submit(
-                    _summarize_document, combined_text, shared_client
-                )
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(_summarize_document, combined_text, client)
                 elapsed = 0
-                while not pass1_future.done():
+                while not future.done():
                     time.sleep(2)
                     elapsed += 2
                     yield {"type": "pass1_progress", "elapsed": elapsed}
-                scoring_text = pass1_future.result()  # re-raises stored exc
-
+                scoring_text = future.result()
             yield {"type": "pass1_done"}
         except Exception as e:
             logger.warning(f"Pass 1 failed ({e}), using smart extraction")
@@ -657,76 +559,114 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
     else:
         scoring_text = combined_text
 
-    # ---- Pass 2: parallel batch scoring ----
-    all_batches = _split_batches(SSBJ_CRITERIA, size=5)
+    # ---- Pass 2: single API call to score ALL criteria ----
+    yield {"type": "pass2_start", "batches": 1}
 
-    if batch_indices is not None:
-        run_items = [(i, all_batches[i]) for i in batch_indices if i < len(all_batches)]
-    else:
-        run_items = list(enumerate(all_batches))
+    criteria_list = []
+    for c in SSBJ_CRITERIA:
+        criteria_list.append(
+            f"- {c['id']} ({c['pillar']} / {c['category']}): {c['requirement']}\n"
+            f"  Obligation: {c['obligation']} | LA Scope: {c['la_scope']}\n"
+            f"  Guidance: {c['guidance']}"
+        )
+    criteria_text = "\n\n".join(criteria_list)
 
-    yield {"type": "pass2_start", "batches": len(run_items)}
+    system_prompt = """You are an expert SSBJ/ISSB sustainability auditor. You know:
+- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
+- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive distinctions
+- Limited assurance (ISSA 5000, replacing ISAE 3000/3410) for Scope 1 & 2 GHG, Governance, and Risk Management
+- 13 essential internal controls: boundary definition, emission inventory, calculation methodology, activity data controls, emission factor management, maker-checker, audit trail, reconciliation, error tracking, management sign-off, segregation of duties, access controls, documentation
+- GHG Protocol: Scope 1 (direct), Scope 2 (location + market-based), Scope 3 (15 categories)
+- Japanese mandatory disclosure timeline: Phase 1 (FY ending March 2027, >=3T), Phase 2 (FY ending March 2028, >=1T), Phase 3 (FY ending March 2029, >=500B)
+- Mandatory assurance starts ONE YEAR after mandatory disclosure
 
-    all_results = {}
-    batch_errors = {}
+SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal documented processes (minimum for assurance), 4=Monitored with review cycles, 5=Leading practice.
+Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
+IMPORTANT: Keep evidence and notes very brief (1 short sentence each) to stay within token limits."""
 
-    # max_workers=2 (down from 5) to reduce memory pressure on Render.
-    # All batches share the single shared_client above.
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = {}
-        for idx, batch in run_items:
-            future = executor.submit(
-                _ai_assess_batch, scoring_text, batch, shared_client, is_large
-            )
-            futures[future] = idx
+    doc_label = "DOCUMENT SUMMARY" if is_large else "DOCUMENTS"
+    user_prompt = (
+        f"Assess this content against each SSBJ criterion. Return ONLY a JSON array.\n\n"
+        f"CRITERIA:\n{criteria_text}\n\n"
+        f"{doc_label}:\n{scoring_text}\n\n"
+        f"For each of the {total} criteria return: "
+        f'{{"id": "GOV-01", "score": 0-5, "evidence": "brief quote (1 short sentence)", '
+        f'"notes": "improvement needed (1 short sentence)"}}\n'
+        f"Return ONLY valid JSON array, no other text. Keep evidence and notes concise."
+    )
 
-        # Use wait() with timeout instead of as_completed so we can
-        # yield keepalive events and prevent Render proxy idle-kill.
-        pending = set(futures.keys())
-        while pending:
-            done, pending = wait(pending, timeout=5, return_when=FIRST_COMPLETED)
-            if not done:
-                # No batch finished in 5s — send keepalive
-                yield {
-                    "type": "pass2_progress",
-                    "scored": len(all_results),
-                    "total": total,
-                }
-                continue
-            for future in done:
-                batch_idx = futures[future]
-                batch_ids = [c["id"] for c in all_batches[batch_idx]]
-                try:
-                    batch_results = future.result(timeout=0)
-                    all_results.update(batch_results)
-                    yield {
-                        "type": "batch_done",
-                        "batch": batch_idx,
-                        "scored": len(all_results),
-                        "total": total,
-                        "criteria": batch_ids,
-                    }
-                except Exception as e:
-                    batch_errors[batch_idx] = str(e)
-                    yield {
-                        "type": "batch_error",
-                        "batch": batch_idx,
-                        "error": str(e),
-                        "criteria": batch_ids,
-                        "scored": len(all_results),
-                        "total": total,
-                    }
+    def _score_all():
+        return client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8192,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
 
-    # Cache only when ALL batches succeed on a full run
-    if batch_indices is None and not batch_errors and all_results:
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(_score_all)
+            elapsed = 0
+            while not future.done():
+                time.sleep(3)
+                elapsed += 3
+                yield {"type": "pass2_progress", "scored": 0, "total": total}
+            response = future.result()
+
+        # Parse the response
+        response_text = response.content[0].text.strip()
+        if response_text.startswith("```"):
+            response_text = re.sub(r'^```(?:json)?\s*\n?', '', response_text)
+            response_text = re.sub(r'\n?```\s*$', '', response_text)
+
+        try:
+            results_list = json.loads(response_text)
+        except json.JSONDecodeError:
+            fixed = response_text.rstrip().rstrip(",")
+            last_brace = fixed.rfind("}")
+            if last_brace > 0:
+                fixed = fixed[:last_brace + 1] + "]"
+                logger.warning("Salvaging truncated JSON response")
+                results_list = json.loads(fixed)
+            else:
+                raise
+
+        all_results = {}
+        for item in results_list:
+            cid = item.get("id", "")
+            score = max(0, min(5, int(item.get("score", 0))))
+            evidence = f"[AI Assessment] {item.get('evidence', '')}"
+            notes = item.get("notes", "")
+            all_results[cid] = (score, evidence, notes)
+
+        all_criteria_ids = [c["id"] for c in SSBJ_CRITERIA]
+        yield {
+            "type": "batch_done",
+            "batch": 0,
+            "scored": len(all_results),
+            "total": total,
+            "criteria": all_criteria_ids,
+        }
+
         _cache_results(combined_text, all_results)
 
-    yield {
-        "type": "done",
-        "results": all_results,
-        "method": "ai",
-        "errors": batch_errors if batch_errors else None,
-    }
+        yield {
+            "type": "done",
+            "results": all_results,
+            "method": "ai",
+            "errors": None,
+        }
+
+    except Exception as e:
+        logger.error(f"AI scoring failed: {type(e).__name__}: {e}")
+        # Fall back to keyword assessment
+        all_results = keyword_assess_all(combined_text)
+        yield {
+            "type": "done",
+            "results": all_results,
+            "method": "keyword",
+            "errors": {"scoring": str(e)},
+        }
 
 
 # ---------------------------------------------------------------------------
