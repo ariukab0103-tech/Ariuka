@@ -90,27 +90,34 @@
 </div>
 
 <!-- Timeline Overview Card -->
-<div class="card mb-4 border-2 urgency-{{ roadmap.urgency }}">
+{% set d_urg = roadmap.disclosure_urgency|default(roadmap.urgency) %}
+{% set a_urg = roadmap.assurance_urgency|default(roadmap.urgency) %}
+<div class="card mb-4 border-2 urgency-{{ d_urg }}">
     <div class="card-body">
         <div class="row align-items-center">
             <div class="col-md-3 text-center">
-                <div style="font-size: 3rem; font-weight: 700; color: {% if roadmap.urgency == 'critical' %}var(--accent-red){% elif roadmap.urgency == 'tight' %}var(--accent-yellow){% else %}var(--accent-blue){% endif %};">
+                <div style="font-size: 3rem; font-weight: 700; color: {% if d_urg == 'critical' %}var(--accent-red){% elif d_urg == 'tight' %}var(--accent-yellow){% else %}var(--accent-blue){% endif %};">
                     {{ roadmap.months_remaining }}
                 </div>
                 <div class="text-muted fw-bold">months to disclosure</div>
                 <small class="text-muted">by March {{ roadmap.compliance_year }}</small>
                 <div class="mt-1">
-                    <span class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}success{% else %}info{% endif %} fs-6">
-                        {% if roadmap.urgency == 'critical' %}CRITICAL{% elif roadmap.urgency == 'tight' %}TIGHT{% elif roadmap.urgency == 'adequate' %}ADEQUATE{% else %}COMFORTABLE{% endif %}
+                    <span class="badge bg-{% if d_urg == 'critical' %}danger{% elif d_urg == 'tight' %}warning text-dark{% elif d_urg == 'adequate' %}success{% else %}info{% endif %} fs-6">
+                        {{ d_urg|upper }}
                     </span>
                 </div>
             </div>
             <div class="col-md-3 text-center border-start">
-                <div style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);">
+                <div style="font-size: 2rem; font-weight: 700; color: {% if a_urg == 'critical' %}var(--accent-red){% elif a_urg == 'tight' %}var(--accent-yellow){% else %}var(--accent-blue){% endif %};">
                     {{ roadmap.months_to_assurance }}
                 </div>
                 <div class="text-muted fw-bold">months to 1st assurance</div>
                 <small class="text-muted">by March {{ roadmap.assurance_year }}</small>
+                <div class="mt-1">
+                    <span class="badge bg-{% if a_urg == 'critical' %}danger{% elif a_urg == 'tight' %}warning text-dark{% elif a_urg == 'adequate' %}success{% else %}info{% endif %}">
+                        {{ a_urg|upper }}
+                    </span>
+                </div>
             </div>
             <div class="col-md-3 text-center border-start">
                 <div style="font-size: 2rem; font-weight: 700; color: {% if roadmap.gaps.total_gaps > 10 %}var(--accent-red){% elif roadmap.gaps.total_gaps > 5 %}var(--accent-yellow){% else %}var(--accent-green){% endif %};">
@@ -132,36 +139,52 @@
     </div>
 </div>
 
+<!-- Dual Timeline Notice -->
+{% if d_urg != a_urg %}
+<div class="alert alert-info border-2 mb-4">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-calendar2-range fs-3 me-3"></i>
+        <div>
+            <h5 class="mb-1">Two Timelines: Disclosure ({{ d_urg|upper }}) vs Assurance ({{ a_urg|upper }})</h5>
+            <p class="mb-0">First disclosure: <strong>{{ roadmap.months_remaining }} months</strong>.
+            First limited assurance: <strong>{{ roadmap.months_to_assurance }} months</strong> (starts 1 year after disclosure per FSA rules).
+            Assurance prep tasks below use the more relaxed assurance timeline.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Compressed Timeline Warning -->
-{% if roadmap.urgency == 'critical' %}
+{% if d_urg == 'critical' %}
 <div class="alert alert-danger border-2 mb-4">
     <div class="d-flex align-items-center">
         <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
         <div>
-            <h5 class="mb-1">Compressed Emergency Timeline</h5>
-            <p class="mb-0">Only <strong>{{ roadmap.months_remaining }} months</strong> remain. Phases below have been compressed with parallel execution.
-            Focus exclusively on LA-scope items. Some phases will overlap — assign separate teams to run them concurrently.</p>
+            <h5 class="mb-1">Compressed Emergency Timeline (Disclosure)</h5>
+            <p class="mb-0">Only <strong>{{ roadmap.months_remaining }} months</strong> remain until first disclosure. Phases have been compressed with parallel execution.
+            Focus exclusively on LA-scope items. Some phases will overlap — assign separate teams to run them concurrently.
+            {% if a_urg != 'critical' %}However, assurance preparation ({{ a_urg }}) has {{ roadmap.months_to_assurance }} months — use this buffer wisely.{% endif %}</p>
         </div>
     </div>
 </div>
-{% elif roadmap.urgency == 'tight' %}
+{% elif d_urg == 'tight' %}
 <div class="alert alert-warning border-2 mb-4">
     <div class="d-flex align-items-center">
         <i class="bi bi-clock-history fs-3 me-3"></i>
         <div>
-            <h5 class="mb-1">Tight Timeline — Phases Compressed</h5>
-            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> remaining. Phase durations have been shortened and some overlap.
-            Prioritize LA-scope items and start assurance provider engagement immediately.</p>
+            <h5 class="mb-1">Tight Timeline — Phases Compressed (Disclosure)</h5>
+            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> until first disclosure. Phase durations have been shortened and some overlap.
+            Prioritize LA-scope items. Assurance is {{ roadmap.months_to_assurance }} months away ({{ a_urg }}).</p>
         </div>
     </div>
 </div>
-{% elif roadmap.urgency == 'adequate' %}
+{% elif d_urg == 'adequate' %}
 <div class="alert alert-info border-2 mb-4">
     <div class="d-flex align-items-center">
         <i class="bi bi-info-circle fs-3 me-3"></i>
         <div>
             <h5 class="mb-1">Adequate Timeline — Stay on Track</h5>
-            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> remaining. Phases are slightly compressed. Start promptly to maintain buffer time.</p>
+            <p class="mb-0"><strong>{{ roadmap.months_remaining }} months</strong> to disclosure, <strong>{{ roadmap.months_to_assurance }} months</strong> to assurance. Start promptly to maintain buffer time.</p>
         </div>
     </div>
 </div>
@@ -170,8 +193,11 @@
 <!-- Key Milestones Bar -->
 <div class="card mb-4">
     <div class="card-header"><i class="bi bi-signpost me-2"></i>Key Milestones
-        <span class="badge bg-{% if roadmap.urgency == 'critical' %}danger{% elif roadmap.urgency == 'tight' %}warning text-dark{% elif roadmap.urgency == 'adequate' %}info{% else %}success{% endif %} ms-2">
-            {% if roadmap.urgency == 'critical' %}COMPRESSED{% elif roadmap.urgency == 'tight' %}TIGHT{% elif roadmap.urgency == 'adequate' %}ON TRACK{% else %}COMFORTABLE{% endif %}
+        <span class="badge bg-{% if d_urg == 'critical' %}danger{% elif d_urg == 'tight' %}warning text-dark{% elif d_urg == 'adequate' %}info{% else %}success{% endif %} ms-2">
+            Disclosure: {{ d_urg|upper }}
+        </span>
+        <span class="badge bg-{% if a_urg == 'critical' %}danger{% elif a_urg == 'tight' %}warning text-dark{% elif a_urg == 'adequate' %}info{% else %}success{% endif %} ms-1">
+            Assurance: {{ a_urg|upper }}
         </span>
     </div>
     <div class="card-body">

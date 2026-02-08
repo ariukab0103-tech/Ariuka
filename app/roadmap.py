@@ -111,38 +111,68 @@ def _classify_gaps(responses):
     return gaps
 
 
+def _urgency_level(months):
+    """Classify urgency from months remaining."""
+    if months <= 6:
+        return "critical"
+    elif months <= 12:
+        return "tight"
+    elif months <= 24:
+        return "adequate"
+    else:
+        return "comfortable"
+
+
+# FSA mandatory timeline (March FY base dates)
+_PHASE_DISCLOSURE_YEARS = {
+    0: None,    # Voluntary — user picks FY
+    1: 2027,    # Phase 1: ¥3T+ → FY ending March 2027
+    2: 2028,    # Phase 2: ¥1T+ → FY ending March 2028
+    3: 2029,    # Phase 3: ¥500B+ → FY ending March 2029
+    4: 2033,    # Phase 4: Other Prime → TBD (estimated 2030s)
+}
+
+# Assurance is ONE YEAR after disclosure for each phase
+_PHASE_ASSURANCE_YEARS = {k: (v + 1 if v else None) for k, v in _PHASE_DISCLOSURE_YEARS.items()}
+
+
 def generate_roadmap(assessment, responses_list):
     """
     Generate a backcasting roadmap from the compliance year.
 
+    KEY DESIGN: Disclosure and assurance have SEPARATE timelines and urgency.
+    Assurance begins ONE YEAR after mandatory disclosure starts (per FSA roadmap).
+    This means:
+    - Disclosure urgency drives Phases 1-6 (governance, data, first report)
+    - Assurance urgency drives Phase 7 (the actual audit engagement)
+    - Assurance prep tasks in earlier phases use assurance_urgency (more relaxed)
+
     Returns a dict with:
-    - compliance_year: target year
-    - assurance_year: compliance_year + 1
-    - today: current date
-    - months_remaining: months until compliance
-    - urgency: 'critical' / 'tight' / 'adequate' / 'comfortable'
-    - phases: list of phase dicts with tasks
-    - summary: overall readiness summary
-    - pre_assurance: pre-assurance engagement guidance
+    - compliance_year, assurance_year: target years
+    - months_remaining: to disclosure
+    - months_to_assurance: to first assurance (always +12)
+    - disclosure_urgency / assurance_urgency: separate urgency levels
+    - urgency: disclosure_urgency (primary, for backward compat)
+    - market_cap_phase: FSA phase (1-4 or 0 for voluntary)
+    - phases, gaps, summary, pre_assurance
     """
     compliance_year = _extract_year(assessment.fiscal_year)
     if not compliance_year:
-        compliance_year = date.today().year + 2  # default: 2 years from now
+        compliance_year = date.today().year + 2
 
-    # Determine FY end month (A1: support non-March FY ends like December)
+    # Market cap phase
+    market_cap_phase = getattr(assessment, "market_cap_phase", 1) or 1
+
+    # Determine FY end month
     fy_end_month = getattr(assessment, "fy_end_month", 3) or 3
-    # Last day of the FY end month
     import calendar
-    fy_end_day = calendar.monthrange(compliance_year, fy_end_month)[1]
 
-    # For non-March FY: adjust the compliance year
-    # "FY2026 (ending March 2027)" with March FY → March 2027
-    # Same selection with December FY → December 2026 (earlier by 3 months)
+    # For non-March FY: adjust calendar year
     if fy_end_month != 3:
         if fy_end_month < 3:
-            adjusted_year = compliance_year  # Jan/Feb still same calendar year
+            adjusted_year = compliance_year
         else:
-            adjusted_year = compliance_year - 1  # Apr-Dec: one year earlier
+            adjusted_year = compliance_year - 1
     else:
         adjusted_year = compliance_year
     fy_end_day = calendar.monthrange(adjusted_year, fy_end_month)[1]
@@ -154,29 +184,25 @@ def generate_roadmap(assessment, responses_list):
     months_remaining = (compliance_date.year - today.year) * 12 + (compliance_date.month - today.month)
     months_to_assurance = months_remaining + 12
 
-    # Urgency level
-    if months_remaining <= 6:
-        urgency = "critical"
-    elif months_remaining <= 12:
-        urgency = "tight"
-    elif months_remaining <= 24:
-        urgency = "adequate"
-    else:
-        urgency = "comfortable"
+    # SEPARATE urgency levels for disclosure vs assurance
+    disclosure_urgency = _urgency_level(months_remaining)
+    assurance_urgency = _urgency_level(months_to_assurance)
 
     # Classify gaps
     gaps = _classify_gaps(responses_list)
 
-    # Generate phases based on timeline and gaps
+    # Generate phases (disclosure uses disclosure_urgency; assurance tasks use assurance_urgency)
     phases = _generate_phases(
-        compliance_date, assurance_date, today, months_remaining, gaps
+        compliance_date, assurance_date, today, months_remaining, gaps,
+        disclosure_urgency=disclosure_urgency,
+        assurance_urgency=assurance_urgency,
     )
 
     # Pre-assurance engagement guidance
     pre_assurance = _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, compliance_date)
 
     # Summary
-    summary = _generate_summary(gaps, months_remaining, urgency)
+    summary = _generate_summary(gaps, months_remaining, disclosure_urgency, assurance_urgency, months_to_assurance)
 
     return {
         "compliance_year": compliance_year,
@@ -186,7 +212,10 @@ def generate_roadmap(assessment, responses_list):
         "today": today,
         "months_remaining": months_remaining,
         "months_to_assurance": months_to_assurance,
-        "urgency": urgency,
+        "disclosure_urgency": disclosure_urgency,
+        "assurance_urgency": assurance_urgency,
+        "urgency": disclosure_urgency,  # backward compat
+        "market_cap_phase": market_cap_phase,
         "phases": phases,
         "gaps": gaps,
         "summary": summary,
@@ -242,26 +271,18 @@ def _phase_duration_label(start, end, months_remaining):
         return f"Months {start}-{end}"
 
 
-def _generate_phases(compliance_date, assurance_date, today, months_remaining, gaps):
+def _generate_phases(compliance_date, assurance_date, today, months_remaining, gaps,
+                     disclosure_urgency="adequate", assurance_urgency="comfortable"):
     """Generate implementation phases with specific tasks.
 
-    Phase durations and task urgency adapt dynamically based on months_remaining:
-    - Comfortable (24+ mo): standard phased rollout
-    - Adequate (18-24 mo): slightly compressed
-    - Tight (12-18 mo): aggressive compression, overlapping phases
-    - Critical (<12 mo): emergency parallel execution with accelerated tasks
+    KEY: disclosure_urgency drives management/technical tasks (Phases 1-6).
+    assurance_urgency drives assurance prep tasks (always 12 months more relaxed).
+    Phase 7 (actual assurance) uses assurance_urgency directly.
     """
     phases = []
 
-    # Determine urgency for task adjustments
-    if months_remaining <= 6:
-        urgency = "critical"
-    elif months_remaining <= 12:
-        urgency = "tight"
-    elif months_remaining <= 24:
-        urgency = "adequate"
-    else:
-        urgency = "comfortable"
+    # disclosure_urgency for management/technical tasks
+    urgency = disclosure_urgency
 
     # Calculate dynamic phase schedule
     schedule = _calculate_phase_schedule(months_remaining)
@@ -295,16 +316,23 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         )
 
     # Urgency-specific adjustments for Phase 1
+    # Management tasks: disclosure_urgency | Assurance tasks: assurance_urgency
     if urgency == "critical":
         p1_tasks["management"].insert(0,
             "ACCELERATED: Compress foundation activities into weeks, not months — run governance setup in parallel"
         )
-        p1_tasks["assurance"].insert(0,
-            "IMMEDIATE: Contact assurance providers THIS WEEK — you cannot afford delays"
-        )
     elif urgency == "tight":
         p1_tasks["management"].insert(0,
             "COMPRESSED TIMELINE: Complete foundation within 1 month — delegate tasks across team members simultaneously"
+        )
+    # Assurance prep uses assurance_urgency (always 12 months more relaxed)
+    if assurance_urgency == "critical":
+        p1_tasks["assurance"].insert(0,
+            "IMMEDIATE: Contact assurance providers THIS WEEK — you cannot afford delays"
+        )
+    elif assurance_urgency == "tight":
+        p1_tasks["assurance"].insert(0,
+            "PRIORITY: Begin provider conversations within 2 weeks — timeline is tight for assurance prep"
         )
 
     phases.append({
@@ -361,10 +389,16 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         p2_tasks["management"].insert(0,
             "ACCELERATED: Use existing governance structures — add sustainability as standing board agenda item NOW, formalize later"
         )
+    elif urgency == "tight":
+        p2_tasks["management"].insert(0,
+            "COMPRESSED: Fast-track governance documentation — use existing CG Code compliance as foundation"
+        )
+    # Assurance prep uses assurance_urgency
+    if assurance_urgency == "critical":
         p2_tasks["assurance"].insert(0,
             "FAST-TRACK: Skip RFP — approach your current financial auditor or Big 4 firm directly for fastest engagement"
         )
-    elif urgency == "tight":
+    elif assurance_urgency == "tight":
         p2_tasks["assurance"].insert(0,
             "PRIORITY: Send RFP within 2 weeks — provider selection cannot wait"
         )
@@ -442,6 +476,15 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         p3_tasks["management"].insert(0,
             "COMPRESSED: Prioritize LA-scope items first, then address remaining gaps"
         )
+    # Assurance prep uses assurance_urgency
+    if assurance_urgency == "critical":
+        p3_tasks["assurance"].insert(0,
+            "URGENT: Provider must be engaged NOW — concurrent readiness review while you build processes"
+        )
+    elif assurance_urgency == "tight":
+        p3_tasks["assurance"].insert(0,
+            "IMPORTANT: Aim to have provider selected by end of this phase"
+        )
 
     phases.append({
         "number": 3,
@@ -480,12 +523,22 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         p4_tasks["management"].insert(0,
             "ACCELERATED: Combine dry run with actual disclosure preparation — no time for separate cycles"
         )
-        p4_tasks["assurance"].insert(0,
-            "FAST-TRACK: Provider should be doing readiness review NOW, concurrent with your data preparation"
-        )
     elif urgency == "tight":
         p4_tasks["technical"].insert(0,
             "COMPRESSED: Run dry run on partial data if full year not yet available — don't wait for year-end"
+        )
+    # Assurance prep uses assurance_urgency
+    if assurance_urgency == "critical":
+        p4_tasks["assurance"].insert(0,
+            "FAST-TRACK: Provider readiness review NOW, concurrent with data preparation"
+        )
+    elif assurance_urgency == "tight":
+        p4_tasks["assurance"].insert(0,
+            "PRIORITY: Schedule readiness review with provider — assurance is 12 months away"
+        )
+    elif assurance_urgency == "adequate":
+        p4_tasks["assurance"].insert(0,
+            "NOTE: Assurance starts 1 year after first disclosure. You have time to prepare, but use it wisely."
         )
 
     phases.append({
@@ -536,12 +589,22 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
         p5_tasks["management"].insert(0,
             "ACCELERATED: Merge pre-assurance with dry run — run both simultaneously with provider support"
         )
+    elif urgency == "tight":
+        p5_tasks["management"].insert(0,
+            "COMPRESSED: Schedule mock audit immediately after dry run with no gap between phases"
+        )
+    # Assurance prep uses assurance_urgency
+    if assurance_urgency == "critical":
         p5_tasks["assurance"].insert(0,
             "FAST-TRACK: Provider readiness review and formal engagement planning happen in parallel"
         )
-    elif urgency == "tight":
+    elif assurance_urgency == "tight":
         p5_tasks["assurance"].insert(0,
-            "COMPRESSED: Schedule mock audit immediately after dry run with no gap between phases"
+            "PRIORITY: Readiness review must be completed this phase — remediation time is limited"
+        )
+    elif assurance_urgency in ("adequate", "comfortable"):
+        p5_tasks["assurance"].insert(0,
+            f"TIMELINE: Assurance starts in ~{months_remaining + 12 - 18} months. Complete readiness review and remediate findings with adequate time."
         )
 
     phases.append({
@@ -583,6 +646,12 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
     elif urgency == "tight":
         p6_tasks["technical"].insert(0,
             "PRIORITY: Finalize LA-scope disclosures first, then complete remaining sections"
+        )
+    # Assurance prep for Phase 6 — remind about the +1 year buffer
+    if assurance_urgency in ("adequate", "comfortable"):
+        p6_tasks["assurance"].append(
+            "REMINDER: First assurance is 1 YEAR after this disclosure. "
+            "Use the intervening year to strengthen controls, complete evidence packages, and conduct mock audits."
         )
 
     phases.append({
@@ -832,8 +901,13 @@ def _generate_pre_assurance_guide(gaps, months_remaining, months_to_assurance, c
     }
 
 
-def _generate_summary(gaps, months_remaining, urgency):
-    """Generate an overall readiness summary."""
+def _generate_summary(gaps, months_remaining, disclosure_urgency, assurance_urgency=None, months_to_assurance=None):
+    """Generate an overall readiness summary with separate disclosure/assurance timelines."""
+    if assurance_urgency is None:
+        assurance_urgency = disclosure_urgency
+    if months_to_assurance is None:
+        months_to_assurance = months_remaining + 12
+
     lines = []
 
     if gaps["avg_score"] >= 3:
@@ -862,26 +936,38 @@ def _generate_summary(gaps, months_remaining, urgency):
             "Focus on formalizing existing processes and documentation."
         )
 
-    if urgency == "critical":
+    # Disclosure urgency
+    if disclosure_urgency == "critical":
         lines.append(
-            f"TIMELINE CRITICAL: Only {months_remaining} months until compliance. "
+            f"DISCLOSURE TIMELINE CRITICAL: Only {months_remaining} months until first mandatory disclosure. "
             f"Phases have been compressed with parallel execution. "
             f"Focus exclusively on LA-scope items. Consider external consultants to supplement internal resources."
         )
-    elif urgency == "tight":
+    elif disclosure_urgency == "tight":
         lines.append(
-            f"Timeline is tight ({months_remaining} months). Phases have been compressed and some overlap. "
-            f"Prioritize limited assurance scope items and begin assurance provider discussions immediately."
+            f"Disclosure timeline is tight ({months_remaining} months). Phases have been compressed and some overlap. "
+            f"Prioritize limited assurance scope items."
         )
-    elif urgency == "adequate":
+    elif disclosure_urgency == "adequate":
         lines.append(
-            f"You have {months_remaining} months — adequate time if you start promptly. "
+            f"You have {months_remaining} months to first disclosure — adequate time if you start promptly. "
             f"Phases are slightly compressed. Stay on schedule to avoid last-minute pressure."
         )
     else:
         lines.append(
-            f"Comfortable timeline ({months_remaining} months). Standard phased approach with full time allocations. "
-            f"Use the extra time for thorough preparation and testing."
+            f"Comfortable disclosure timeline ({months_remaining} months). Standard phased approach with full time allocations."
+        )
+
+    # Assurance timeline (always separate)
+    if assurance_urgency != disclosure_urgency:
+        lines.append(
+            f"ASSURANCE TIMELINE: First limited assurance begins {months_to_assurance} months from now "
+            f"({assurance_urgency} urgency). You have an additional year after disclosure to "
+            f"strengthen internal controls, complete evidence packages, and conduct mock audits."
+        )
+    else:
+        lines.append(
+            f"Assurance begins {months_to_assurance} months from now (1 year after first disclosure)."
         )
 
     return lines

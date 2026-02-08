@@ -193,6 +193,9 @@ def _safe_migrate():
         if "fy_end_month" not in cols:
             db.session.execute(text("ALTER TABLE assessments ADD COLUMN fy_end_month INTEGER DEFAULT 3"))
             db.session.commit()
+        if "market_cap_phase" not in cols:
+            db.session.execute(text("ALTER TABLE assessments ADD COLUMN market_cap_phase INTEGER DEFAULT 1"))
+            db.session.commit()
 
 
 def _seed_admin():

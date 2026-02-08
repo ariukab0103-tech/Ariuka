@@ -88,6 +88,10 @@ def create():
         fy_end_month = int(request.form.get("fy_end_month", "3"))
         if fy_end_month not in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12):
             fy_end_month = 3
+        try:
+            market_cap_phase = int(request.form.get("market_cap_phase", "1"))
+        except (ValueError, TypeError):
+            market_cap_phase = 1
 
         if not title or not entity_name or not fiscal_year:
             flash("All fields are required.", "danger")
@@ -97,6 +101,7 @@ def create():
                 entity_name=entity_name,
                 fiscal_year=fiscal_year,
                 fy_end_month=fy_end_month,
+                market_cap_phase=market_cap_phase,
                 user_id=current_user.id,
                 status="draft",
             )
@@ -212,6 +217,11 @@ def edit_settings(assessment_id):
         fy_end_month = int(fy_end_month_str)
     except (ValueError, TypeError):
         fy_end_month = 3
+    market_cap_phase_str = request.form.get("market_cap_phase", "1").strip()
+    try:
+        market_cap_phase = int(market_cap_phase_str)
+    except (ValueError, TypeError):
+        market_cap_phase = 1
 
     if not title or not entity_name or not fiscal_year:
         flash("Title, entity name, and fiscal year are required.", "danger")
@@ -230,6 +240,9 @@ def edit_settings(assessment_id):
     if getattr(assessment, "fy_end_month", 3) != fy_end_month:
         assessment.fy_end_month = fy_end_month
         changed.append("FY end month")
+    if getattr(assessment, "market_cap_phase", 1) != market_cap_phase:
+        assessment.market_cap_phase = market_cap_phase
+        changed.append("market cap phase")
 
     if changed:
         db.session.commit()
