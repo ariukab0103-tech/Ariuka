@@ -161,6 +161,61 @@
     </div>
 </div>
 
+<!-- Review Link -->
+{% if latest_review %}
+<div class="card mb-4" style="border: 1px solid {% if latest_review.status == 'completed' %}rgba(34,197,94,0.4){% else %}rgba(6,182,212,0.4){% endif %};">
+    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-search me-2 {% if latest_review.status == 'completed' %}text-success{% else %}text-info{% endif %}"></i>
+            <strong>Review:</strong>
+            {% if latest_review.status == 'completed' %}
+                <span class="badge bg-success ms-1">Completed</span>
+                {% if latest_review.overall_opinion == 'unqualified' %}
+                <span class="badge bg-success ms-1">Unqualified Opinion</span>
+                {% elif latest_review.overall_opinion == 'qualified' %}
+                <span class="badge bg-warning text-dark ms-1">Qualified Opinion</span>
+                {% elif latest_review.overall_opinion == 'adverse' %}
+                <span class="badge bg-danger ms-1">Adverse Opinion</span>
+                {% elif latest_review.overall_opinion == 'disclaimer' %}
+                <span class="badge bg-dark ms-1">Disclaimer</span>
+                {% endif %}
+                <small class="text-muted ms-2">by {{ latest_review.reviewer.full_name }} on {{ latest_review.updated_at.strftime('%Y-%m-%d') }}</small>
+            {% elif latest_review.status == 'in_progress' %}
+                <span class="badge bg-info ms-1">In Progress</span>
+                <small class="text-muted ms-2">by {{ latest_review.reviewer.full_name }}</small>
+            {% else %}
+                <span class="badge bg-secondary ms-1">Pending</span>
+            {% endif %}
+        </div>
+        <div class="no-print">
+            {% if latest_review.status == 'completed' %}
+            <a href="{{ url_for('review.report', review_id=latest_review.id) }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-text me-1"></i>View Review Report
+            </a>
+            {% elif latest_review.status == 'in_progress' and current_user.is_reviewer %}
+            <a href="{{ url_for('review.conduct', review_id=latest_review.id) }}" class="btn btn-sm btn-outline-info">
+                <i class="bi bi-pencil-square me-1"></i>Continue Review
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
+<div class="card mb-4 no-print" style="border: 1px solid rgba(59,130,246,0.3);">
+    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-search me-2 text-primary"></i>
+            <span class="text-muted">No review started yet for this assessment.</span>
+        </div>
+        <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
+            <button type="submit" class="btn btn-sm btn-info text-white">
+                <i class="bi bi-play me-1"></i>Start Review
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 <!-- Tabs -->
 <ul class="nav nav-tabs mb-4 no-print" id="checklistTabs">
     <li class="nav-item">

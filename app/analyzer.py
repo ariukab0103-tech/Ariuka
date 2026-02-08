@@ -11,9 +11,11 @@ Text extraction supports PDF, DOCX, XLSX, CSV, TXT.
 
 import os
 import csv
+import hashlib
 import json
 import logging
 import re
+import time
 
 from app.ssbj_criteria import SSBJ_CRITERIA, MATURITY_LEVELS
 
@@ -21,12 +23,59 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Content-hash assessment cache
+# ---------------------------------------------------------------------------
+
+_assessment_cache = {}  # {hash: {"results": dict, "ts": float}}
+_CACHE_TTL = 3600  # 1 hour
+
+
+def _content_hash(text):
+    """SHA256 prefix of document text — used as cache key."""
+    return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+
+
+def get_cached_results(combined_text):
+    """Return cached assessment results or None."""
+    h = _content_hash(combined_text)
+    entry = _assessment_cache.get(h)
+    if entry and time.time() - entry["ts"] < _CACHE_TTL:
+        logger.info(f"Assessment cache hit ({h})")
+        return entry["results"]
+    if entry:
+        del _assessment_cache[h]
+    return None
+
+
+def _cache_results(combined_text, results):
+    """Store assessment results in cache."""
+    h = _content_hash(combined_text)
+    _assessment_cache[h] = {"results": results, "ts": time.time()}
+    # Evict oldest if cache too large
+    if len(_assessment_cache) > 20:
+        oldest = min(_assessment_cache, key=lambda k: _assessment_cache[k]["ts"])
+        del _assessment_cache[oldest]
+
+
+def clear_cache():
+    """Clear the assessment cache (useful after document changes)."""
+    _assessment_cache.clear()
+
+
+# ---------------------------------------------------------------------------
 # Text extraction
 # ---------------------------------------------------------------------------
 
 def extract_text_from_file(filepath):
-    """Extract text content from a file based on its extension."""
+    """Extract text content from a file based on its extension.
+
+    Returns (text, warning) tuple where warning is None on success,
+    or a user-friendly message describing why extraction was partial/failed.
+    For backward compatibility, callers that expect a plain string will still
+    work — the result is truthy when text was extracted.
+    """
     ext = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
+    fname = os.path.basename(filepath)
 
     try:
         if ext == "pdf":
@@ -48,13 +97,54 @@ def extract_text_from_file(filepath):
 
 def _extract_pdf(filepath):
     from PyPDF2 import PdfReader
-    reader = PdfReader(filepath)
+    from PyPDF2.errors import PdfReadError
+
+    try:
+        reader = PdfReader(filepath)
+    except PdfReadError as e:
+        logger.warning(f"PDF read error for {filepath}: {e}")
+        return ""
+    except Exception as e:
+        logger.warning(f"Cannot open PDF {filepath}: {e}")
+        return ""
+
+    # Handle encrypted PDFs
+    if reader.is_encrypted:
+        try:
+            # Try empty password (common for owner-password-only PDFs)
+            if not reader.decrypt(""):
+                logger.warning(f"PDF is encrypted and cannot be decrypted: {filepath}")
+                return "[ENCRYPTED_PDF]"
+        except Exception:
+            logger.warning(f"PDF is password-protected: {filepath}")
+            return "[ENCRYPTED_PDF]"
+
+    total_pages = len(reader.pages)
     parts = []
+    empty_pages = 0
+
     for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
+        try:
+            text = page.extract_text()
+            if text and text.strip():
+                parts.append(text)
+            else:
+                empty_pages += 1
+        except Exception as e:
+            logger.warning(f"Failed to extract page from {filepath}: {e}")
+            empty_pages += 1
+
+    result = "\n".join(parts)
+
+    # If most pages had no text, likely a scanned/image PDF
+    if total_pages > 0 and empty_pages == total_pages:
+        logger.warning(f"PDF appears to be scanned/image-based (0/{total_pages} pages had text): {filepath}")
+        return "[SCANNED_PDF]"
+
+    if total_pages > 0 and empty_pages > total_pages * 0.5 and parts:
+        logger.info(f"PDF partially extracted ({len(parts)}/{total_pages} pages): {filepath}")
+
+    return result
 
 
 def _extract_docx(filepath):
@@ -403,6 +493,208 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
 
 # ---------------------------------------------------------------------------
+# Parallel batch scoring (5 batches of 5 criteria)
+# ---------------------------------------------------------------------------
+
+_SCORING_SYSTEM_PROMPT = """You are an expert SSBJ/ISSB sustainability auditor. You know:
+- SSBJ No.1 (IFRS S1) and No.2 (IFRS S2) requirements deeply
+- Mandatory (SHALL) vs Recommended (SHOULD) vs Interpretive distinctions
+- Limited assurance (ISSA 5000, replacing ISAE 3000/3410) for Scope 1 & 2 GHG, Governance, and Risk Management
+- 13 essential internal controls: boundary definition, emission inventory, calculation methodology, activity data controls, emission factor management, maker-checker, audit trail, reconciliation, error tracking, management sign-off, segregation of duties, access controls, documentation
+- GHG Protocol: Scope 1 (direct), Scope 2 (location + market-based), Scope 3 (15 categories)
+- Japanese mandatory disclosure timeline: Phase 1 (FY ending March 2027, >=3T), Phase 2 (FY ending March 2028, >=1T), Phase 3 (FY ending March 2029, >=500B)
+- Mandatory assurance starts ONE YEAR after mandatory disclosure: Phase 1 assurance from FY ending March 2028, Phase 2 from March 2029, Phase 3 from March 2030
+
+SCORING: 0=No evidence, 1=Mentioned only, 2=Partial processes, 3=Formal documented processes (minimum for assurance), 4=Monitored with review cycles, 5=Leading practice.
+Be strict: score 3+ needs formal processes, specific methodologies, named responsibilities, concrete data. Vague mentions = 1-2.
+IMPORTANT: Keep evidence and notes very brief (1 short sentence each) to stay within token limits."""
+
+
+def _make_batch_criteria(criteria_batch):
+    """Build criteria description text for a batch prompt."""
+    parts = []
+    for c in criteria_batch:
+        parts.append(
+            f"- {c['id']} ({c['pillar']} / {c['category']}): {c['requirement']}\n"
+            f"  Obligation: {c['obligation']} | LA Scope: {c['la_scope']}\n"
+            f"  Guidance: {c['guidance']}"
+        )
+    return "\n\n".join(parts)
+
+
+def _ai_assess_batch(scoring_text, criteria_batch, api_key, is_large):
+    """Score a single batch of criteria against the document text.
+
+    Runs synchronously (called inside ThreadPoolExecutor).
+    Returns dict: {criterion_id: (score, evidence, notes)}
+    Raises on failure so the caller can handle per-batch errors.
+    """
+    import anthropic
+
+    criteria_text = _make_batch_criteria(criteria_batch)
+    doc_label = "DOCUMENT SUMMARY" if is_large else "DOCUMENTS"
+    ids_list = ", ".join(c["id"] for c in criteria_batch)
+
+    user_prompt = (
+        f"Assess this content against each criterion below. Return ONLY a JSON array.\n\n"
+        f"CRITERIA:\n{criteria_text}\n\n"
+        f"{doc_label}:\n{scoring_text}\n\n"
+        f'For each of the {len(criteria_batch)} criteria ({ids_list}) return: '
+        f'{{"id": "XXX-NN", "score": 0-5, "evidence": "brief (1 sentence)", '
+        f'"notes": "improvement needed (1 sentence)"}}\n'
+        f"Return ONLY valid JSON array, no other text."
+    )
+
+    client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=2000,
+        system=_SCORING_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
+
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = re.sub(r'^```(?:json)?\s*\n?', '', text)
+        text = re.sub(r'\n?```\s*$', '', text)
+
+    try:
+        items = json.loads(text)
+    except json.JSONDecodeError:
+        # Try to salvage truncated JSON
+        fixed = text.rstrip().rstrip(",")
+        last_brace = fixed.rfind("}")
+        if last_brace > 0:
+            items = json.loads(fixed[:last_brace + 1] + "]")
+        else:
+            raise
+
+    results = {}
+    for item in items:
+        cid = item.get("id", "")
+        score = max(0, min(5, int(item.get("score", 0))))
+        evidence = f"[AI Assessment] {item.get('evidence', '')}"
+        notes = item.get("notes", "")
+        results[cid] = (score, evidence, notes)
+    return results
+
+
+def _split_batches(criteria_list, size=5):
+    """Split criteria into batches of `size`."""
+    return [criteria_list[i:i + size] for i in range(0, len(criteria_list), size)]
+
+
+def ai_assess_all_streaming(combined_text, batch_indices=None):
+    """Generator that yields progress events during batched parallel assessment.
+
+    Args:
+        combined_text: Full document text to assess.
+        batch_indices: Optional list of 0-indexed batch numbers to retry.
+                       None = run all batches (normal flow).
+
+    Yields dicts with "type" key:
+        start, pass1_start, pass1_done, pass1_fallback,
+        pass2_start, batch_done, batch_error, done
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        results = keyword_assess_all(combined_text)
+        yield {"type": "done", "results": results, "method": "keyword"}
+        return
+
+    try:
+        import anthropic  # noqa: F401
+    except ImportError:
+        results = keyword_assess_all(combined_text)
+        yield {"type": "done", "results": results, "method": "keyword"}
+        return
+
+    total = len(SSBJ_CRITERIA)
+
+    # Check cache (only for full assessment, not partial retries)
+    if batch_indices is None:
+        cached = get_cached_results(combined_text)
+        if cached:
+            yield {"type": "cached", "scored": len(cached), "total": total}
+            yield {"type": "done", "results": cached, "method": "ai_cached"}
+            return
+
+    yield {"type": "start", "total": total}
+
+    # ---- Pass 1: summarize large documents ----
+    is_large = len(combined_text) > 30000
+    if is_large:
+        yield {"type": "pass1_start"}
+        try:
+            scoring_text = _summarize_document(combined_text, api_key)
+            yield {"type": "pass1_done"}
+        except Exception as e:
+            logger.warning(f"Pass 1 failed ({e}), using smart extraction")
+            scoring_text = _smart_extract(combined_text, max_chars=60000)
+            yield {"type": "pass1_fallback"}
+    else:
+        scoring_text = combined_text
+
+    # ---- Pass 2: parallel batch scoring ----
+    all_batches = _split_batches(SSBJ_CRITERIA, size=5)
+
+    if batch_indices is not None:
+        run_items = [(i, all_batches[i]) for i in batch_indices if i < len(all_batches)]
+    else:
+        run_items = list(enumerate(all_batches))
+
+    yield {"type": "pass2_start", "batches": len(run_items)}
+
+    all_results = {}
+    batch_errors = {}
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {}
+        for idx, batch in run_items:
+            future = executor.submit(
+                _ai_assess_batch, scoring_text, batch, api_key, is_large
+            )
+            futures[future] = idx
+
+        for future in as_completed(futures):
+            batch_idx = futures[future]
+            batch_ids = [c["id"] for c in all_batches[batch_idx]]
+            try:
+                batch_results = future.result(timeout=40)
+                all_results.update(batch_results)
+                yield {
+                    "type": "batch_done",
+                    "batch": batch_idx,
+                    "scored": len(all_results),
+                    "total": total,
+                    "criteria": batch_ids,
+                }
+            except Exception as e:
+                batch_errors[batch_idx] = str(e)
+                yield {
+                    "type": "batch_error",
+                    "batch": batch_idx,
+                    "error": str(e),
+                    "criteria": batch_ids,
+                    "scored": len(all_results),
+                    "total": total,
+                }
+
+    # Cache only when ALL batches succeed on a full run
+    if batch_indices is None and not batch_errors and all_results:
+        _cache_results(combined_text, all_results)
+
+    yield {
+        "type": "done",
+        "results": all_results,
+        "method": "ai",
+        "errors": batch_errors if batch_errors else None,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Keyword-based fallback assessment
 # ---------------------------------------------------------------------------
 
@@ -647,32 +939,32 @@ def keyword_assess_all(combined_text):
 
 def auto_assess_all(combined_text):
     """
-    Run auto-assessment on all SSBJ criteria.
+    Synchronous entry point for auto-assessment.
 
-    Tries AI-powered assessment first (if ANTHROPIC_API_KEY is set).
-    Falls back to keyword matching ONLY if no API key is configured.
-    If AI fails (errors), raises the error so the user sees what went wrong.
+    Uses the batched parallel pipeline (ai_assess_all_streaming) internally,
+    consuming all events and returning the final results.
+    Includes content-hash caching — repeat calls return instantly.
 
     Returns (results_dict, method_used, error_message).
     - results_dict: {criterion_id: (score, evidence, notes)}
-    - method_used: "ai" or "keyword"
-    - error_message: None if success, or string describing AI failure
+    - method_used: "ai" | "ai_cached" | "keyword"
+    - error_message: None if success, or string describing failures
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    results = {}
+    method = "keyword"
+    error_msg = None
 
-    if api_key:
-        # API key is set — try AI assessment, report errors clearly
-        try:
-            ai_results = ai_assess_all(combined_text)
-            if ai_results:
-                return ai_results, "ai", None
-        except RuntimeError as e:
-            error_msg = str(e)
-            logger.warning(f"AI assessment failed, falling back to keyword: {error_msg}")
-            # Fall back to keyword but tell the user AI failed
-            keyword_results = keyword_assess_all(combined_text)
-            return keyword_results, "keyword", error_msg
+    for event in ai_assess_all_streaming(combined_text):
+        if event["type"] == "done":
+            results = event.get("results", {})
+            method = event.get("method", "ai")
+            errors = event.get("errors")
+            if errors:
+                error_msg = "; ".join(f"Batch {k}: {v}" for k, v in errors.items())
 
-    # No API key — use keyword matching
-    keyword_results = keyword_assess_all(combined_text)
-    return keyword_results, "keyword", None
+    if not results:
+        # Total failure — fall back to keyword
+        results = keyword_assess_all(combined_text)
+        method = "keyword"
+
+    return results, method, error_msg

@@ -164,16 +164,14 @@
                 {% if documents %}
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <strong><i class="bi bi-files me-1"></i>Uploaded ({{ documents|length }})</strong>
-                    <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}"
-                          onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'bi bi-hourglass-split me-1\'></i>Analyzing...';">
-                        <button type="submit" class="btn btn-success btn-sm">
-                            {% if ai_enabled %}
-                            <i class="bi bi-robot me-1"></i>AI Assess
-                            {% else %}
-                            <i class="bi bi-magic me-1"></i>Auto-Assess
-                            {% endif %}
-                        </button>
-                    </form>
+                    <button type="button" class="btn btn-success btn-sm" id="btnAiAssess"
+                            onclick="startStreamingAssess({{ assessment.id }})">
+                        {% if ai_enabled %}
+                        <i class="bi bi-robot me-1"></i>AI Assess
+                        {% else %}
+                        <i class="bi bi-magic me-1"></i>Auto-Assess
+                        {% endif %}
+                    </button>
                 </div>
                 {% if ai_enabled %}
                 <small class="text-success d-block mb-1"><i class="bi bi-check-circle me-1"></i>AI-powered analysis (Claude) enabled</small>
@@ -220,16 +218,14 @@
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="bi bi-files me-2"></i>Uploaded Documents ({{ documents|length }})</span>
         {% if can_edit %}
-        <form method="POST" action="{{ url_for('assessment.auto_assess', assessment_id=assessment.id) }}"
-              onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'bi bi-hourglass-split me-1\'></i>Re-analyzing...';">
-            <button type="submit" class="btn btn-outline-success btn-sm">
-                {% if ai_enabled %}
-                <i class="bi bi-arrow-repeat me-1"></i>Redo AI Assessment
-                {% else %}
-                <i class="bi bi-arrow-repeat me-1"></i>Redo Auto-Assess
-                {% endif %}
-            </button>
-        </form>
+        <button type="button" class="btn btn-outline-success btn-sm"
+                onclick="startStreamingAssess({{ assessment.id }})">
+            {% if ai_enabled %}
+            <i class="bi bi-arrow-repeat me-1"></i>Redo AI Assessment
+            {% else %}
+            <i class="bi bi-arrow-repeat me-1"></i>Redo Auto-Assess
+            {% endif %}
+        </button>
         {% endif %}
     </div>
     <div class="card-body p-0">
@@ -747,5 +743,168 @@ window.addEventListener('beforeunload', function(e) {
         e.returnValue = '';
     }
 });
+
+// ---------------------------------------------------------------
+// Streaming Auto-Assess (SSE progress)
+// ---------------------------------------------------------------
+let assessEventSource = null;
+
+function startStreamingAssess(assessmentId, retryBatches) {
+    // Prevent double-click
+    const btn = document.getElementById('btnAiAssess');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Starting...'; }
+
+    // Show progress overlay
+    let overlay = document.getElementById('assessProgressOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'assessProgressOverlay';
+        overlay.innerHTML = `
+            <div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;">
+                <div style="background:var(--surface,#1e1e2e);border:1px solid rgba(59,130,246,0.4);border-radius:12px;padding:2rem;max-width:480px;width:90%;color:var(--text-primary,#e0e0e0);">
+                    <h5 style="margin-bottom:1rem;"><i class="bi bi-robot me-2"></i>AI Assessment in Progress</h5>
+                    <div id="assessProgressBar" style="background:rgba(255,255,255,0.1);border-radius:6px;height:24px;overflow:hidden;margin-bottom:0.75rem;">
+                        <div id="assessProgressFill" style="height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#06b6d4);border-radius:6px;transition:width 0.4s ease;"></div>
+                    </div>
+                    <div id="assessProgressText" style="font-size:0.9rem;margin-bottom:0.5rem;">Connecting...</div>
+                    <div id="assessProgressLog" style="font-size:0.8rem;color:var(--text-secondary,#999);max-height:120px;overflow-y:auto;"></div>
+                    <div id="assessRetryArea" style="display:none;margin-top:1rem;"></div>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = 'block';
+
+    const fill = document.getElementById('assessProgressFill');
+    const text = document.getElementById('assessProgressText');
+    const log = document.getElementById('assessProgressLog');
+    const retryArea = document.getElementById('assessRetryArea');
+    fill.style.width = '0%';
+    text.textContent = 'Connecting...';
+    log.innerHTML = '';
+    retryArea.style.display = 'none';
+
+    let url = `/assessments/${assessmentId}/auto-assess-stream`;
+    if (retryBatches && retryBatches.length > 0) {
+        url += `?batches=${retryBatches.join(',')}`;
+    }
+
+    let failedBatches = [];
+
+    assessEventSource = new EventSource(url);
+
+    assessEventSource.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+
+        switch(data.type) {
+            case 'cached':
+                fill.style.width = '100%';
+                text.textContent = `Cache hit — ${data.scored} criteria scored instantly`;
+                addLog('Returning cached results (same documents)');
+                break;
+
+            case 'start':
+                text.textContent = `Analyzing ${data.total} criteria...`;
+                addLog('Assessment started');
+                break;
+
+            case 'pass1_start':
+                fill.style.width = '5%';
+                text.textContent = 'Pass 1: Summarizing documents...';
+                addLog('Large document detected — summarizing first');
+                break;
+
+            case 'pass1_done':
+                fill.style.width = '15%';
+                text.textContent = 'Pass 1 complete. Starting scoring...';
+                addLog('Document summary ready');
+                break;
+
+            case 'pass1_fallback':
+                fill.style.width = '15%';
+                text.textContent = 'Using smart extraction (summary failed). Starting scoring...';
+                addLog('Fallback: smart extraction');
+                break;
+
+            case 'pass2_start':
+                fill.style.width = '20%';
+                text.textContent = `Scoring in ${data.batches} parallel batches...`;
+                addLog(`Launching ${data.batches} parallel scoring batches`);
+                break;
+
+            case 'batch_done': {
+                const pct = 20 + Math.round((data.scored / data.total) * 75);
+                fill.style.width = pct + '%';
+                text.textContent = `Scored ${data.scored}/${data.total} criteria...`;
+                addLog(`Batch ${data.batch + 1}: ${data.criteria.join(', ')}`);
+                break;
+            }
+
+            case 'batch_error': {
+                const pct = 20 + Math.round((data.scored / data.total) * 75);
+                fill.style.width = pct + '%';
+                text.textContent = `Scored ${data.scored}/${data.total} — batch ${data.batch + 1} failed`;
+                addLog(`<span style="color:#f87171;">Batch ${data.batch + 1} failed: ${data.error}</span>`);
+                failedBatches.push(data.batch);
+                break;
+            }
+
+            case 'done':
+                if (data.method === 'keyword') {
+                    addLog('Used keyword-based scoring (no API key)');
+                } else if (data.method === 'ai_cached') {
+                    addLog('Returned cached AI results');
+                }
+                if (data.errors) {
+                    text.textContent = `Assessment partially complete — some batches failed`;
+                } else {
+                    fill.style.width = '95%';
+                    text.textContent = 'Saving results...';
+                }
+                break;
+
+            case 'saved':
+                assessEventSource.close();
+                assessEventSource = null;
+                fill.style.width = '100%';
+                fill.style.background = 'linear-gradient(90deg,#22c55e,#06b6d4)';
+
+                if (failedBatches.length > 0) {
+                    text.textContent = `Done — ${data.updated} criteria saved. ${failedBatches.length} batch(es) failed.`;
+                    retryArea.innerHTML = `<button class="btn btn-warning btn-sm" onclick="startStreamingAssess(${assessmentId}, [${failedBatches.join(',')}])"><i class="bi bi-arrow-repeat me-1"></i>Retry Failed Batches</button>`;
+                    retryArea.style.display = 'block';
+                } else {
+                    text.textContent = `Done — ${data.updated} criteria scored by AI. Reloading...`;
+                    setTimeout(() => { window.location.reload(); }, 1200);
+                }
+                break;
+        }
+    };
+
+    assessEventSource.onerror = function() {
+        if (assessEventSource) {
+            assessEventSource.close();
+            assessEventSource = null;
+        }
+        text.textContent = 'Connection lost. Please try again.';
+        fill.style.background = '#f87171';
+        addLog('<span style="color:#f87171;">SSE connection error</span>');
+        retryArea.innerHTML = `<button class="btn btn-primary btn-sm" onclick="startStreamingAssess(${assessmentId})"><i class="bi bi-arrow-repeat me-1"></i>Retry</button>
+            <button class="btn btn-outline-secondary btn-sm ms-2" onclick="closeAssessOverlay()">Close</button>`;
+        retryArea.style.display = 'block';
+    };
+
+    function addLog(msg) {
+        log.innerHTML += `<div>${msg}</div>`;
+        log.scrollTop = log.scrollHeight;
+    }
+}
+
+function closeAssessOverlay() {
+    const overlay = document.getElementById('assessProgressOverlay');
+    if (overlay) overlay.style.display = 'none';
+    const btn = document.getElementById('btnAiAssess');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-robot me-1"></i>AI Assess'; }
+}
 </script>
 {% endblock %}

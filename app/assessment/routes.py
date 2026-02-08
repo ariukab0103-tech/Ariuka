@@ -564,7 +564,10 @@ def bulk_upload(assessment_id):
     if denied:
         return denied
 
-    from app.analyzer import extract_text_from_file
+    from app.analyzer import extract_text_from_file, clear_cache
+
+    # Invalidate assessment cache — document set is changing
+    clear_cache()
 
     files = request.files.getlist("files")
     if not files or all(f.filename == "" for f in files):
@@ -572,6 +575,7 @@ def bulk_upload(assessment_id):
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     uploaded_count = 0
+    failed_files = []
     for file in files:
         if file.filename == "" or not _allowed_file(file.filename):
             continue
@@ -581,6 +585,14 @@ def bulk_upload(assessment_id):
 
         # Extract text
         extracted = extract_text_from_file(filepath)
+
+        # Detect extraction problems and give user feedback
+        if extracted == "[ENCRYPTED_PDF]":
+            failed_files.append(f"{original_name} (password-protected — please decrypt and re-upload)")
+            extracted = ""
+        elif extracted == "[SCANNED_PDF]":
+            failed_files.append(f"{original_name} (scanned/image PDF — no extractable text. Please use a text-based PDF or DOCX)")
+            extracted = ""
 
         doc = AssessmentDocument(
             assessment_id=assessment.id,
@@ -594,7 +606,14 @@ def bulk_upload(assessment_id):
         uploaded_count += 1
 
     db.session.commit()
-    flash(f"{uploaded_count} document(s) uploaded. Click 'Auto-Assess' to analyze.", "success")
+
+    if failed_files:
+        flash(f"Could not extract text from: {'; '.join(failed_files)}", "warning")
+    success_count = uploaded_count - len(failed_files)
+    if success_count > 0:
+        flash(f"{success_count} document(s) uploaded successfully. Click 'Auto-Assess' to analyze.", "success")
+    elif not failed_files:
+        flash(f"{uploaded_count} document(s) uploaded. Click 'Auto-Assess' to analyze.", "success")
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
@@ -660,6 +679,80 @@ def auto_assess(assessment_id):
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 
+@assessment_bp.route("/<int:assessment_id>/auto-assess-stream")
+@login_required
+def auto_assess_stream(assessment_id):
+    """SSE endpoint — streams batch-by-batch assessment progress.
+
+    The frontend connects via EventSource.  Events:
+      start, pass1_start, pass1_done, pass2_start,
+      batch_done (×5), done, saved
+    Supports retry of failed batches via ?batches=2,4 query param.
+    """
+    from flask import Response, stream_with_context
+    import json as _json
+
+    assessment = db.session.get(Assessment, assessment_id)
+    if not assessment or not assessment.user_can(current_user, "edit"):
+        return jsonify({"error": "Access denied"}), 403
+
+    docs = assessment.documents.all()
+    if not docs:
+        return jsonify({"error": "No documents uploaded. Please upload documents first."}), 400
+
+    combined_text = "\n\n".join(d.extracted_text for d in docs if d.extracted_text)
+    if not combined_text.strip():
+        return jsonify({"error": "No extractable text in documents."}), 400
+
+    # Optional: retry specific batch indices (0-indexed)
+    retry_param = request.args.get("batches", "")
+    batch_indices = None
+    if retry_param:
+        try:
+            batch_indices = [int(x) for x in retry_param.split(",") if x.strip()]
+        except ValueError:
+            pass
+
+    # Pre-load response objects so we can update DB inside the generator
+    response_map = {r.criterion_id: r for r in assessment.responses.all()}
+
+    def generate():
+        from app.analyzer import ai_assess_all_streaming
+
+        results_to_save = None
+
+        for event in ai_assess_all_streaming(combined_text, batch_indices):
+            if event["type"] == "done":
+                results_to_save = event.pop("results", {})
+                yield f"data: {_json.dumps(event)}\n\n"
+            else:
+                yield f"data: {_json.dumps(event)}\n\n"
+
+        # Persist results to database
+        if results_to_save:
+            updated = 0
+            for cid, (score, evidence, notes) in results_to_save.items():
+                resp = response_map.get(cid)
+                if resp and score > 0:
+                    resp.score = score
+                    resp.evidence = evidence
+                    resp.notes = notes
+                    updated += 1
+            if assessment.status in ("draft", "completed", "under_review", "reviewed"):
+                assessment.status = "in_progress"
+            db.session.commit()
+            yield f"data: {_json.dumps({'type': 'saved', 'updated': updated})}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @assessment_bp.route("/<int:assessment_id>/delete-doc/<int:doc_id>", methods=["POST"])
 @login_required
 def delete_document(assessment_id, doc_id):
@@ -680,6 +773,10 @@ def delete_document(assessment_id, doc_id):
 
     db.session.delete(doc)
     db.session.commit()
+
+    from app.analyzer import clear_cache
+    clear_cache()
+
     flash("Document deleted.", "success")
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
@@ -1141,6 +1238,14 @@ def project_checklist(assessment_id):
     from app.project_checklist import generate_checklist
     checklist_data = generate_checklist(assessment, responses)
 
+    # Fetch latest review for this assessment (if any)
+    from app.models import Review
+    latest_review = (
+        assessment.reviews
+        .order_by(Review.created_at.desc())
+        .first()
+    )
+
     return render_template(
         "assessment/project_checklist.html",
         assessment=assessment,
@@ -1150,6 +1255,7 @@ def project_checklist(assessment_id):
         gate_reviews=checklist_data["gate_reviews"],
         year2_prep=checklist_data["year2_prep"],
         summary=checklist_data["summary"],
+        latest_review=latest_review,
     )
 
 
@@ -1175,11 +1281,37 @@ def download_checklist_excel(assessment_id):
 
     from app.project_checklist import generate_checklist, generate_excel
     checklist_data = generate_checklist(assessment, responses)
+
+    # Include review findings if a completed review exists
+    from app.models import Review
+    review_data = None
+    latest_review = assessment.reviews.order_by(Review.created_at.desc()).first()
+    if latest_review and latest_review.status == "completed":
+        review_data = {
+            "reviewer": latest_review.reviewer.full_name,
+            "date": latest_review.updated_at.strftime("%Y-%m-%d"),
+            "opinion": latest_review.overall_opinion,
+            "findings": latest_review.findings,
+            "recommendations": latest_review.recommendations,
+            "items": [
+                {
+                    "criterion_id": ri.criterion_id,
+                    "category": ri.category,
+                    "status": ri.status,
+                    "evidence_adequate": ri.evidence_adequate,
+                    "finding": ri.finding,
+                    "recommendation": ri.recommendation,
+                }
+                for ri in latest_review.review_items.all()
+            ],
+        }
+
     wb = generate_excel(
         checklist_data,
         assessment_title=assessment.title,
         entity_name=assessment.entity_name,
         fiscal_year=assessment.fiscal_year,
+        review_data=review_data,
     )
 
     output = BytesIO()
