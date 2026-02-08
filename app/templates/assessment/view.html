@@ -748,8 +748,11 @@ window.addEventListener('beforeunload', function(e) {
 // Streaming Auto-Assess (SSE progress)
 // ---------------------------------------------------------------
 let assessEventSource = null;
+let assessDone = false;  // guard against onerror after normal completion
 
 function startStreamingAssess(assessmentId, retryBatches) {
+    assessDone = false;
+
     // Prevent double-click
     const btn = document.getElementById('btnAiAssess');
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Starting...'; }
@@ -864,6 +867,7 @@ function startStreamingAssess(assessmentId, retryBatches) {
                 break;
 
             case 'saved':
+                assessDone = true;
                 assessEventSource.close();
                 assessEventSource = null;
                 fill.style.width = '100%';
@@ -882,10 +886,12 @@ function startStreamingAssess(assessmentId, retryBatches) {
     };
 
     assessEventSource.onerror = function() {
-        if (assessEventSource) {
-            assessEventSource.close();
-            assessEventSource = null;
-        }
+        // Normal completion: server closes connection after 'saved' event.
+        // Don't overwrite success state.
+        if (assessDone || !assessEventSource) return;
+
+        assessEventSource.close();
+        assessEventSource = null;
         text.textContent = 'Connection lost. Please try again.';
         fill.style.background = '#f87171';
         addLog('<span style="color:#f87171;">SSE connection error</span>');
