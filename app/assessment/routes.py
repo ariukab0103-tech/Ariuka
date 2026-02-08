@@ -725,6 +725,10 @@ def auto_assess_stream(assessment_id):
             if event["type"] == "done":
                 results_to_save = event.pop("results", {})
                 yield f"data: {_json.dumps(event)}\n\n"
+            elif event["type"] == "pass1_progress":
+                # Lightweight keepalive — SSE comment + small data event
+                yield f": keepalive {event.get('elapsed', 0)}s\n"
+                yield f"data: {_json.dumps(event)}\n\n"
             else:
                 yield f"data: {_json.dumps(event)}\n\n"
 
