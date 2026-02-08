@@ -518,3 +518,343 @@ def generate_checklist(assessment, responses, roadmap_data=None, raci_data=None,
         "year2_prep": year2_prep,
         "summary": summary,
     }
+
+
+# Department code -> full name mapping (matches raci.py DEPARTMENTS)
+_DEPT_NAMES = {
+    "board": "Board / Sustainability Committee",
+    "esg": "Sustainability / ESG Office",
+    "finance": "Finance / Accounting",
+    "legal": "Legal / Compliance",
+    "risk": "Risk Management",
+    "ops": "Operations / Manufacturing",
+    "hr": "HR / General Affairs",
+    "ir": "IR / Communications",
+    "it": "IT / Systems",
+    "procurement": "Procurement / Supply Chain",
+}
+
+
+def generate_excel(checklist_data, assessment_title="", entity_name="", fiscal_year=""):
+    """
+    Generate an Excel workbook from checklist data.
+
+    Args:
+        checklist_data: dict from generate_checklist()
+        assessment_title: str
+        entity_name: str
+        fiscal_year: str
+
+    Returns:
+        openpyxl.Workbook ready to be saved or streamed
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+
+    # Color definitions
+    header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True, size=10)
+    phase_fills = {
+        1: PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid"),  # red
+        2: PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid"),  # blue
+        3: PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid"),  # yellow
+        4: PatternFill(start_color="CFFAFE", end_color="CFFAFE", fill_type="solid"),  # cyan
+        5: PatternFill(start_color="D1FAE5", end_color="D1FAE5", fill_type="solid"),  # green
+    }
+    la_fill = PatternFill(start_color="FEF2F2", end_color="FEF2F2", fill_type="solid")
+    gap_font = Font(color="DC2626", bold=True)
+    ok_font = Font(color="16A34A")
+    thin_border = Border(
+        left=Side(style="thin", color="D1D5DB"),
+        right=Side(style="thin", color="D1D5DB"),
+        top=Side(style="thin", color="D1D5DB"),
+        bottom=Side(style="thin", color="D1D5DB"),
+    )
+    wrap = Alignment(wrap_text=True, vertical="top")
+
+    def _apply_header(ws, row_num, col_count):
+        for col in range(1, col_count + 1):
+            cell = ws.cell(row=row_num, column=col)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(wrap_text=True, vertical="center")
+            cell.border = thin_border
+
+    def _auto_width(ws, min_width=8, max_width=50):
+        for col_cells in ws.columns:
+            max_len = min_width
+            col_letter = get_column_letter(col_cells[0].column)
+            for cell in col_cells:
+                if cell.value:
+                    lines = str(cell.value).split("\n")
+                    longest = max(len(line) for line in lines) if lines else 0
+                    max_len = max(max_len, min(longest + 2, max_width))
+            ws.column_dimensions[col_letter].width = max_len
+
+    # ===== Sheet 1: Phase Checklist =====
+    ws1 = wb.active
+    ws1.title = "Phase Checklist"
+    ws1.sheet_properties.tabColor = "3B82F6"
+
+    # Title row
+    ws1.merge_cells("A1:K1")
+    title_cell = ws1["A1"]
+    title_cell.value = f"SSBJ Project Execution Checklist — {entity_name} — {fiscal_year}"
+    title_cell.font = Font(size=14, bold=True)
+    title_cell.alignment = Alignment(horizontal="center")
+
+    ws1.merge_cells("A2:K2")
+    ws1["A2"].value = f"Assessment: {assessment_title} | Gaps: {checklist_data['summary']['total_gaps']} | LA-Critical: {checklist_data['summary']['la_gaps']} | Effort: {checklist_data['summary']['total_effort_range']} person-days"
+    ws1["A2"].font = Font(size=10, italic=True, color="6B7280")
+    ws1["A2"].alignment = Alignment(horizontal="center")
+
+    headers = ["Done", "Phase", "Criterion", "Category", "Pillar", "LA Scope",
+               "Current Score", "Target", "Effort (days)", "Responsible", "Accountable",
+               "Relief Available", "Key Deliverable"]
+    row = 4
+    for ci, h in enumerate(headers, 1):
+        ws1.cell(row=row, column=ci, value=h)
+    _apply_header(ws1, row, len(headers))
+    row += 1
+
+    for phase in checklist_data["phases"]:
+        for task in phase["gap_tasks"]:
+            r = [code for code in task["responsible"]]
+            a = [code for code in task["accountable"]]
+            resp_names = ", ".join(_DEPT_NAMES.get(d, d) for d in r)
+            acct_names = ", ".join(_DEPT_NAMES.get(d, d) for d in a)
+
+            relief = ""
+            if task["can_defer"]:
+                relief = "Deferral OK"
+            elif task["can_simplify"]:
+                relief = "Simplified OK"
+
+            ws1.cell(row=row, column=1, value="").border = thin_border
+            ws1.cell(row=row, column=2, value=f"P{phase['number']}: {phase['title']}").border = thin_border
+            ws1.cell(row=row, column=3, value=task["criterion_id"]).border = thin_border
+            ws1.cell(row=row, column=4, value=task["category"]).border = thin_border
+            ws1.cell(row=row, column=5, value=task["pillar"]).border = thin_border
+            ws1.cell(row=row, column=6, value=task["la_scope"].replace("_", " ").title()).border = thin_border
+            score_cell = ws1.cell(row=row, column=7, value=task["score"] if task["score"] is not None else "Not scored")
+            score_cell.border = thin_border
+            if task["score"] is not None and task["score"] < 3:
+                score_cell.font = gap_font
+            ws1.cell(row=row, column=8, value=task["target_score"]).border = thin_border
+            ws1.cell(row=row, column=9, value=task["effort_days"]).border = thin_border
+            ws1.cell(row=row, column=10, value=resp_names).border = thin_border
+            ws1.cell(row=row, column=11, value=acct_names).border = thin_border
+            ws1.cell(row=row, column=12, value=relief).border = thin_border
+            deliv_cell = ws1.cell(row=row, column=13, value=task["deliverable"][:500] if task["deliverable"] else "")
+            deliv_cell.border = thin_border
+            deliv_cell.alignment = wrap
+
+            # Phase color fill on column B
+            ws1.cell(row=row, column=2).fill = phase_fills.get(phase["number"], PatternFill())
+
+            # LA scope highlight
+            if task["la_scope"] == "in_scope":
+                ws1.cell(row=row, column=6).fill = la_fill
+                ws1.cell(row=row, column=6).font = Font(color="DC2626", bold=True)
+
+            for ci in range(1, len(headers) + 1):
+                ws1.cell(row=row, column=ci).alignment = wrap
+
+            row += 1
+
+    _auto_width(ws1)
+    ws1.column_dimensions["M"].width = 60  # Deliverable column wider
+    ws1.auto_filter.ref = f"A4:{get_column_letter(len(headers))}{row - 1}"
+    ws1.freeze_panes = "A5"
+
+    # ===== Sheet 2: Evidence Tracker =====
+    ws2 = wb.create_sheet("Evidence Tracker")
+    ws2.sheet_properties.tabColor = "EAB308"
+
+    ev_headers = ["Done", "Criterion", "Category", "Pillar", "LA Scope",
+                  "Document Required", "Format", "Status", "Phase", "Owner", "Notes"]
+    for ci, h in enumerate(ev_headers, 1):
+        ws2.cell(row=1, column=ci, value=h)
+    _apply_header(ws2, 1, len(ev_headers))
+
+    row = 2
+    for ev in checklist_data["evidence_tracker"]:
+        resp_names = ", ".join(_DEPT_NAMES.get(d, d) for d in ev["responsible"])
+        status_text = ev["status"].replace("_", " ").title()
+
+        ws2.cell(row=row, column=1, value="").border = thin_border
+        ws2.cell(row=row, column=2, value=ev["criterion_id"]).border = thin_border
+        ws2.cell(row=row, column=3, value=ev["category"]).border = thin_border
+        ws2.cell(row=row, column=4, value=ev["pillar"]).border = thin_border
+        la_cell = ws2.cell(row=row, column=5, value=ev["la_scope"].replace("_", " ").title())
+        la_cell.border = thin_border
+        if ev["la_scope"] == "in_scope":
+            la_cell.fill = la_fill
+            la_cell.font = Font(color="DC2626", bold=True)
+        ws2.cell(row=row, column=6, value=ev["document"]).border = thin_border
+        ws2.cell(row=row, column=7, value=ev["format"]).border = thin_border
+        status_cell = ws2.cell(row=row, column=8, value=status_text)
+        status_cell.border = thin_border
+        if ev["status"] == "not_started":
+            status_cell.font = Font(color="DC2626")
+        elif ev["status"] == "likely_exists":
+            status_cell.font = ok_font
+        ws2.cell(row=row, column=9, value=f"P{ev['phase']}").border = thin_border
+        ws2.cell(row=row, column=10, value=resp_names).border = thin_border
+        ws2.cell(row=row, column=11, value="").border = thin_border  # Notes column for user
+
+        for ci in range(1, len(ev_headers) + 1):
+            ws2.cell(row=row, column=ci).alignment = wrap
+
+        row += 1
+
+    _auto_width(ws2)
+    ws2.column_dimensions["F"].width = 55
+    ws2.auto_filter.ref = f"A1:{get_column_letter(len(ev_headers))}{row - 1}"
+    ws2.freeze_panes = "A2"
+
+    # ===== Sheet 3: Budget & Resources =====
+    ws3 = wb.create_sheet("Budget & Resources")
+    ws3.sheet_properties.tabColor = "8B5CF6"
+
+    budget_headers = ["Category", "Estimate", "Notes"]
+    for ci, h in enumerate(budget_headers, 1):
+        ws3.cell(row=1, column=ci, value=h)
+    _apply_header(ws3, 1, len(budget_headers))
+
+    row = 2
+    for item in checklist_data["budget_summary"]:
+        ws3.cell(row=row, column=1, value=item["category"]).border = thin_border
+        ws3.cell(row=row, column=2, value=item["estimate"]).border = thin_border
+        ws3.cell(row=row, column=3, value=item["note"]).border = thin_border
+        for ci in range(1, 4):
+            ws3.cell(row=row, column=ci).alignment = wrap
+        row += 1
+
+    # Blank row then resource summary
+    row += 1
+    ws3.cell(row=row, column=1, value="Resource Summary").font = Font(bold=True, size=11)
+    row += 1
+    ws3.cell(row=row, column=1, value="Total Effort")
+    ws3.cell(row=row, column=2, value=f"{checklist_data['summary']['total_effort_range']} person-days")
+    row += 1
+    ws3.cell(row=row, column=1, value="External Help Needed")
+    ws3.cell(row=row, column=2, value=f"Yes ({checklist_data['summary']['external_items_count']} items)" if checklist_data['summary']['needs_external_help'] else "No")
+    row += 1
+    ws3.cell(row=row, column=1, value="Total Gap Items")
+    ws3.cell(row=row, column=2, value=checklist_data["summary"]["total_gaps"])
+    row += 1
+    ws3.cell(row=row, column=1, value="LA-Critical Gaps")
+    ws3.cell(row=row, column=2, value=checklist_data["summary"]["la_gaps"])
+    row += 1
+    ws3.cell(row=row, column=1, value="Months Remaining")
+    ws3.cell(row=row, column=2, value=checklist_data["summary"]["months_remaining"])
+
+    _auto_width(ws3)
+    ws3.column_dimensions["C"].width = 60
+
+    # ===== Sheet 4: Gate Reviews =====
+    ws4 = wb.create_sheet("Gate Reviews")
+    ws4.sheet_properties.tabColor = "06B6D4"
+
+    gate_headers = ["Gate", "Timing", "Pass Criteria", "Owner", "Status", "Actual Date", "Notes"]
+    for ci, h in enumerate(gate_headers, 1):
+        ws4.cell(row=1, column=ci, value=h)
+    _apply_header(ws4, 1, len(gate_headers))
+
+    row = 2
+    for gate in checklist_data["gate_reviews"]:
+        ws4.cell(row=row, column=1, value=gate["gate"]).border = thin_border
+        ws4.cell(row=row, column=2, value=gate["timing"]).border = thin_border
+        ws4.cell(row=row, column=3, value=gate["criteria"]).border = thin_border
+        ws4.cell(row=row, column=4, value=gate["owner"]).border = thin_border
+        ws4.cell(row=row, column=5, value="").border = thin_border  # Status for user
+        ws4.cell(row=row, column=6, value="").border = thin_border  # Actual date for user
+        ws4.cell(row=row, column=7, value="").border = thin_border  # Notes for user
+        for ci in range(1, len(gate_headers) + 1):
+            ws4.cell(row=row, column=ci).alignment = wrap
+        row += 1
+
+    # Integration calendar
+    row += 1
+    ws4.cell(row=row, column=1, value="Financial Close Integration").font = Font(bold=True, size=11)
+    row += 1
+    cal_headers = ["Timing", "Financial Calendar Event", "SSBJ Action Required"]
+    for ci, h in enumerate(cal_headers, 1):
+        ws4.cell(row=row, column=ci, value=h)
+    _apply_header(ws4, row, len(cal_headers))
+    row += 1
+    calendar_items = [
+        ("Q1", "Q1 earnings / interim", "Begin GHG data collection for current FY. Establish data collection rhythm."),
+        ("Q2", "Mid-year review", "Mid-year GHG data completeness check. Draft governance/risk disclosures."),
+        ("Q3", "Q3 earnings", "9-month GHG data compiled. Internal dry run of SSBJ disclosures."),
+        ("Q4", "Year-end close", "Finalize full-year GHG calculations. Complete all SSBJ disclosures."),
+        ("Post-close", "Annual report filing (有報)", "Integrate SSBJ disclosure into securities report. Evidence freeze for assurance."),
+    ]
+    for timing, event, action in calendar_items:
+        ws4.cell(row=row, column=1, value=timing).border = thin_border
+        ws4.cell(row=row, column=2, value=event).border = thin_border
+        ws4.cell(row=row, column=3, value=action).border = thin_border
+        for ci in range(1, 4):
+            ws4.cell(row=row, column=ci).alignment = wrap
+        row += 1
+
+    _auto_width(ws4)
+    ws4.column_dimensions["C"].width = 55
+
+    # ===== Sheet 5: Year 2+ Prep =====
+    ws5 = wb.create_sheet("Year 2+ Preparation")
+    ws5.sheet_properties.tabColor = "F97316"
+
+    y2_headers = ["Criterion", "Category", "Year 1 Relief", "Year 1 Action Required",
+                  "Year 2 Requirement", "Status", "Notes"]
+    for ci, h in enumerate(y2_headers, 1):
+        ws5.cell(row=1, column=ci, value=h)
+    _apply_header(ws5, 1, len(y2_headers))
+
+    row = 2
+    for item in checklist_data["year2_prep"]:
+        ws5.cell(row=row, column=1, value=item["criterion_id"]).border = thin_border
+        ws5.cell(row=row, column=2, value=item["category"]).border = thin_border
+        ws5.cell(row=row, column=3, value=item.get("relief_note", "")).border = thin_border
+        ws5.cell(row=row, column=4, value=item.get("year1_action", "")).border = thin_border
+        ws5.cell(row=row, column=5, value=item.get("year2_req", "")).border = thin_border
+        ws5.cell(row=row, column=6, value="").border = thin_border  # Status for user
+        ws5.cell(row=row, column=7, value="").border = thin_border  # Notes for user
+        for ci in range(1, len(y2_headers) + 1):
+            ws5.cell(row=row, column=ci).alignment = wrap
+        row += 1
+
+    # Assurance scope expansion
+    row += 1
+    ws5.cell(row=row, column=1, value="Assurance Scope Expansion Timeline").font = Font(bold=True, size=11)
+    row += 1
+    scope_headers = ["Year", "Assurance Scope", "What to Prepare"]
+    for ci, h in enumerate(scope_headers, 1):
+        ws5.cell(row=row, column=ci, value=h)
+    _apply_header(ws5, row, len(scope_headers))
+    row += 1
+    scope_items = [
+        ("Year 1", "Disclosure only (no assurance)", "Establish processes, collect evidence, engage assurance provider"),
+        ("Year 2", "Limited assurance: Scope 1 & 2, Governance, Risk Mgmt", "Full evidence packages, controls operating effectively, auditor fieldwork"),
+        ("Year 3+", "Scope expansion under consideration", "Progressive quantification, Scope 3 calculations, scenario analysis maturity"),
+    ]
+    for year, scope, prep in scope_items:
+        ws5.cell(row=row, column=1, value=year).border = thin_border
+        ws5.cell(row=row, column=2, value=scope).border = thin_border
+        ws5.cell(row=row, column=3, value=prep).border = thin_border
+        for ci in range(1, 4):
+            ws5.cell(row=row, column=ci).alignment = wrap
+        row += 1
+
+    _auto_width(ws5)
+    ws5.column_dimensions["C"].width = 50
+    ws5.column_dimensions["D"].width = 50
+    ws5.column_dimensions["E"].width = 50
+    ws5.auto_filter.ref = f"A1:{get_column_letter(len(y2_headers))}{row - 1}"
+    ws5.freeze_panes = "A2"
+
+    return wb

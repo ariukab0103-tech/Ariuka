@@ -97,6 +97,9 @@
         <p class="text-muted mb-0">{{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
     </div>
     <div class="d-flex gap-2 no-print">
+        <a href="{{ url_for('assessment.download_checklist_excel', assessment_id=assessment.id) }}" class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Download Excel
+        </a>
         <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-printer me-1"></i>Print
         </button>
