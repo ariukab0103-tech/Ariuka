@@ -13,6 +13,10 @@ from app.ssbj_criteria import (
 )
 
 
+# In-memory store for background assessment results (cleared on read)
+_assess_messages = {}  # {assessment_id: {"type": "success"|"warning"|"danger", "msg": str}}
+
+
 def _require_access(assessment, required="view"):
     """Check current_user has at least `required` permission. Returns None if OK, or redirect."""
     if not assessment:
@@ -134,6 +138,11 @@ def view(assessment_id):
     denied = _require_access(assessment, "view")
     if denied:
         return denied
+
+    # Show background assessment result if available
+    bg_msg = _assess_messages.pop(assessment_id, None)
+    if bg_msg:
+        flash(bg_msg["msg"], bg_msg["type"])
 
     criteria_by_pillar = get_criteria_by_pillar()
 
@@ -694,8 +703,34 @@ def auto_assess(assessment_id):
                     app.logger.info(
                         f"Background assessment done: {updated} criteria, method={method}"
                     )
+
+                    # Store result message for the next page load
+                    if method == "ai":
+                        _assess_messages[assessment_id] = {
+                            "type": "success",
+                            "msg": f"AI assessment complete — {updated} of 26 criteria scored by Claude.",
+                        }
+                    elif method == "ai_cached":
+                        _assess_messages[assessment_id] = {
+                            "type": "success",
+                            "msg": f"AI assessment complete (cached) — {updated} criteria loaded.",
+                        }
+                    elif ai_error:
+                        _assess_messages[assessment_id] = {
+                            "type": "warning",
+                            "msg": f"AI failed ({ai_error}). Used keyword fallback — {updated} criteria scored.",
+                        }
+                    else:
+                        _assess_messages[assessment_id] = {
+                            "type": "warning",
+                            "msg": f"Keyword-based scoring — {updated} criteria scored. Set ANTHROPIC_API_KEY for AI analysis.",
+                        }
                 except Exception as e:
                     app.logger.error(f"Background assessment failed: {type(e).__name__}: {e}")
+                    _assess_messages[assessment_id] = {
+                        "type": "danger",
+                        "msg": f"Assessment failed: {e}",
+                    }
                     # Ensure status is reset even on failure
                     try:
                         db.session.rollback()
