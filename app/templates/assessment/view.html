@@ -839,28 +839,30 @@ function startStreamingAssess(assessmentId, retryBatches) {
 
             case 'pass2_start':
                 fill.style.width = '20%';
-                text.textContent = `Scoring in ${data.batches} parallel batches...`;
-                addLog(`Launching ${data.batches} parallel scoring batches`);
+                text.textContent = 'Scoring all criteria...';
+                addLog('AI scoring started');
                 break;
 
             case 'pass2_progress':
-                // Keepalive during batch scoring — no log spam
-                text.textContent = `Scoring ${data.scored}/${data.total} criteria (waiting for batches...)`;
+                // Keepalive during scoring — animate progress bar slowly
+                {
+                    const curWidth = parseFloat(fill.style.width) || 20;
+                    if (curWidth < 85) fill.style.width = (curWidth + 2) + '%';
+                }
+                text.textContent = `Scoring ${data.total} criteria (this takes about 30s)...`;
                 break;
 
             case 'batch_done': {
                 const pct = 20 + Math.round((data.scored / data.total) * 75);
                 fill.style.width = pct + '%';
-                text.textContent = `Scored ${data.scored}/${data.total} criteria...`;
-                addLog(`Batch ${data.batch + 1}: ${data.criteria.join(', ')}`);
+                text.textContent = `Scored ${data.scored}/${data.total} criteria`;
+                addLog(`Scored: ${data.criteria.join(', ')}`);
                 break;
             }
 
             case 'batch_error': {
-                const pct = 20 + Math.round((data.scored / data.total) * 75);
-                fill.style.width = pct + '%';
-                text.textContent = `Scored ${data.scored}/${data.total} — batch ${data.batch + 1} failed`;
-                addLog(`<span style="color:#f87171;">Batch ${data.batch + 1} failed: ${data.error}</span>`);
+                text.textContent = `Scoring failed — falling back to keyword matching`;
+                addLog(`<span style="color:#f87171;">AI scoring failed: ${data.error}</span>`);
                 failedBatches.push(data.batch);
                 break;
             }
