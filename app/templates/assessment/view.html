@@ -49,6 +49,9 @@
         <a href="{{ url_for('assessment.audit_simulator', assessment_id=assessment.id) }}" class="btn btn-outline-danger">
             <i class="bi bi-shield-check me-1"></i>Mock Audit
         </a>
+        <a href="{{ url_for('assessment.project_checklist', assessment_id=assessment.id) }}" class="btn btn-outline-info">
+            <i class="bi bi-clipboard2-check me-1"></i>Checklist
+        </a>
         <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#downloadModal">
             <i class="bi bi-file-earmark-pdf me-1"></i>Download
         </button>
@@ -592,6 +595,13 @@
                         <div>
                             <strong><i class="bi bi-shield-check me-1"></i>Mock Audit</strong>
                             <small class="d-block text-muted">Auditor questions, documents needed, red flags</small>
+                        </div>
+                    </label>
+                    <label class="list-group-item d-flex align-items-center" style="border-left: 3px solid var(--accent-cyan);">
+                        <input class="form-check-input me-3 dl-check" type="checkbox" value="checklist" checked>
+                        <div>
+                            <strong><i class="bi bi-clipboard2-check me-1"></i>Project Checklist</strong>
+                            <small class="d-block text-muted">Phase tasks, evidence tracker, budget, gate reviews, Year 2 prep</small>
                         </div>
                     </label>
                 </div>

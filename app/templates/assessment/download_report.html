@@ -22,7 +22,7 @@
     <h1 style="font-size: 1.8rem;">SSBJ Gap Analysis Report</h1>
     <h3 style="color: #666;">{{ assessment.entity_name }}</h3>
     <p>{{ assessment.title }} | {{ assessment.fiscal_year }}</p>
-    <p class="text-muted small">Generated {{ "now" | default("") }}{% set sections_list = [] %}{% if 'exec' in sections %}{% if sections_list.append('Executive Summary') %}{% endif %}{% endif %}{% if 'gap' in sections %}{% if sections_list.append('Gap Analysis') %}{% endif %}{% endif %}{% if 'roadmap' in sections %}{% if sections_list.append('Roadmap') %}{% endif %}{% endif %}{% if 'raci' in sections %}{% if sections_list.append('RACI') %}{% endif %}{% endif %}{% if 'relief' in sections %}{% if sections_list.append('Relief Advisor') %}{% endif %}{% endif %}{% if 'audit' in sections %}{% if sections_list.append('Mock Audit') %}{% endif %}{% endif %}
+    <p class="text-muted small">Generated {{ "now" | default("") }}{% set sections_list = [] %}{% if 'exec' in sections %}{% if sections_list.append('Executive Summary') %}{% endif %}{% endif %}{% if 'gap' in sections %}{% if sections_list.append('Gap Analysis') %}{% endif %}{% endif %}{% if 'roadmap' in sections %}{% if sections_list.append('Roadmap') %}{% endif %}{% endif %}{% if 'raci' in sections %}{% if sections_list.append('RACI') %}{% endif %}{% endif %}{% if 'relief' in sections %}{% if sections_list.append('Relief Advisor') %}{% endif %}{% endif %}{% if 'audit' in sections %}{% if sections_list.append('Mock Audit') %}{% endif %}{% endif %}{% if 'checklist' in sections %}{% if sections_list.append('Project Checklist') %}{% endif %}{% endif %}
     | Sections: {{ sections_list | join(', ') }}</p>
 </div>
 
@@ -37,6 +37,7 @@
             {% if 'raci' in sections %}<a href="#sec-raci" class="btn btn-sm btn-outline-secondary">RACI Matrix</a>{% endif %}
             {% if 'relief' in sections %}<a href="#sec-relief" class="btn btn-sm btn-outline-success">Relief Advisor</a>{% endif %}
             {% if 'audit' in sections %}<a href="#sec-audit" class="btn btn-sm btn-outline-danger">Mock Audit</a>{% endif %}
+            {% if 'checklist' in sections %}<a href="#sec-checklist" class="btn btn-sm btn-outline-info">Project Checklist</a>{% endif %}
         </div>
     </div>
 </div>
@@ -812,6 +813,137 @@
         </div>
     </div>
     {% endfor %}
+</div>
+{% endif %}
+
+{# ==================== PROJECT EXECUTION CHECKLIST ==================== #}
+{% if 'checklist' in sections and checklist_data %}
+<div class="page-break-before" id="sec-checklist">
+    <h3 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>Project Execution Checklist</h3>
+
+    <!-- Summary -->
+    <div class="row mb-3">
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #ef4444;">{{ checklist_data.summary.total_gaps }}</div>
+            <small>Gap Items</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #a78bfa;">{{ checklist_data.summary.total_effort_range }}</div>
+            <small>Person-Days</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #eab308;">{{ checklist_data.summary.total_evidence_items }}</div>
+            <small>Evidence Items</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #3b82f6;">{{ checklist_data.summary.gate_count }}</div>
+            <small>Gate Reviews</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700; color: #f97316;">{{ checklist_data.summary.year2_expansion_count }}</div>
+            <small>Year 2 Items</small>
+        </div></div></div>
+        <div class="col-md-2"><div class="card"><div class="card-body text-center py-2">
+            <div style="font-size: 1.2rem; font-weight: 700;">{{ checklist_data.summary.months_remaining }}</div>
+            <small>Months Left</small>
+        </div></div></div>
+    </div>
+
+    <!-- Phase Checklists -->
+    {% for phase in checklist_data.phases %}
+    {% if phase.gap_tasks %}
+    <div class="card mb-3">
+        <div class="card-header" style="background: rgba({% if phase.color == 'danger' %}239,68,68{% elif phase.color == 'primary' %}59,130,246{% elif phase.color == 'warning' %}234,179,8{% elif phase.color == 'info' %}6,182,212{% else %}34,197,94{% endif %},0.08);">
+            <strong>Phase {{ phase.number }}: {{ phase.title }}</strong>
+            <small class="text-muted ms-2">{{ phase.subtitle }}</small>
+            <span class="badge bg-secondary ms-2">{{ phase.gap_count }} items</span>
+            {% if phase.effort_range != "0" %}<small class="ms-1" style="color: #a78bfa;">{{ phase.effort_range }} days</small>{% endif %}
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th style="width:25px;"></th><th>Criterion</th><th>Score</th><th>Effort</th><th>Owner (R)</th><th>Key Evidence</th></tr></thead>
+                <tbody>
+                    {% for task in phase.gap_tasks %}
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input"></td>
+                        <td>
+                            <code>{{ task.criterion_id }}</code> {{ task.category }}
+                            {% if task.la_scope == "in_scope" %}<span class="badge bg-danger" style="font-size: 0.55rem;">LA</span>{% endif %}
+                            {% if task.can_defer %}<span class="badge bg-info" style="font-size: 0.55rem;">Defer OK</span>{% endif %}
+                        </td>
+                        <td>{% if task.score is not none %}<span class="score-badge score-{{ task.score }}">{{ task.score }}</span>{% else %}<small class="text-muted">—</small>{% endif %}</td>
+                        <td><small>{{ task.effort_days }}d</small></td>
+                        <td><small>{% for d in task.responsible %}{{ d }}{% if not loop.last %}, {% endif %}{% endfor %}</small></td>
+                        <td><small class="text-muted">{% for ev in task.evidence_items[:2] %}{{ ev.document | truncate(50) }}{% if not loop.last %}; {% endif %}{% endfor %}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <!-- Gate Reviews -->
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-flag me-2"></i><strong>Milestone Gate Reviews</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Gate</th><th>Timing</th><th>Pass Criteria</th><th>Owner</th></tr></thead>
+                <tbody>
+                    {% for gate in checklist_data.gate_reviews %}
+                    <tr>
+                        <td><strong>{{ gate.gate }}</strong></td>
+                        <td><small>{{ gate.timing }}</small></td>
+                        <td><small>{{ gate.criteria }}</small></td>
+                        <td><small>{{ gate.owner }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Year 2+ Items -->
+    {% if checklist_data.year2_prep %}
+    <div class="card mb-3">
+        <div class="card-header" style="border-left: 3px solid #f97316;"><i class="bi bi-arrow-right-circle me-2"></i><strong>Year 2+ Preparation — Year 1 Groundwork Required</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Criterion</th><th>Year 1 Relief</th><th>Year 1 Action Required</th><th>Year 2 Requirement</th></tr></thead>
+                <tbody>
+                    {% for item in checklist_data.year2_prep %}
+                    <tr>
+                        <td><code>{{ item.criterion_id }}</code> <small>{{ item.category }}</small></td>
+                        <td><small class="text-info">{{ item.relief_note }}</small></td>
+                        <td><small>{{ item.year1_action }}</small></td>
+                        <td><small class="text-warning">{{ item.year2_req }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Budget Summary -->
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-calculator me-2"></i><strong>Budget Estimate</strong></div>
+        <div class="card-body p-0">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Category</th><th>Estimate</th><th>Notes</th></tr></thead>
+                <tbody>
+                    {% for item in checklist_data.budget_summary %}
+                    <tr>
+                        <td><strong><small>{{ item.category }}</small></strong></td>
+                        <td><small>{{ item.estimate }}</small></td>
+                        <td><small class="text-muted">{{ item.note }}</small></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endif %}
 
