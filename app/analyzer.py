@@ -298,18 +298,19 @@ def _smart_extract(text, max_chars=60000):
     return result
 
 
-def _summarize_document(text, api_key):
+def _summarize_document(text, client):
     """Pass 1 of two-pass assessment: extract structured sustainability content.
 
     Sends document text to Claude and gets back a structured summary of all
     sustainability-relevant information organized by SSBJ pillar.
     This produces a compact input for the scoring pass.
-    """
-    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
-    import anthropic
 
-    # Use smart extraction to get the most relevant 80K chars
-    extracted = _smart_extract(text, max_chars=80000)
+    Args:
+        text: Document text to summarize.
+        client: Shared anthropic.Anthropic client instance.
+    """
+    # Use smart extraction to get the most relevant 40K chars (reduced from 80K to cut memory)
+    extracted = _smart_extract(text, max_chars=40000)
 
     system_prompt = """You are an expert sustainability disclosure analyst. Extract ALL sustainability-related information from this document into a structured summary.
 
@@ -335,18 +336,12 @@ Keep the summary factual and concise (no commentary)."""
 
 Provide a structured summary organized by the 4 categories above."""
 
-    def _call_api():
-        client = anthropic.Anthropic(api_key=api_key, timeout=40.0)
-        return client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=4000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(_call_api)
-        response = future.result(timeout=45)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=4000,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_prompt}],
+    )
 
     return response.content[0].text.strip()
 
@@ -374,6 +369,8 @@ def ai_assess_all(combined_text):
     except ImportError:
         return None
 
+    client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
+
     # Decide strategy based on document size
     is_large = len(combined_text) > 30000
 
@@ -381,12 +378,12 @@ def ai_assess_all(combined_text):
         # Two-pass: summarize first, then score
         try:
             logger.info(f"Large document ({len(combined_text)} chars), using two-pass assessment")
-            summary = _summarize_document(combined_text, api_key)
+            summary = _summarize_document(combined_text, client)
             scoring_text = summary
         except Exception as e:
             # If summarization fails, fall back to smart extraction
             logger.warning(f"Summarization failed ({e}), using smart extraction fallback")
-            scoring_text = _smart_extract(combined_text, max_chars=60000)
+            scoring_text = _smart_extract(combined_text, max_chars=40000)
     else:
         scoring_text = combined_text
 
@@ -427,7 +424,6 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
     def _call_api():
         """Run API call in thread so Gunicorn SIGABRT can't kill the worker."""
-        client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
         return client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=8192,
@@ -493,7 +489,7 @@ Return ONLY valid JSON array, no other text. Keep evidence and notes concise."""
 
 
 # ---------------------------------------------------------------------------
-# Parallel batch scoring (5 batches of 5 criteria)
+# Parallel batch scoring (batches of 5 criteria, 2 concurrent workers)
 # ---------------------------------------------------------------------------
 
 _SCORING_SYSTEM_PROMPT = """You are an expert SSBJ/ISSB sustainability auditor. You know:
@@ -522,15 +518,18 @@ def _make_batch_criteria(criteria_batch):
     return "\n\n".join(parts)
 
 
-def _ai_assess_batch(scoring_text, criteria_batch, api_key, is_large):
+def _ai_assess_batch(scoring_text, criteria_batch, client, is_large):
     """Score a single batch of criteria against the document text.
 
     Runs synchronously (called inside ThreadPoolExecutor).
+    Args:
+        scoring_text: Document text or summary to assess against.
+        criteria_batch: List of criterion dicts for this batch.
+        client: Shared anthropic.Anthropic client instance.
+        is_large: Whether the document was summarized (affects prompt label).
     Returns dict: {criterion_id: (score, evidence, notes)}
     Raises on failure so the caller can handle per-batch errors.
     """
-    import anthropic
-
     criteria_text = _make_batch_criteria(criteria_batch)
     doc_label = "DOCUMENT SUMMARY" if is_large else "DOCUMENTS"
     ids_list = ", ".join(c["id"] for c in criteria_batch)
@@ -545,7 +544,6 @@ def _ai_assess_batch(scoring_text, criteria_batch, api_key, is_large):
         f"Return ONLY valid JSON array, no other text."
     )
 
-    client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=2000,
@@ -609,11 +607,16 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
         return
 
     try:
-        import anthropic  # noqa: F401
+        import anthropic
     except ImportError:
         results = keyword_assess_all(combined_text)
         yield {"type": "done", "results": results, "method": "keyword"}
         return
+
+    # Create ONE shared Anthropic client for all API calls (Pass 1 + Pass 2).
+    # Previously each batch created its own client (~5 concurrent SSL contexts
+    # + httpx connection pools) causing OOM on Render.
+    shared_client = anthropic.Anthropic(api_key=api_key, timeout=45.0)
 
     total = len(SSBJ_CRITERIA)
 
@@ -632,14 +635,12 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
     if is_large:
         yield {"type": "pass1_start"}
         try:
-            # Run Pass 1 in a background thread so we can yield keepalive
-            # events.  Without this, the SSE connection sits idle for ~40 s
-            # and Render's proxy kills it.
-            from concurrent.futures import ThreadPoolExecutor as _TPE
-
-            with _TPE(max_workers=1) as pass1_exec:
+            # Run Pass 1 in a single background thread so we can yield
+            # keepalive events.  _summarize_document now accepts the shared
+            # client directly (no nested ThreadPoolExecutor inside it).
+            with ThreadPoolExecutor(max_workers=1) as pass1_exec:
                 pass1_future = pass1_exec.submit(
-                    _summarize_document, combined_text, api_key
+                    _summarize_document, combined_text, shared_client
                 )
                 elapsed = 0
                 while not pass1_future.done():
@@ -651,7 +652,7 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
             yield {"type": "pass1_done"}
         except Exception as e:
             logger.warning(f"Pass 1 failed ({e}), using smart extraction")
-            scoring_text = _smart_extract(combined_text, max_chars=60000)
+            scoring_text = _smart_extract(combined_text, max_chars=40000)
             yield {"type": "pass1_fallback"}
     else:
         scoring_text = combined_text
@@ -669,11 +670,13 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
     all_results = {}
     batch_errors = {}
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    # max_workers=2 (down from 5) to reduce memory pressure on Render.
+    # All batches share the single shared_client above.
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {}
         for idx, batch in run_items:
             future = executor.submit(
-                _ai_assess_batch, scoring_text, batch, api_key, is_large
+                _ai_assess_batch, scoring_text, batch, shared_client, is_large
             )
             futures[future] = idx
 
