@@ -430,6 +430,70 @@
 <!-- Criteria by Pillar (with inline editing) -->
 <form method="POST" action="{{ url_for('assessment.bulk_save', assessment_id=assessment.id) }}" id="bulkSaveForm">
 
+<!-- Filter Bar -->
+<div class="card mb-3" style="border: 1px solid rgba(59,130,246,0.2);">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <small class="fw-bold text-muted"><i class="bi bi-funnel me-1"></i>Filter:</small>
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control form-control-sm" id="filterID" placeholder="ID (e.g. GOV-01)" oninput="applyFilters()">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterCategory" onchange="applyFilters()">
+                    <option value="">All Categories</option>
+                    {% set seen_cats = [] %}
+                    {% for pillar, criteria in criteria_by_pillar.items() %}
+                    {% for c in criteria %}
+                    {% if c.category not in seen_cats %}
+                    {% if seen_cats.append(c.category) %}{% endif %}
+                    <option value="{{ c.category }}">{{ c.category }}</option>
+                    {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterObligation" onchange="applyFilters()">
+                    <option value="">All Obligations</option>
+                    <option value="mandatory">Mandatory (SHALL)</option>
+                    <option value="recommended">Recommended (SHOULD)</option>
+                    <option value="interpretive">Interpretive</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterPriority" onchange="applyFilters()">
+                    <option value="">All Priorities</option>
+                    <option value="essential">Essential</option>
+                    <option value="important">Important</option>
+                    <option value="nice_to_have">Nice to Have</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" id="filterScore" onchange="applyFilters()">
+                    <option value="">All Scores</option>
+                    <option value="unscored">Unscored</option>
+                    <option value="0">0 - Non-existent</option>
+                    <option value="1">1 - Initial</option>
+                    <option value="2">2 - Developing</option>
+                    <option value="3">3 - Defined</option>
+                    <option value="4">4 - Managed</option>
+                    <option value="5">5 - Optimized</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()" title="Clear filters">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+            <div class="col-auto">
+                <small class="text-muted" id="filterCount"></small>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% for pillar, criteria in criteria_by_pillar.items() %}
 <div class="pillar-header">
     <h5 class="mb-0">
@@ -459,7 +523,11 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
+                <tr class="criteria-row"
+                    data-cid="{{ c.id }}" data-category="{{ c.category }}"
+                    data-obligation="{{ c.obligation }}" data-priority="{{ c.la_priority }}"
+                    data-score="{{ resp.score if resp and resp.score is not none else '' }}"
+                    {% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
                     <td>
                         <code>{{ c.id }}</code>
                         {% if c.transitional_relief %}
@@ -471,6 +539,11 @@
                         <span class="badge bg-{{ ob.get('badge', 'secondary') }} mb-1" style="font-size: 0.65em;"
                               title="{{ ob.get('description', '') }}">
                             {{ ob.get('label', c.obligation) }}
+                        </span>
+                        {% set lp = la_priority_labels.get(c.la_priority, {}) %}
+                        <span class="badge bg-{{ lp.get('badge', 'secondary') }} mb-1" style="font-size: 0.65em;"
+                              title="{{ lp.get('description', '') }}">
+                            {{ lp.get('label', c.la_priority) }}
                         </span>
                         <br>
                         {% set la = la_scope_labels.get(c.la_scope, {}) %}
@@ -678,6 +751,9 @@ function markChanged(sel) {
         sel.classList.remove('border-primary', 'border-2');
     }
 
+    // Update data-score attribute for filtering
+    row.dataset.score = sel.value;
+
     const count = countChanges();
     hasChanges = count > 0;
     const bar = document.getElementById('saveBar');
@@ -686,6 +762,54 @@ function markChanged(sel) {
         bar.classList.toggle('d-none', !hasChanges);
     }
     if (counter) counter.textContent = count;
+}
+
+/* ── Criteria Filters ── */
+function applyFilters() {
+    const idVal = document.getElementById('filterID').value.toLowerCase().trim();
+    const catVal = document.getElementById('filterCategory').value;
+    const obVal = document.getElementById('filterObligation').value;
+    const prVal = document.getElementById('filterPriority').value;
+    const scVal = document.getElementById('filterScore').value;
+
+    const rows = document.querySelectorAll('.criteria-row');
+    let shown = 0, total = rows.length;
+
+    rows.forEach(row => {
+        let visible = true;
+        if (idVal && !row.dataset.cid.toLowerCase().includes(idVal)) visible = false;
+        if (catVal && row.dataset.category !== catVal) visible = false;
+        if (obVal && row.dataset.obligation !== obVal) visible = false;
+        if (prVal && row.dataset.priority !== prVal) visible = false;
+        if (scVal) {
+            if (scVal === 'unscored') {
+                if (row.dataset.score !== '') visible = false;
+            } else {
+                if (row.dataset.score !== scVal) visible = false;
+            }
+        }
+
+        row.style.display = visible ? '' : 'none';
+        if (visible) shown++;
+    });
+
+    const countEl = document.getElementById('filterCount');
+    if (countEl) {
+        if (idVal || catVal || obVal || prVal || scVal) {
+            countEl.textContent = shown + '/' + total + ' shown';
+        } else {
+            countEl.textContent = '';
+        }
+    }
+}
+
+function clearFilters() {
+    document.getElementById('filterID').value = '';
+    document.getElementById('filterCategory').value = '';
+    document.getElementById('filterObligation').value = '';
+    document.getElementById('filterPriority').value = '';
+    document.getElementById('filterScore').value = '';
+    applyFilters();
 }
 
 function resetScores() {
