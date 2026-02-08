@@ -458,17 +458,17 @@ CRITERION_KEYWORDS = {
     },
     "STR-03": {
         1: ["financial", "impact", "sustainability"],
-        2: ["financial impact", "cost", "revenue"],
+        2: ["financial impact", "cost", "revenue", "cash flow"],
         3: ["financial position", "cash flow", "balance sheet", "income statement", "quantified financial impact"],
-        4: ["financial scenario", "stress test", "sensitivity analysis", "financial planning"],
+        4: ["financial scenario", "stress test", "sensitivity analysis", "financial planning", "quantified impact"],
         5: ["fully quantified", "integrated financial planning", "forward-looking financial"],
     },
     "STR-04": {
         1: ["climate", "scenario"],
         2: ["scenario analysis", "climate scenario", "1.5", "2 degree"],
-        3: ["climate scenario analysis", "resilience assessment", "RCP", "SSP", "IEA", "NGFS", "transition scenario", "physical scenario"],
-        4: ["multiple scenarios", "quantified impact", "strategic implication", "time horizon"],
-        5: ["comprehensive scenario", "integrated planning", "dynamic scenario"],
+        3: ["climate scenario analysis", "resilience assessment", "RCP", "SSP", "IEA", "NGFS", "transition scenario", "physical scenario", "assumptions"],
+        4: ["multiple scenarios", "quantified impact", "strategic implication", "time horizon", "scenario assumptions", "strategy informed", "resilience"],
+        5: ["comprehensive scenario", "integrated planning", "dynamic scenario", "strategy feedback"],
     },
     "STR-05": {
         1: ["transition", "plan", "climate"],
