@@ -34,13 +34,7 @@
             {% endif %}
         </p>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-house me-1"></i>Dashboard
-        </a>
-        <a href="{{ url_for('assessment.list_assessments') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-list-ul me-1"></i>All Assessments
-        </a>
+    <div class="d-flex gap-2 flex-wrap">
         {% if assessment.status in ('completed', 'under_review', 'reviewed') %}
         <a href="{{ url_for('assessment.report', assessment_id=assessment.id) }}" class="btn btn-outline-success">
             <i class="bi bi-file-earmark-text me-1"></i>View Report
@@ -65,11 +59,6 @@
         <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#downloadModal">
             <i class="bi bi-file-earmark-pdf me-1"></i>Download
         </button>
-        {% endif %}
-        {% if can_manage %}
-        <a href="#teamPanel" class="btn btn-outline-primary" onclick="document.getElementById('teamCollapse').classList.add('show');">
-            <i class="bi bi-people me-1"></i>Share
-        </a>
         {% endif %}
         {% if current_user.is_reviewer and assessment.status in ('completed', 'under_review') %}
         <form method="POST" action="{{ url_for('review.start_review', assessment_id=assessment.id) }}">
