@@ -96,27 +96,80 @@ def extract_text_from_file(filepath):
 
 
 def _extract_pdf(filepath):
+    # Try pdfplumber first (handles complex layouts and Japanese text well)
+    text = _extract_pdf_pdfplumber(filepath)
+    if text and text not in ("[ENCRYPTED_PDF]", "[SCANNED_PDF]"):
+        return text
+    if text in ("[ENCRYPTED_PDF]", "[SCANNED_PDF]"):
+        return text  # pass through error markers
+
+    # Fallback to PyPDF2
+    logger.info(f"pdfplumber returned no text, trying PyPDF2 for {filepath}")
+    return _extract_pdf_pypdf2(filepath)
+
+
+def _extract_pdf_pdfplumber(filepath):
+    try:
+        import pdfplumber
+    except ImportError:
+        logger.warning("pdfplumber not installed, skipping")
+        return ""
+
+    try:
+        with pdfplumber.open(filepath) as pdf:
+            total_pages = len(pdf.pages)
+            if total_pages == 0:
+                return ""
+
+            parts = []
+            empty_pages = 0
+
+            for page in pdf.pages:
+                try:
+                    text = page.extract_text()
+                    if text and text.strip():
+                        parts.append(text)
+                    else:
+                        empty_pages += 1
+                except Exception as e:
+                    logger.warning(f"pdfplumber page extraction error: {e}")
+                    empty_pages += 1
+
+            if total_pages > 0 and empty_pages == total_pages:
+                logger.warning(f"PDF appears scanned (0/{total_pages} pages had text): {filepath}")
+                return "[SCANNED_PDF]"
+
+            result = "\n".join(parts)
+            if result.strip():
+                logger.info(f"pdfplumber extracted {len(parts)}/{total_pages} pages from {os.path.basename(filepath)}")
+            return result
+
+    except Exception as e:
+        if "password" in str(e).lower() or "encrypt" in str(e).lower():
+            logger.warning(f"PDF is encrypted: {filepath}")
+            return "[ENCRYPTED_PDF]"
+        logger.warning(f"pdfplumber failed for {filepath}: {e}")
+        return ""
+
+
+def _extract_pdf_pypdf2(filepath):
     from PyPDF2 import PdfReader
     from PyPDF2.errors import PdfReadError
 
     try:
         reader = PdfReader(filepath)
     except PdfReadError as e:
-        logger.warning(f"PDF read error for {filepath}: {e}")
+        logger.warning(f"PyPDF2 read error for {filepath}: {e}")
         return ""
     except Exception as e:
         logger.warning(f"Cannot open PDF {filepath}: {e}")
         return ""
 
-    # Handle encrypted PDFs
     if reader.is_encrypted:
         try:
-            # Try empty password (common for owner-password-only PDFs)
             if not reader.decrypt(""):
-                logger.warning(f"PDF is encrypted and cannot be decrypted: {filepath}")
                 return "[ENCRYPTED_PDF]"
         except Exception:
-            logger.warning(f"PDF is password-protected: {filepath}")
             return "[ENCRYPTED_PDF]"
 
     total_pages = len(reader.pages)
@@ -131,18 +184,16 @@ def _extract_pdf(filepath):
             else:
                 empty_pages += 1
         except Exception as e:
-            logger.warning(f"Failed to extract page from {filepath}: {e}")
+            logger.warning(f"PyPDF2 page extraction error: {e}")
             empty_pages += 1
 
     result = "\n".join(parts)
 
-    # If most pages had no text, likely a scanned/image PDF
     if total_pages > 0 and empty_pages == total_pages:
-        logger.warning(f"PDF appears to be scanned/image-based (0/{total_pages} pages had text): {filepath}")
         return "[SCANNED_PDF]"
 
-    if total_pages > 0 and empty_pages > total_pages * 0.5 and parts:
-        logger.info(f"PDF partially extracted ({len(parts)}/{total_pages} pages): {filepath}")
+    if result.strip():
+        logger.info(f"PyPDF2 extracted {len(parts)}/{total_pages} pages from {os.path.basename(filepath)}")
 
     return result
 
