@@ -535,7 +535,7 @@ _DEPT_NAMES = {
 }
 
 
-def generate_excel(checklist_data, assessment_title="", entity_name="", fiscal_year=""):
+def generate_excel(checklist_data, assessment_title="", entity_name="", fiscal_year="", review_data=None):
     """
     Generate an Excel workbook from checklist data.
 
@@ -856,5 +856,69 @@ def generate_excel(checklist_data, assessment_title="", entity_name="", fiscal_y
     ws5.column_dimensions["E"].width = 50
     ws5.auto_filter.ref = f"A1:{get_column_letter(len(y2_headers))}{row - 1}"
     ws5.freeze_panes = "A2"
+
+    # ===== Sheet 6: Review Findings (optional, only if review completed) =====
+    if review_data:
+        ws6 = wb.create_sheet("Review Findings")
+        ws6.sheet_properties.tabColor = "10B981"
+
+        # Header info
+        ws6.merge_cells("A1:F1")
+        ws6["A1"].value = f"Limited Assurance Review — {review_data.get('reviewer', '')} — {review_data.get('date', '')}"
+        ws6["A1"].font = Font(size=12, bold=True)
+
+        opinion = review_data.get("opinion", "")
+        opinion_display = {"unqualified": "Unqualified (Clean)", "qualified": "Qualified",
+                           "adverse": "Adverse", "disclaimer": "Disclaimer of Opinion"}.get(opinion, opinion)
+        ws6.merge_cells("A2:F2")
+        ws6["A2"].value = f"Overall Opinion: {opinion_display}"
+        ws6["A2"].font = Font(size=11, bold=True,
+                              color="16A34A" if opinion == "unqualified" else
+                              "EAB308" if opinion == "qualified" else "DC2626")
+
+        if review_data.get("findings"):
+            ws6.merge_cells("A3:F3")
+            ws6["A3"].value = f"Key Findings: {review_data['findings']}"
+            ws6["A3"].alignment = wrap
+
+        if review_data.get("recommendations"):
+            ws6.merge_cells("A4:F4")
+            ws6["A4"].value = f"Recommendations: {review_data['recommendations']}"
+            ws6["A4"].alignment = wrap
+
+        # Review items table
+        rv_headers = ["Criterion", "Category", "Status", "Evidence Adequate", "Finding", "Recommendation"]
+        start_row = 6
+        for ci, h in enumerate(rv_headers, 1):
+            ws6.cell(row=start_row, column=ci, value=h)
+        _apply_header(ws6, start_row, len(rv_headers))
+
+        row = start_row + 1
+        for item in review_data.get("items", []):
+            ws6.cell(row=row, column=1, value=item.get("criterion_id", "")).border = thin_border
+            ws6.cell(row=row, column=2, value=item.get("category", "")).border = thin_border
+            status_cell = ws6.cell(row=row, column=3, value=item.get("status", "").replace("_", " ").title())
+            status_cell.border = thin_border
+            if item.get("status") == "unsatisfactory":
+                status_cell.font = Font(color="DC2626", bold=True)
+            elif item.get("status") == "needs_improvement":
+                status_cell.font = Font(color="EAB308", bold=True)
+            elif item.get("status") == "satisfactory":
+                status_cell.font = ok_font
+            ev_cell = ws6.cell(row=row, column=4, value="Yes" if item.get("evidence_adequate") else "No")
+            ev_cell.border = thin_border
+            if not item.get("evidence_adequate"):
+                ev_cell.font = Font(color="DC2626")
+            ws6.cell(row=row, column=5, value=item.get("finding", "")).border = thin_border
+            ws6.cell(row=row, column=6, value=item.get("recommendation", "")).border = thin_border
+            for ci in range(1, len(rv_headers) + 1):
+                ws6.cell(row=row, column=ci).alignment = wrap
+            row += 1
+
+        _auto_width(ws6)
+        ws6.column_dimensions["E"].width = 50
+        ws6.column_dimensions["F"].width = 50
+        ws6.auto_filter.ref = f"A{start_row}:{get_column_letter(len(rv_headers))}{row - 1}"
+        ws6.freeze_panes = f"A{start_row + 1}"
 
     return wb

@@ -1157,6 +1157,14 @@ def project_checklist(assessment_id):
     from app.project_checklist import generate_checklist
     checklist_data = generate_checklist(assessment, responses)
 
+    # Fetch latest review for this assessment (if any)
+    from app.models import Review
+    latest_review = (
+        assessment.reviews
+        .order_by(Review.created_at.desc())
+        .first()
+    )
+
     return render_template(
         "assessment/project_checklist.html",
         assessment=assessment,
@@ -1166,6 +1174,7 @@ def project_checklist(assessment_id):
         gate_reviews=checklist_data["gate_reviews"],
         year2_prep=checklist_data["year2_prep"],
         summary=checklist_data["summary"],
+        latest_review=latest_review,
     )
 
 
@@ -1191,11 +1200,37 @@ def download_checklist_excel(assessment_id):
 
     from app.project_checklist import generate_checklist, generate_excel
     checklist_data = generate_checklist(assessment, responses)
+
+    # Include review findings if a completed review exists
+    from app.models import Review
+    review_data = None
+    latest_review = assessment.reviews.order_by(Review.created_at.desc()).first()
+    if latest_review and latest_review.status == "completed":
+        review_data = {
+            "reviewer": latest_review.reviewer.full_name,
+            "date": latest_review.updated_at.strftime("%Y-%m-%d"),
+            "opinion": latest_review.overall_opinion,
+            "findings": latest_review.findings,
+            "recommendations": latest_review.recommendations,
+            "items": [
+                {
+                    "criterion_id": ri.criterion_id,
+                    "category": ri.category,
+                    "status": ri.status,
+                    "evidence_adequate": ri.evidence_adequate,
+                    "finding": ri.finding,
+                    "recommendation": ri.recommendation,
+                }
+                for ri in latest_review.review_items.all()
+            ],
+        }
+
     wb = generate_excel(
         checklist_data,
         assessment_title=assessment.title,
         entity_name=assessment.entity_name,
         fiscal_year=assessment.fiscal_year,
+        review_data=review_data,
     )
 
     output = BytesIO()
