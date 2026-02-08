@@ -722,11 +722,11 @@
     </div>
     {% endif %}
 
-    <!-- RSK-05 Note -->
+    <!-- RSK-05 — Precondition for Assurance -->
     {% if relief.rsk05_item %}
-    <div class="card mb-3" style="border-left: 3px solid #f97316;">
+    <div class="card mb-3" style="border-left: 3px solid #ef4444;">
         <div class="card-body py-2">
-            <small><strong>RSK-05 Internal Controls:</strong> {{ relief.rsk05_item.note }} {{ relief.rsk05_item.assurance_note }}</small>
+            <small><strong>RSK-05 Internal Controls — Precondition for Assurance:</strong> {{ relief.rsk05_item.note }} {{ relief.rsk05_item.assurance_note }} <em>Score 4+ recommended under conservative assurance practice.</em></small>
         </div>
     </div>
     {% endif %}

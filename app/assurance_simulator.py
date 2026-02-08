@@ -398,8 +398,17 @@ _LA_AUDIT_ITEMS = {
 }
 
 
-def _score_to_readiness(score):
-    """Convert maturity score to readiness assessment."""
+def _score_to_readiness(score, criterion_id=None):
+    """Convert maturity score to readiness assessment.
+
+    For foundational control items (RSK-05, MET-07), score 4+ is recommended
+    under conservative assurance practice. Score 3 is treated as borderline-at-risk
+    for these items because the auditor relies on them for ALL other procedures.
+    """
+    # Foundational items where score 3 is insufficient under conservative practice
+    foundational_items = {"RSK-05", "MET-07"}
+    is_foundational = criterion_id in foundational_items
+
     if score is None:
         return {"level": "unknown", "label": "Not Assessed", "badge": "secondary",
                 "message": "This criterion has not been scored. Complete the assessment first."}
@@ -407,6 +416,9 @@ def _score_to_readiness(score):
         return {"level": "ready", "label": "Assurance Ready", "badge": "success",
                 "message": "Your processes appear mature enough for limited assurance. Focus on maintaining documentation."}
     if score == 3:
+        if is_foundational:
+            return {"level": "at_risk", "label": "Insufficient for Controls", "badge": "warning",
+                    "message": f"Score 3 is below the recommended threshold for {criterion_id}. This is a foundational control item — the auditor relies on it for ALL other assurance procedures. Score 4+ is recommended to avoid extended testing, increased costs, and potential modified conclusions."}
         return {"level": "borderline", "label": "Borderline", "badge": "warning",
                 "message": "Minimum threshold met, but auditor may find gaps in documentation or consistency. Review the red flags below."}
     if score == 2:
@@ -441,7 +453,7 @@ def generate_simulation(assessment, responses):
         resp = responses.get(c["id"])
         score = resp.score if resp and resp.score is not None else None
         evidence = (resp.evidence or "") if resp else ""
-        readiness = _score_to_readiness(score)
+        readiness = _score_to_readiness(score, criterion_id=c["id"])
         readiness_counts[readiness["level"]] += 1
 
         # Check evidence against documents needed
