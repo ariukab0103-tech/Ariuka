@@ -572,6 +572,7 @@ def bulk_upload(assessment_id):
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
     uploaded_count = 0
+    failed_files = []
     for file in files:
         if file.filename == "" or not _allowed_file(file.filename):
             continue
@@ -581,6 +582,14 @@ def bulk_upload(assessment_id):
 
         # Extract text
         extracted = extract_text_from_file(filepath)
+
+        # Detect extraction problems and give user feedback
+        if extracted == "[ENCRYPTED_PDF]":
+            failed_files.append(f"{original_name} (password-protected — please decrypt and re-upload)")
+            extracted = ""
+        elif extracted == "[SCANNED_PDF]":
+            failed_files.append(f"{original_name} (scanned/image PDF — no extractable text. Please use a text-based PDF or DOCX)")
+            extracted = ""
 
         doc = AssessmentDocument(
             assessment_id=assessment.id,
@@ -594,7 +603,14 @@ def bulk_upload(assessment_id):
         uploaded_count += 1
 
     db.session.commit()
-    flash(f"{uploaded_count} document(s) uploaded. Click 'Auto-Assess' to analyze.", "success")
+
+    if failed_files:
+        flash(f"Could not extract text from: {'; '.join(failed_files)}", "warning")
+    success_count = uploaded_count - len(failed_files)
+    if success_count > 0:
+        flash(f"{success_count} document(s) uploaded successfully. Click 'Auto-Assess' to analyze.", "success")
+    elif not failed_files:
+        flash(f"{uploaded_count} document(s) uploaded. Click 'Auto-Assess' to analyze.", "success")
     return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
 

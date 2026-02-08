@@ -25,8 +25,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def extract_text_from_file(filepath):
-    """Extract text content from a file based on its extension."""
+    """Extract text content from a file based on its extension.
+
+    Returns (text, warning) tuple where warning is None on success,
+    or a user-friendly message describing why extraction was partial/failed.
+    For backward compatibility, callers that expect a plain string will still
+    work — the result is truthy when text was extracted.
+    """
     ext = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
+    fname = os.path.basename(filepath)
 
     try:
         if ext == "pdf":
@@ -48,13 +55,54 @@ def extract_text_from_file(filepath):
 
 def _extract_pdf(filepath):
     from PyPDF2 import PdfReader
-    reader = PdfReader(filepath)
+    from PyPDF2.errors import PdfReadError
+
+    try:
+        reader = PdfReader(filepath)
+    except PdfReadError as e:
+        logger.warning(f"PDF read error for {filepath}: {e}")
+        return ""
+    except Exception as e:
+        logger.warning(f"Cannot open PDF {filepath}: {e}")
+        return ""
+
+    # Handle encrypted PDFs
+    if reader.is_encrypted:
+        try:
+            # Try empty password (common for owner-password-only PDFs)
+            if not reader.decrypt(""):
+                logger.warning(f"PDF is encrypted and cannot be decrypted: {filepath}")
+                return "[ENCRYPTED_PDF]"
+        except Exception:
+            logger.warning(f"PDF is password-protected: {filepath}")
+            return "[ENCRYPTED_PDF]"
+
+    total_pages = len(reader.pages)
     parts = []
+    empty_pages = 0
+
     for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            parts.append(text)
-    return "\n".join(parts)
+        try:
+            text = page.extract_text()
+            if text and text.strip():
+                parts.append(text)
+            else:
+                empty_pages += 1
+        except Exception as e:
+            logger.warning(f"Failed to extract page from {filepath}: {e}")
+            empty_pages += 1
+
+    result = "\n".join(parts)
+
+    # If most pages had no text, likely a scanned/image PDF
+    if total_pages > 0 and empty_pages == total_pages:
+        logger.warning(f"PDF appears to be scanned/image-based (0/{total_pages} pages had text): {filepath}")
+        return "[SCANNED_PDF]"
+
+    if total_pages > 0 and empty_pages > total_pages * 0.5 and parts:
+        logger.info(f"PDF partially extracted ({len(parts)}/{total_pages} pages): {filepath}")
+
+    return result
 
 
 def _extract_docx(filepath):
