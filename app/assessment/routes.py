@@ -1153,6 +1153,49 @@ def project_checklist(assessment_id):
     )
 
 
+@assessment_bp.route("/<int:assessment_id>/project-checklist/download")
+@login_required
+def download_checklist_excel(assessment_id):
+    """Download Project Execution Checklist as Excel workbook."""
+    from io import BytesIO
+
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    scored = [r for r in responses.values() if r.score is not None]
+    if not scored:
+        flash("No scored criteria yet. Complete the assessment first.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    from app.project_checklist import generate_checklist, generate_excel
+    checklist_data = generate_checklist(assessment, responses)
+    wb = generate_excel(
+        checklist_data,
+        assessment_title=assessment.title,
+        entity_name=assessment.entity_name,
+        fiscal_year=assessment.fiscal_year,
+    )
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    from flask import send_file
+    filename = f"SSBJ_Checklist_{assessment.entity_name.replace(' ', '_')}_{assessment.fiscal_year[:6]}.xlsx"
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
 @assessment_bp.route("/<int:assessment_id>/audit-simulator")
 @login_required
 def audit_simulator(assessment_id):
