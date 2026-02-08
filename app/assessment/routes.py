@@ -1099,6 +1099,7 @@ def relief_advisor(assessment_id):
         assessment=assessment,
         relief_items=relief_data["relief_items"],
         no_relief_items=relief_data.get("no_relief_items", []),
+        rsk05_item=relief_data.get("rsk05_item"),
         summary=relief_data["summary"],
         japan_items=relief_data["japan_items"],
         climate_only_option=relief_data.get("climate_only_option"),

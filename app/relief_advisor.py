@@ -152,19 +152,68 @@ _JAPAN_ALTERNATIVES = {
     },
 }
 
-# Criteria that explicitly have NO transitional relief — must be addressed from Year 1
-# (Governance + Risk Management are in initial limited assurance scope)
+# Criteria that have NO transitional relief for DISCLOSURE — must be disclosed from Year 1
+# NOTE: Assurance for these items starts one year AFTER first disclosure (Year 2),
+# giving companies a grace period to mature processes before auditor examination.
+# Under climate-only Year 1 option, GOV/RSK items are required only to the extent
+# they relate to climate-related risks and opportunities (not all sustainability topics).
 _NO_RELIEF_ITEMS = {
-    "GOV-01": "Governance oversight: board/committee responsibility must be documented from Year 1. In initial LA scope.",
-    "GOV-02": "Management roles: sustainability data ownership and sign-off must be defined from Year 1. In initial LA scope.",
-    "GOV-03": "Board skills: assess sustainability competence. Supporting criterion (SHOULD) but expected by assurance providers.",
-    "GOV-04": "Strategy integration: board must consider sustainability in strategic decisions. In initial LA scope.",
-    "GOV-05": "Target oversight: board must oversee target-setting process. In initial LA scope.",
-    "RSK-01": "Risk identification: document climate risk identification process from Year 1. In initial LA scope.",
-    "RSK-02": "Risk assessment: methodology for prioritizing climate risks must exist from Year 1. In initial LA scope.",
-    "RSK-03": "Risk mitigation: document risk response strategy from Year 1. In initial LA scope.",
-    "RSK-04": "ERM integration: demonstrate climate risk is part of overall risk management. In initial LA scope.",
-    "RSK-05": "Internal controls: controls over sustainability data must be in place from Year 1. In initial LA scope.",
+    "GOV-01": {
+        "reason": "Governance oversight: board/committee responsibility for climate-related risks must be disclosed from Year 1.",
+        "note": "Under climate-only Year 1, only climate-related governance oversight required — not all sustainability topics.",
+        "assurance_note": "Assurance examination begins Year 2 — use Year 1 to establish and document processes.",
+    },
+    "GOV-02": {
+        "reason": "Management roles: climate-related data ownership and sign-off must be disclosed from Year 1.",
+        "note": "Under climate-only Year 1, only roles related to climate risk/opportunity management required.",
+        "assurance_note": "Assurance examination begins Year 2 — Year 1 is an opportunity to refine role definitions.",
+    },
+    "GOV-03": {
+        "reason": "Board skills: assess climate-related competence. Supporting criterion (SHOULD, not SHALL).",
+        "note": "Not a mandatory disclosure item but expected by assurance providers as supporting evidence.",
+        "assurance_note": "Good practice to document before assurance begins in Year 2.",
+    },
+    "GOV-04": {
+        "reason": "Strategy integration: board must consider climate-related matters in strategic decisions.",
+        "note": "Under climate-only Year 1, focus on how climate risks/opportunities influence strategy.",
+        "assurance_note": "Assurance examination begins Year 2 — document board discussion minutes from Year 1.",
+    },
+    "GOV-05": {
+        "reason": "Target oversight: board must oversee climate target-setting process.",
+        "note": "Under climate-only Year 1, limited to climate-related targets (GHG reduction, etc.).",
+        "assurance_note": "Assurance examination begins Year 2 — establish oversight framework during Year 1.",
+    },
+    "RSK-01": {
+        "reason": "Risk identification: document climate risk identification process from Year 1.",
+        "note": "Under climate-only Year 1, focus on climate-specific physical and transition risks.",
+        "assurance_note": "Assurance begins Year 2 — use Year 1 to test and refine identification methodology.",
+    },
+    "RSK-02": {
+        "reason": "Risk assessment: methodology for prioritizing climate risks must be disclosed from Year 1.",
+        "note": "Under climate-only Year 1, assessment methodology required for climate risks only.",
+        "assurance_note": "Assurance begins Year 2 — document assessment criteria and evidence trail during Year 1.",
+    },
+    "RSK-03": {
+        "reason": "Risk mitigation: document climate risk response strategy from Year 1.",
+        "note": "Under climate-only Year 1, mitigation strategies required for climate-related risks only.",
+        "assurance_note": "Assurance begins Year 2 — establish and document response strategies during Year 1.",
+    },
+    "RSK-04": {
+        "reason": "ERM integration: demonstrate climate risk is part of overall risk management.",
+        "note": "Under climate-only Year 1, show climate risk integration into existing ERM framework.",
+        "assurance_note": "Assurance begins Year 2 — map climate risks into ERM register during Year 1.",
+    },
+}
+
+# RSK-05 (Internal Controls) is NOT a standalone SSBJ disclosure item.
+# It is implicitly needed for producing assurable data but the FSA roadmap
+# does not prescribe it as a separate disclosure requirement.
+# We track it separately to avoid misleading users.
+_RSK05_NOTE = {
+    "reason": "Internal controls over sustainability data — not a standalone SSBJ disclosure item.",
+    "note": "The FSA roadmap does not prescribe internal controls as a separate disclosure requirement. "
+            "However, robust controls are implicitly needed to produce data that can withstand assurance examination.",
+    "assurance_note": "Controls must be in place by Year 2 when assurance begins. Year 1 disclosure does not require separate internal control disclosure.",
 }
 
 
@@ -270,11 +319,13 @@ def generate_relief_plan(assessment, responses):
         }
         relief_items.append(item)
 
-    # No-relief items (GOV + RSK — must be in place from Year 1)
+    # No-relief items (GOV + RSK — disclosure required from Year 1,
+    # but assurance starts Year 2, giving a grace period)
     no_relief_items = []
     for c in SSBJ_CRITERIA:
         if c["id"] not in _NO_RELIEF_ITEMS:
             continue
+        detail = _NO_RELIEF_ITEMS[c["id"]]
         resp = responses.get(c["id"])
         score = resp.score if resp and resp.score is not None else None
         at_risk = score is not None and score < 3
@@ -285,8 +336,28 @@ def generate_relief_plan(assessment, responses):
             "la_scope": c["la_scope"],
             "score": score,
             "at_risk": at_risk,
-            "reason": _NO_RELIEF_ITEMS[c["id"]],
+            "reason": detail["reason"],
+            "climate_only_note": detail["note"],
+            "assurance_note": detail["assurance_note"],
         })
+
+    # RSK-05 — not a standalone disclosure item, tracked separately
+    rsk05_criterion = next((c for c in SSBJ_CRITERIA if c["id"] == "RSK-05"), None)
+    rsk05_item = None
+    if rsk05_criterion:
+        resp = responses.get("RSK-05")
+        score = resp.score if resp and resp.score is not None else None
+        rsk05_item = {
+            "criterion_id": "RSK-05",
+            "pillar": rsk05_criterion["pillar"],
+            "category": rsk05_criterion["category"],
+            "la_scope": rsk05_criterion["la_scope"],
+            "score": score,
+            "at_risk": score is not None and score < 3,
+            "reason": _RSK05_NOTE["reason"],
+            "note": _RSK05_NOTE["note"],
+            "assurance_note": _RSK05_NOTE["assurance_note"],
+        }
 
     # Japan-specific alternatives (always applicable)
     japan_items = []
@@ -366,6 +437,7 @@ def generate_relief_plan(assessment, responses):
     return {
         "relief_items": relief_items,
         "no_relief_items": no_relief_items,
+        "rsk05_item": rsk05_item,
         "summary": summary,
         "japan_items": japan_items,
         "climate_only_option": climate_only_option,

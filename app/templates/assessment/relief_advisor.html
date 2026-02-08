@@ -245,18 +245,21 @@
 </div>
 {% endif %}
 
-<!-- No Relief: Must Address from Year 1 -->
+<!-- No Transitional Relief: Disclosure Required from Year 1 -->
 {% if no_relief_items %}
 <div class="card mb-4" style="border: 1px solid rgba(239,68,68,0.3);">
     <div class="card-header">
         <i class="bi bi-x-octagon me-2 text-danger"></i>
-        <strong>No Relief Available — Must Address from Year 1 ({{ no_relief_items|length }})</strong>
+        <strong>No Transitional Relief — Disclosure Required from Year 1 ({{ no_relief_items|length }})</strong>
     </div>
     <div class="card-body">
-        <p class="text-muted small mb-3">These criteria are in the initial limited assurance scope (Governance + Risk Management). There is <strong>no transitional relief</strong> — they must be fully in place from the first reporting year.</p>
+        <p class="text-muted small mb-2">These Governance and Risk Management criteria must be <strong>disclosed from Year 1</strong>. However, <strong>assurance examination begins one year later (Year 2)</strong>, giving companies a grace period to mature their processes before auditor scrutiny.</p>
+        <div class="alert alert-info py-2 mb-3">
+            <small><i class="bi bi-info-circle me-1"></i><strong>Climate-only Year 1:</strong> Under the SSBJ transition provision, these items are required only to the extent they relate to <strong>climate-related</strong> risks and opportunities — not all sustainability topics. Full sustainability scope applies from Year 2.</small>
+        </div>
         <div class="table-responsive">
             <table class="table table-sm mb-0">
-                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Why No Relief</th></tr></thead>
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Disclosure Requirement</th><th>Climate-Only Scope</th></tr></thead>
                 <tbody>
                     {% for item in no_relief_items %}
                     <tr {% if item.at_risk %}style="background: rgba(239,68,68,0.06);"{% endif %}>
@@ -265,10 +268,33 @@
                         <td>{% if item.score is not none %}<span class="score-badge score-{{ item.score }}">{{ item.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
                         <td>{% if item.at_risk %}<span class="badge bg-danger">At Risk</span>{% else %}<span class="badge bg-success">OK</span>{% endif %}</td>
                         <td><small class="text-muted">{{ item.reason }}</small></td>
+                        <td><small class="text-info">{{ item.climate_only_note }}</small></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <p class="text-muted small mt-2 mb-0"><i class="bi bi-clock me-1"></i>Assurance grace period: While disclosure is mandatory from Year 1, assurance providers will first examine these items in Year 2. Use Year 1 to establish, test, and document your processes.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- RSK-05: Internal Controls (Not a Standalone Disclosure Item) -->
+{% if rsk05_item %}
+<div class="card mb-4" style="border: 1px solid rgba(249,115,22,0.4);">
+    <div class="card-header">
+        <i class="bi bi-gear me-2" style="color: #f97316;"></i>
+        <strong>RSK-05: Internal Controls — Implicit Requirement</strong>
+        {% if rsk05_item.score is not none %}
+        <span class="score-badge score-{{ rsk05_item.score }} ms-2">{{ rsk05_item.score }}</span>
+        {% endif %}
+        {% if rsk05_item.at_risk %}<span class="badge bg-warning text-dark ms-1">Attention Needed</span>{% endif %}
+    </div>
+    <div class="card-body">
+        <p class="small mb-2"><strong>{{ rsk05_item.reason }}</strong></p>
+        <p class="small text-muted mb-2">{{ rsk05_item.note }}</p>
+        <div class="alert alert-warning py-2 mb-0">
+            <small><i class="bi bi-clock me-1"></i>{{ rsk05_item.assurance_note }}</small>
         </div>
     </div>
 </div>
