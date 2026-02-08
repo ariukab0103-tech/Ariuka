@@ -696,13 +696,15 @@
     </div>
     {% endif %}
 
-    <!-- No Relief Items -->
+    <!-- No Transitional Relief: Disclosure Required from Year 1 -->
     {% if relief.no_relief_items %}
     <div class="card mb-3">
-        <div class="card-header"><i class="bi bi-x-octagon me-2 text-danger"></i><strong>No Relief — Must Address from Year 1 ({{ relief.no_relief_items|length }})</strong></div>
-        <div class="card-body p-0">
+        <div class="card-header"><i class="bi bi-x-octagon me-2 text-danger"></i><strong>No Transitional Relief — Disclosure Required from Year 1 ({{ relief.no_relief_items|length }})</strong></div>
+        <div class="card-body">
+            <p class="small text-muted mb-2">Disclosure mandatory from Year 1. Assurance examination begins Year 2 (one-year grace period). Under climate-only Year 1, only climate-related scope applies.</p>
+            <div class="table-responsive">
             <table class="table table-sm mb-0">
-                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Reason</th></tr></thead>
+                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Requirement</th></tr></thead>
                 <tbody>
                     {% for item in relief.no_relief_items %}
                     <tr {% if item.at_risk %}style="background:rgba(239,68,68,0.06);"{% endif %}>
@@ -715,6 +717,16 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- RSK-05 Note -->
+    {% if relief.rsk05_item %}
+    <div class="card mb-3" style="border-left: 3px solid #f97316;">
+        <div class="card-body py-2">
+            <small><strong>RSK-05 Internal Controls:</strong> {{ relief.rsk05_item.note }} {{ relief.rsk05_item.assurance_note }}</small>
         </div>
     </div>
     {% endif %}
