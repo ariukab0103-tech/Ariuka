@@ -294,13 +294,17 @@
         </div>
         {% if assessment.status in ('draft', 'in_progress') and can_edit %}
         <div class="mt-3 d-flex justify-content-between align-items-center">
-            {% if unanswered_count > 0 %}
-            <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>{{ unanswered_count }} criteria not yet scored. Score all criteria to mark complete.</small>
-            {% else %}
-            <small class="text-success"><i class="bi bi-check-circle me-1"></i>All criteria scored. You can mark this assessment as complete.</small>
-            {% endif %}
-            <form method="POST" action="{{ url_for('assessment.complete', assessment_id=assessment.id) }}">
-                <button type="submit" class="btn btn-success btn-sm" {% if unanswered_count > 0 %}disabled title="Score all criteria first"{% endif %}>
+            <small id="unansweredMsg">
+                {% if unanswered_count > 0 %}
+                <span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i><span id="unansweredNum">{{ unanswered_count }}</span> criteria not yet scored. Score all criteria to mark complete.</span>
+                {% else %}
+                <span class="text-success"><i class="bi bi-check-circle me-1"></i>All criteria scored. You can mark this assessment as complete.</span>
+                {% endif %}
+            </small>
+            <form method="POST" action="{{ url_for('assessment.complete', assessment_id=assessment.id) }}"
+                  onsubmit="return confirm('Mark this assessment as complete? You can still edit scores afterwards if needed.');">
+                <button type="submit" class="btn btn-success btn-sm" id="markCompleteBtn"
+                        {% if unanswered_count > 0 %}disabled title="Score all criteria first"{% endif %}>
                     <i class="bi bi-check-circle me-1"></i>Mark Complete
                 </button>
             </form>
@@ -736,6 +740,19 @@ async function saveScoresAjax() {
             const progText = document.querySelector('[data-progress-text]');
             if (progText && data.scored_count !== undefined) {
                 progText.textContent = data.completion_pct + '% complete (' + data.scored_count + '/' + data.total_count + ' scored)';
+            }
+
+            // Update unanswered message and Mark Complete button
+            const msgEl = document.getElementById('unansweredMsg');
+            const btnEl = document.getElementById('markCompleteBtn');
+            if (msgEl && data.unanswered_count !== undefined) {
+                if (data.unanswered_count === 0) {
+                    msgEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>All criteria scored. You can mark this assessment as complete.</span>';
+                    if (btnEl) { btnEl.disabled = false; btnEl.title = ''; }
+                } else {
+                    msgEl.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i><span id="unansweredNum">' + data.unanswered_count + '</span> criteria not yet scored. Score all criteria to mark complete.</span>';
+                    if (btnEl) { btnEl.disabled = true; btnEl.title = 'Score all criteria first'; }
+                }
             }
 
             showToast('Saved ' + data.updated + ' score change(s)', 'success');

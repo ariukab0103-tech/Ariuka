@@ -366,12 +366,14 @@ def bulk_save(assessment_id):
 
     if is_ajax:
         pct = round(scored_count / total_count * 100) if total_count else 0
+        unanswered = total_count - scored_count
         return jsonify({
             "ok": True,
             "updated": updated,
             "scored_count": scored_count,
             "total_count": total_count,
             "completion_pct": pct,
+            "unanswered_count": unanswered,
             "overall_score": assessment.overall_score,
         })
 
