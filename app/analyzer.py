@@ -96,7 +96,20 @@ def extract_text_from_file(filepath):
 
 
 def _extract_pdf(filepath):
-    # Try pdfplumber first (handles complex layouts and Japanese text well)
+    # Check file size — for large PDFs, use PyPDF2 (less memory) to avoid OOM on Render
+    file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+    if file_size_mb > 20:
+        logger.info(f"Large PDF ({file_size_mb:.0f}MB), using PyPDF2 to avoid OOM")
+        text = _extract_pdf_pypdf2(filepath)
+        if text and text not in ("[ENCRYPTED_PDF]", "[SCANNED_PDF]"):
+            return text
+        if text in ("[ENCRYPTED_PDF]", "[SCANNED_PDF]"):
+            return text
+        # If PyPDF2 also failed, try pdfplumber with page limit
+        logger.info("PyPDF2 returned no text on large PDF, trying pdfplumber with page limit")
+        return _extract_pdf_pdfplumber(filepath, max_pages=50)
+
+    # Normal-size PDFs: try pdfplumber first
     text = _extract_pdf_pdfplumber(filepath)
     if text and text not in ("[ENCRYPTED_PDF]", "[SCANNED_PDF]"):
         return text
@@ -108,7 +121,7 @@ def _extract_pdf(filepath):
     return _extract_pdf_pypdf2(filepath)
 
 
-def _extract_pdf_pdfplumber(filepath):
+def _extract_pdf_pdfplumber(filepath, max_pages=200):
     try:
         import pdfplumber
     except ImportError:
@@ -121,10 +134,15 @@ def _extract_pdf_pdfplumber(filepath):
             if total_pages == 0:
                 return ""
 
+            # Limit pages to avoid OOM on memory-constrained servers
+            pages_to_process = min(total_pages, max_pages)
+            if pages_to_process < total_pages:
+                logger.info(f"Processing {pages_to_process}/{total_pages} pages (limit={max_pages})")
+
             parts = []
             empty_pages = 0
 
-            for page in pdf.pages:
+            for page in pdf.pages[:pages_to_process]:
                 try:
                     text = page.extract_text()
                     if text and text.strip():
