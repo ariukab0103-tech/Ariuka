@@ -725,9 +725,9 @@ def auto_assess_stream(assessment_id):
             if event["type"] == "done":
                 results_to_save = event.pop("results", {})
                 yield f"data: {_json.dumps(event)}\n\n"
-            elif event["type"] == "pass1_progress":
+            elif event["type"] in ("pass1_progress", "pass2_progress"):
                 # Lightweight keepalive — SSE comment + small data event
-                yield f": keepalive {event.get('elapsed', 0)}s\n"
+                yield f": keepalive\n"
                 yield f"data: {_json.dumps(event)}\n\n"
             else:
                 yield f"data: {_json.dumps(event)}\n\n"
@@ -753,6 +753,7 @@ def auto_assess_stream(assessment_id):
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
         },
     )
 

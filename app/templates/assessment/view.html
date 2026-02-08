@@ -843,6 +843,11 @@ function startStreamingAssess(assessmentId, retryBatches) {
                 addLog(`Launching ${data.batches} parallel scoring batches`);
                 break;
 
+            case 'pass2_progress':
+                // Keepalive during batch scoring — no log spam
+                text.textContent = `Scoring ${data.scored}/${data.total} criteria (waiting for batches...)`;
+                break;
+
             case 'batch_done': {
                 const pct = 20 + Math.round((data.scored / data.total) * 75);
                 fill.style.width = pct + '%';

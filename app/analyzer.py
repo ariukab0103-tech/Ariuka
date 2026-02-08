@@ -593,10 +593,14 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
                        None = run all batches (normal flow).
 
     Yields dicts with "type" key:
-        start, pass1_start, pass1_done, pass1_fallback,
-        pass2_start, batch_done, batch_error, done
+        start, pass1_start, pass1_progress, pass1_done, pass1_fallback,
+        pass2_start, pass2_progress, batch_done, batch_error, done
+
+    All long-running phases yield keepalive events every few seconds to
+    prevent Render's proxy from killing the SSE connection (~60s idle
+    timeout).
     """
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
@@ -673,29 +677,42 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
             )
             futures[future] = idx
 
-        for future in as_completed(futures):
-            batch_idx = futures[future]
-            batch_ids = [c["id"] for c in all_batches[batch_idx]]
-            try:
-                batch_results = future.result(timeout=40)
-                all_results.update(batch_results)
+        # Use wait() with timeout instead of as_completed so we can
+        # yield keepalive events and prevent Render proxy idle-kill.
+        pending = set(futures.keys())
+        while pending:
+            done, pending = wait(pending, timeout=5, return_when=FIRST_COMPLETED)
+            if not done:
+                # No batch finished in 5s — send keepalive
                 yield {
-                    "type": "batch_done",
-                    "batch": batch_idx,
-                    "scored": len(all_results),
-                    "total": total,
-                    "criteria": batch_ids,
-                }
-            except Exception as e:
-                batch_errors[batch_idx] = str(e)
-                yield {
-                    "type": "batch_error",
-                    "batch": batch_idx,
-                    "error": str(e),
-                    "criteria": batch_ids,
+                    "type": "pass2_progress",
                     "scored": len(all_results),
                     "total": total,
                 }
+                continue
+            for future in done:
+                batch_idx = futures[future]
+                batch_ids = [c["id"] for c in all_batches[batch_idx]]
+                try:
+                    batch_results = future.result(timeout=0)
+                    all_results.update(batch_results)
+                    yield {
+                        "type": "batch_done",
+                        "batch": batch_idx,
+                        "scored": len(all_results),
+                        "total": total,
+                        "criteria": batch_ids,
+                    }
+                except Exception as e:
+                    batch_errors[batch_idx] = str(e)
+                    yield {
+                        "type": "batch_error",
+                        "batch": batch_idx,
+                        "error": str(e),
+                        "criteria": batch_ids,
+                        "scored": len(all_results),
+                        "total": total,
+                    }
 
     # Cache only when ALL batches succeed on a full run
     if batch_indices is None and not batch_errors and all_results:
