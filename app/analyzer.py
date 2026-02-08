@@ -838,6 +838,30 @@ CRITERION_KEYWORDS = {
         4: ["automated validation", "regular audit", "data quality KPI", "continuous improvement"],
         5: ["integrated data governance", "real-time validation", "leading data practice"],
     },
+    "MET-08": {
+        1: ["intensity", "emission", "unit"],
+        2: ["emission intensity", "GHG intensity", "per unit", "tCO2e per"],
+        3: ["scope 1 intensity", "scope 2 intensity", "revenue intensity", "per ton", "per unit",
+            "per employee", "per million", "physical intensity", "economic intensity"],
+        4: ["trend analysis", "benchmark", "year-over-year", "intensity target"],
+        5: ["comprehensive intensity", "sector benchmark", "leading practice"],
+    },
+    "MET-09": {
+        1: ["remuneration", "compensation", "incentive"],
+        2: ["climate remuneration", "ESG incentive", "sustainability bonus"],
+        3: ["executive remuneration", "climate-linked", "KPI linked", "bonus criteria",
+            "performance metric", "compensation policy", "percentage linked"],
+        4: ["board-approved", "annual review", "measurable target", "disclosed percentage"],
+        5: ["comprehensive climate remuneration", "leading incentive structure"],
+    },
+    "STR-07": {
+        1: ["financial", "connection", "impact"],
+        2: ["financial impact", "balance sheet", "income statement"],
+        3: ["financial connectivity", "carrying amount", "asset impairment", "useful life",
+            "fair value", "provision", "contingent liability", "financial position", "financial performance"],
+        4: ["quantified connectivity", "line item", "specific financial impact", "disclosed amount"],
+        5: ["comprehensive connectivity", "fully integrated", "auditor-reconciled"],
+    },
 }
 
 
