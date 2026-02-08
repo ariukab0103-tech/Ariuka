@@ -64,6 +64,7 @@ def _classify_gaps(responses):
         "total_gaps": 0,
         "total_scored": 0,
         "avg_score": 0,
+        "dependencies": [],     # cross-criterion dependency warnings
     }
 
     scores = []
@@ -85,6 +86,7 @@ def _classify_gaps(responses):
                 "la_scope": c["la_scope"],
                 "la_priority": c["la_priority"],
                 "minimum_action": c.get("minimum_action", ""),
+                "best_practice": c.get("best_practice", ""),
                 "pillar": c["pillar"],
             }
 
@@ -108,6 +110,44 @@ def _classify_gaps(responses):
 
     gaps["total_scored"] = len(scores)
     gaps["avg_score"] = round(sum(scores) / len(scores), 1) if scores else 0
+
+    # Cross-criterion dependency warnings
+    gap_ids = {g["id"] for pillar in ("governance", "strategy", "risk", "metrics") for g in gaps[pillar]}
+    score_map = {resp.criterion_id: resp.score for resp in responses if resp.score is not None}
+
+    if "RSK-05" in gap_ids:
+        deps = []
+        if score_map.get("MET-01", 5) < 5:
+            deps.append("MET-01 (Scope 1)")
+        if score_map.get("MET-02", 5) < 5:
+            deps.append("MET-02 (Scope 2)")
+        if deps:
+            gaps["dependencies"].append({
+                "trigger": "RSK-05",
+                "trigger_label": "Internal Controls for GHG Data",
+                "affected": deps,
+                "warning": "Weak internal controls (RSK-05) will undermine auditor confidence in your GHG data. "
+                           "Fix RSK-05 BEFORE expecting clean assurance on Scope 1 & 2.",
+            })
+
+    if "MET-07" in gap_ids:
+        gaps["dependencies"].append({
+            "trigger": "MET-07",
+            "trigger_label": "Data Quality Management",
+            "affected": ["MET-01", "MET-02", "MET-03"],
+            "warning": "Without data quality processes (MET-07), all GHG metrics are unreliable. "
+                       "Auditors will flag data quality as a basis for qualification.",
+        })
+
+    if "GOV-01" in gap_ids or "GOV-02" in gap_ids:
+        gaps["dependencies"].append({
+            "trigger": "GOV-01/GOV-02",
+            "trigger_label": "Board Oversight & Policy",
+            "affected": ["All pillars"],
+            "warning": "Without governance foundations (board oversight + policy), auditors cannot verify "
+                       "that sustainability disclosures have appropriate management oversight.",
+        })
+
     return gaps
 
 
@@ -365,7 +405,16 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
 
     if gaps["governance"]:
         for g in gaps["governance"]:
-            if g["score"] <= 1:
+            action = g.get("minimum_action", "")
+            if g["score"] <= 1 and action:
+                p2_tasks["management"].append(
+                    f"Fix {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            elif g["score"] == 2 and action:
+                p2_tasks["management"].append(
+                    f"Formalize {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            elif g["score"] <= 1:
                 p2_tasks["management"].append(
                     f"Fix {g['id']} ({g['category']}): currently score {g['score']} — needs formal documentation"
                 )
@@ -446,23 +495,50 @@ def _generate_phases(compliance_date, assurance_date, today, months_remaining, g
             "Collect and organize prior year activity data as baseline",
         ])
 
-    # Add metrics-specific tasks
+    # Add metrics-specific tasks with tailored actions
     if gaps["metrics"]:
         for g in gaps["metrics"]:
-            if g["la_scope"] == "in_scope" and g["score"] < 2:
+            action = g.get("minimum_action", "")
+            if g["la_scope"] == "in_scope" and g["score"] < 2 and action:
                 p3_tasks["technical"].append(
-                    f"CRITICAL: Build process for {g['id']} ({g['category']}) — score {g['score']}, needs formal procedures"
+                    f"CRITICAL {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            elif g["la_scope"] == "in_scope" and g["score"] == 2 and action:
+                p3_tasks["technical"].append(
+                    f"Formalize {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            elif g["score"] < 2 and action:
+                p3_tasks["technical"].append(
+                    f"Address {g['id']} ({g['category']}, score {g['score']}): {action}"
                 )
 
-    # Strategy and risk management
+    # Strategy gaps with specific actions
     if gaps["strategy"]:
-        p3_tasks["management"].append(
-            f"Address {len(gaps['strategy'])} strategy disclosure gaps: scenario analysis, transition plans"
-        )
+        for g in gaps["strategy"]:
+            action = g.get("minimum_action", "")
+            if action:
+                label = "PRIORITY" if g["score"] <= 1 else "Address"
+                p3_tasks["management"].append(
+                    f"{label} {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            else:
+                p3_tasks["management"].append(
+                    f"Address {g['id']} ({g['category']}): score {g['score']}"
+                )
+
+    # Risk management gaps with specific actions
     if gaps["risk"]:
-        p3_tasks["management"].append(
-            f"Address {len(gaps['risk'])} risk management gaps: integrate sustainability into ERM framework"
-        )
+        for g in gaps["risk"]:
+            action = g.get("minimum_action", "")
+            if action:
+                label = "CRITICAL" if g["la_scope"] == "in_scope" and g["score"] <= 1 else "Address"
+                p3_tasks["management"].append(
+                    f"{label} {g['id']} ({g['category']}, score {g['score']}): {action}"
+                )
+            else:
+                p3_tasks["management"].append(
+                    f"Address {g['id']} ({g['category']}): score {g['score']}"
+                )
 
     # Urgency-specific adjustments for Phase 3
     if urgency == "critical":
@@ -935,6 +1011,10 @@ def _generate_summary(gaps, months_remaining, disclosure_urgency, assurance_urge
             "No major IT investment appears necessary at this time. "
             "Focus on formalizing existing processes and documentation."
         )
+
+    if gaps.get("dependencies"):
+        for dep in gaps["dependencies"]:
+            lines.append(f"DEPENDENCY WARNING: {dep['warning']}")
 
     # Disclosure urgency
     if disclosure_urgency == "critical":

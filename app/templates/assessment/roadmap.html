@@ -260,6 +260,25 @@
     </div>
 </div>
 
+<!-- Cross-Criterion Dependency Warnings -->
+{% if roadmap.gaps.dependencies %}
+<div class="card mb-4 border-warning">
+    <div class="card-header bg-warning text-dark">
+        <i class="bi bi-exclamation-triangle me-2"></i>Cross-Criterion Dependencies
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">These gaps affect multiple criteria — fixing them first will unlock progress across your entire compliance program.</p>
+        {% for dep in roadmap.gaps.dependencies %}
+        <div class="{% if not loop.last %}mb-3 pb-3 border-bottom{% endif %}">
+            <strong class="text-danger"><i class="bi bi-arrow-right-circle me-1"></i>{{ dep.trigger }} ({{ dep.trigger_label }})</strong>
+            <span class="text-muted ms-2">affects: {{ dep.affected|join(', ') }}</span>
+            <p class="mb-0 mt-1">{{ dep.warning }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <!-- IT Integration Decision Box -->
 {% if roadmap.gaps.it_needed %}
 <div class="card mb-4 border-success">

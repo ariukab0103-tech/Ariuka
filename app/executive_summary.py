@@ -109,82 +109,114 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
     # Governance
     gov_gaps = [g for g in gaps if g["pillar"] == "Governance"]
     if gov_gaps:
+        actions = []
+        for g in gov_gaps:
+            action = g.get("minimum_action", "")
+            if action:
+                actions.append(f"{g['id']} (score {g['score']}): {action}")
+            else:
+                actions.append(f"{g['id']} (score {g['score']})")
         minimum_requirements.append({
             "area": "Governance",
             "icon": "bi-building",
             "what": "Board/committee must formally oversee sustainability disclosure",
             "why": "SSBJ requires disclosed governance processes. Auditors will verify board oversight via minutes and mandates.",
-            "gaps": [f"{g['id']} (score {g['score']})" for g in gov_gaps],
+            "gaps": actions,
         })
 
     # Risk Management
     rsk_gaps = [g for g in gaps if g["pillar"] == "Risk Management"]
     if rsk_gaps:
+        actions = []
+        for g in rsk_gaps:
+            action = g.get("minimum_action", "")
+            if action:
+                actions.append(f"{g['id']} (score {g['score']}): {action}")
+            else:
+                actions.append(f"{g['id']} (score {g['score']})")
         minimum_requirements.append({
             "area": "Risk Management",
             "icon": "bi-exclamation-triangle",
             "what": "Document climate risk identification, assessment methodology, and ERM integration",
             "why": "Risk management is in initial limited assurance scope. Auditors will examine your risk processes from Year 1.",
-            "gaps": [f"{g['id']} (score {g['score']})" for g in rsk_gaps],
+            "gaps": actions,
         })
 
     # GHG Emissions (Scope 1 & 2)
     met_s1 = next((g for g in gaps if g["id"] == "MET-01"), None)
     met_s2 = next((g for g in gaps if g["id"] == "MET-02"), None)
     if met_s1 or met_s2:
-        missing = []
+        actions = []
         if met_s1:
-            missing.append(f"Scope 1 (score {met_s1['score']})")
+            action = met_s1.get("minimum_action", "")
+            actions.append(f"Scope 1 (score {met_s1['score']}): {action}" if action else f"Scope 1 (score {met_s1['score']})")
         if met_s2:
-            missing.append(f"Scope 2 (score {met_s2['score']})")
+            action = met_s2.get("minimum_action", "")
+            actions.append(f"Scope 2 (score {met_s2['score']}): {action}" if action else f"Scope 2 (score {met_s2['score']})")
         minimum_requirements.append({
             "area": "GHG Emissions (Scope 1 & 2)",
             "icon": "bi-cloud",
-            "what": f"Establish complete, auditable GHG calculation: {', '.join(missing)}",
+            "what": "Establish complete, auditable GHG calculation",
             "why": "Core limited assurance item. Auditors will recalculate your emissions, test source data, and verify methodology.",
-            "gaps": missing,
+            "gaps": actions,
         })
 
     # Scope 3 (mandatory but Year 1 relief available)
     met_s3 = next((g for g in gaps if g["id"] == "MET-03"), None)
     if met_s3:
+        action = met_s3.get("minimum_action", "")
         minimum_requirements.append({
             "area": "Scope 3 Emissions",
             "icon": "bi-diagram-3",
             "what": "Disclose all 15 Scope 3 categories (Year 1 relief: can use estimates/proxies)",
             "why": "Mandatory under IFRS S2 para 29(a)(vi). Year 1 transition relief allows simplified data, but disclosure is still required.",
-            "gaps": [f"MET-03 (score {met_s3['score']})"],
+            "gaps": [f"MET-03 (score {met_s3['score']}): {action}" if action else f"MET-03 (score {met_s3['score']})"],
         })
 
     # Strategy gaps
     str_gaps = [g for g in gaps if g["pillar"] == "Strategy"]
     if str_gaps:
+        actions = []
+        for g in str_gaps:
+            action = g.get("minimum_action", "")
+            if action:
+                actions.append(f"{g['id']} (score {g['score']}): {action}")
+            else:
+                actions.append(f"{g['id']} (score {g['score']})")
         minimum_requirements.append({
             "area": "Strategy & Value Chain",
             "icon": "bi-signpost-split",
             "what": "Disclose climate-related risks/opportunities, scenario analysis, and value chain impacts",
             "why": "Value chain analysis is mandatory (entire chain, not just direct operations). Scenario analysis required under SSBJ.",
-            "gaps": [f"{g['id']} (score {g['score']})" for g in str_gaps],
+            "gaps": actions,
         })
 
     # Other metrics gaps
     other_met = [g for g in gaps if g["pillar"] == "Metrics & Targets" and g["id"] not in ("MET-01", "MET-02", "MET-03")]
     if other_met:
+        actions = []
+        for g in other_met:
+            action = g.get("minimum_action", "")
+            if action:
+                actions.append(f"{g['id']} (score {g['score']}): {action}")
+            else:
+                actions.append(f"{g['id']} (score {g['score']})")
         minimum_requirements.append({
             "area": "Other Metrics & Targets",
             "icon": "bi-graph-up",
             "what": f"Address {len(other_met)} remaining metrics gaps (intensity, targets, remuneration, etc.)",
             "why": "All SSBJ metrics are mandatory disclosures. GHG intensity (MET-08) and climate remuneration (MET-09) required under IFRS S2.",
-            "gaps": [f"{g['id']} (score {g['score']})" for g in other_met],
+            "gaps": actions,
         })
 
     # Internal controls (always required for assurance)
     met_dq = next((g for g in gaps if g["id"] == "MET-07"), None)
     if met_dq:
+        action = met_dq.get("minimum_action", "")
         minimum_requirements.append({
             "area": "Data Quality & Internal Controls",
             "icon": "bi-shield-lock",
-            "what": "Implement maker-checker review, audit trail, data validation for GHG data",
+            "what": action if action else "Implement maker-checker review, audit trail, data validation for GHG data",
             "why": "Without internal controls, auditors cannot issue an unqualified opinion. This is foundational for assurance.",
             "gaps": [f"MET-07 (score {met_dq['score']})"],
         })
@@ -337,6 +369,21 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
             "likelihood": "High" if met_s3 else "Low",
         },
     ]
+
+    # ---- Cross-criterion dependency risks ----
+    gap_ids = {g["id"] for g in gaps}
+    if "RSK-05" in gap_ids and ("MET-01" in gap_ids or "MET-02" in gap_ids):
+        risks.append({
+            "risk": "Internal controls gap undermines GHG data reliability",
+            "impact": "RSK-05 (internal controls) is weak — auditors will question the reliability of Scope 1 & 2 data even if calculations are correct",
+            "likelihood": "High",
+        })
+    if "MET-07" in gap_ids:
+        risks.append({
+            "risk": "Data quality gap blocks clean assurance on all metrics",
+            "impact": "MET-07 (data quality) is foundational — without it, auditors will likely qualify their opinion on all GHG metrics",
+            "likelihood": "High" if any(g["id"] in ("MET-01", "MET-02") and g["score"] < 2 for g in gaps) else "Medium",
+        })
 
     # ---- Key decisions for the board ----
     key_decisions = []
