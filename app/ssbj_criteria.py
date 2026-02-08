@@ -143,6 +143,7 @@ SSBJ_CRITERIA = [
         "guidance": "Document board member qualifications related to sustainability. Consider training programs.",
         "assurance_focus": "Board skills matrix, training records.",
         "minimum_action": "Not required for minimum compliance (SHOULD, not SHALL). If desired: arrange one sustainability briefing session for the board and note it in minutes.",
+        "assurance_risk_note": "Effectively mandatory for unqualified conclusion. If GOV-01/GOV-02 claim formal oversight but no board member has sustainability knowledge, the auditor will question oversight reliability. Big-4 firms routinely examine board skills matrices as supporting evidence.",
         "best_practice": "Board skills matrix including ESG competencies, annual sustainability training for all directors, external sustainability advisor retained, competency gaps assessed yearly.",
         "references": [
             {"url": "https://www.weforum.org/publications/esg-board-governance-guidance/", "label": "WEF ESG Board Guide", "title": "WEF Principles for Board Governance of ESG", "type": "best_practice", "for_scores": [0, 1, 2, 3, 4, 5]},
@@ -279,6 +280,7 @@ SSBJ_CRITERIA = [
         "guidance": "If a transition plan exists, document milestones, capital expenditure plans, and timelines.",
         "assurance_focus": "Documented transition plan, evidence of board approval, progress tracking.",
         "minimum_action": "Not required for minimum compliance (interpretive). If you have any decarbonization plans, simply disclose them. If not, state that a plan is under development.",
+        "assurance_risk_note": "Greenwashing risk if combined with GHG targets. If MET-04 discloses reduction targets but STR-05 shows no transition plan, auditors will question target credibility. From Year 3 when scope expands, this inconsistency becomes directly examinable.",
         "best_practice": "Board-approved transition plan with milestones, CAPEX allocation, SBTi-validated targets, annual progress reporting, third-party verification of progress.",
         "references": [
             {"url": "https://sciencebasedtargets.org/resources/files/SBTi-Corporate-Manual.pdf", "label": "SBTi Manual", "title": "Science Based Targets Initiative - Corporate Manual", "type": "best_practice", "for_scores": [3, 4, 5]},
@@ -394,6 +396,7 @@ SSBJ_CRITERIA = [
         "guidance": "Design controls comparable to financial reporting controls. Include data validation, reconciliation, and review procedures.",
         "assurance_focus": "Documented control framework, control testing evidence, data quality procedures, segregation of duties.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Assign a data owner for GHG data. (2) Write a 1-page data collection procedure. (3) Implement maker-checker: one person calculates, another reviews. (4) Keep all source documents (invoices, meter readings). (5) Create a simple reconciliation checklist. This is the bare minimum an auditor needs to see.",
+        "assurance_risk_note": "Precondition for assurance engagement. Although not a separate SSBJ disclosure item, ISSA 5000 para 40-42 requires the auditor to understand controls over sustainability data. Without documented controls, the auditor cannot perform the engagement and may decline to accept. Score 4+ recommended — score 3 is insufficient for the foundational control item.",
         "best_practice": "Full internal control framework comparable to financial reporting (SOX-like), automated data validation, continuous monitoring, segregation of duties matrix, regular control testing by internal audit, error tracking with root cause analysis.",
         "references": [
             {"url": "https://www.iaasb.org/publications/international-standard-assurance-engagements-isae-3410-assurance-engagements-greenhouse-gas-statements", "label": "ISAE 3410", "title": "ISAE 3410 - Assurance on GHG Statements (Internal Control Requirements)", "type": "compliance", "for_scores": [0, 1, 2, 3]},
@@ -416,6 +419,7 @@ SSBJ_CRITERIA = [
         "guidance": "Measure using GHG Protocol or equivalent. Include all material sources. Use appropriate emission factors.",
         "assurance_focus": "Emission calculation methodology, source data, emission factors, completeness of boundary, data quality checks.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) List ALL direct emission sources (boilers, vehicles, refrigerants, etc.). (2) Write a calculation procedure: activity data x emission factor = tCO2e. (3) Use government-published emission factors (MOE Japan or DEFRA). (4) Collect activity data from fuel invoices. (5) Have someone review the calculation. (6) Keep all source documents.",
+        "assurance_risk_note": "Year 1 'simplified methodology' relief does NOT reduce evidence requirements. The auditor will still recalculate, verify source data, and test completeness. 'Simplified' means methodology sophistication (e.g., using default emission factors vs facility-specific), not evidence quality. All source documents, calculation trails, and reviewer sign-offs are still required.",
         "best_practice": "Complete GHG inventory per GHG Protocol, third-party verified data, real-time monitoring systems, automated calculation tools, emission factors reviewed annually, continuous improvement of data quality.",
         "references": [
             {"url": "https://ghgprotocol.org/corporate-standard", "label": "GHG Protocol", "title": "GHG Protocol Corporate Standard - Scope 1 Calculation Guide", "type": "all", "for_scores": [0, 1, 2, 3, 4, 5]},
@@ -436,6 +440,7 @@ SSBJ_CRITERIA = [
         "guidance": "Report both location-based and market-based. Use appropriate grid emission factors.",
         "assurance_focus": "Both calculation approaches, grid factors, energy consumption data evidence.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Collect electricity bills for ALL facilities. (2) Calculate location-based: kWh x grid emission factor (use Japan's area-specific factors from MOE). (3) If you buy green electricity, also calculate market-based. (4) SSBJ requires BOTH methods. (5) Have someone review. (6) Keep utility invoices.",
+        "assurance_risk_note": "Year 1 location-based only relief is accepted but noted. If you purchase renewable energy and do NOT report market-based, the auditor may flag potential cherry-picking. Conservative approach: report both methods from Year 1 if you have green energy contracts.",
         "best_practice": "Automated utility data collection, both location and market-based reported, renewable energy tracking with certificates, monthly monitoring, reconciliation to financial records, third-party verification.",
         "references": [
             {"url": "https://ghgprotocol.org/scope_2_guidance", "label": "GHG Protocol Scope 2", "title": "GHG Protocol Scope 2 Guidance - Location vs Market-Based", "type": "all", "for_scores": [0, 1, 2, 3, 4, 5]},
@@ -455,6 +460,7 @@ SSBJ_CRITERIA = [
         "guidance": "SSBJ requires disclosure of ALL 15 Scope 3 categories with breakdown — not just 'material' ones. Use GHG Protocol Corporate Value Chain (Scope 3) Standard. Estimation is acceptable where direct data unavailable. Disclose data sources, assumptions, and measurement approach.",
         "assurance_focus": "Category coverage assessment, calculation methodologies per category, data sources, estimation assumptions, value chain boundary.",
         "minimum_action": "Not in initial LA scope but IS mandatory for disclosure. (1) Assess all 15 Scope 3 categories for your business. (2) Calculate emissions for each applicable category — use estimation methods (spend-based, industry averages) where primary data is unavailable. (3) Disclose which categories are included and your measurement approach. SSBJ provides first-year transition relief allowing delay, but you must plan for full coverage. Engage with key suppliers early for data collection.",
+        "assurance_risk_note": "Year 1 deferral does NOT mean zero action. The auditor reviewing Year 2 Scope 3 will ask: 'What did you do in Year 1 to prepare?' Zero preparation creates qualification risk in Year 2. Conservative approach: begin supplier engagement, assess all 15 categories for materiality, and document your data collection plan even if you defer calculation.",
         "best_practice": "All 15 categories calculated with increasing use of primary (supplier-specific) data, formal supplier engagement program, annual data quality improvement plan, science-based Scope 3 targets, integration with procurement strategy.",
         "references": [
             {"url": "https://ghgprotocol.org/corporate-value-chain-scope-3-standard", "label": "GHG Protocol Scope 3", "title": "GHG Protocol Scope 3 Standard - Category Guide", "type": "all", "for_scores": [0, 1, 2, 3, 4, 5]},
@@ -529,6 +535,7 @@ SSBJ_CRITERIA = [
         "guidance": "Implement data quality management comparable to financial reporting. Establish data governance and validation.",
         "assurance_focus": "Data governance framework, validation procedures, reconciliation evidence, data lineage.",
         "minimum_action": "CRITICAL FOR ASSURANCE: (1) Create a data flow diagram: where does data come from, who enters it, who checks it. (2) Add basic validation (e.g., compare this year to last year — flag if >20% change). (3) Keep a simple error log. (4) Do a completeness check before reporting (all sites reported?).",
+        "assurance_risk_note": "Foundation for all assurance procedures. If the auditor cannot trace reported figures back to source data through a documented process, they cannot form a conclusion. Score 4+ recommended — score 3 leaves the auditor relying on extended substantive testing, which increases cost and qualification risk.",
         "best_practice": "Formal data governance policy, automated validation rules, real-time data quality dashboards, documented data lineage from source to disclosure, regular data quality audits, continuous improvement program.",
         "references": [
             {"url": "https://www.iaasb.org/publications/international-standard-assurance-engagements-isae-3410-assurance-engagements-greenhouse-gas-statements", "label": "ISAE 3410", "title": "ISAE 3410 - Data Quality Requirements for GHG Assurance", "type": "compliance", "for_scores": [0, 1, 2, 3]},

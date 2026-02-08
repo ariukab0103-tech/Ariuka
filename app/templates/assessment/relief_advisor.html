@@ -279,21 +279,27 @@
 </div>
 {% endif %}
 
-<!-- RSK-05: Internal Controls (Not a Standalone Disclosure Item) -->
+<!-- RSK-05: Internal Controls — Precondition for Assurance Engagement -->
 {% if rsk05_item %}
-<div class="card mb-4" style="border: 1px solid rgba(249,115,22,0.4);">
-    <div class="card-header">
-        <i class="bi bi-gear me-2" style="color: #f97316;"></i>
-        <strong>RSK-05: Internal Controls — Implicit Requirement</strong>
+<div class="card mb-4" style="border: 2px solid rgba(239,68,68,0.5);">
+    <div class="card-header" style="background: rgba(239,68,68,0.08);">
+        <i class="bi bi-shield-lock me-2 text-danger"></i>
+        <strong>RSK-05: Internal Controls — Precondition for Assurance</strong>
         {% if rsk05_item.score is not none %}
         <span class="score-badge score-{{ rsk05_item.score }} ms-2">{{ rsk05_item.score }}</span>
         {% endif %}
-        {% if rsk05_item.at_risk %}<span class="badge bg-warning text-dark ms-1">Attention Needed</span>{% endif %}
+        {% if rsk05_item.at_risk %}<span class="badge bg-danger ms-1">Critical for Assurance</span>{% endif %}
+        {% if rsk05_item.score is not none and rsk05_item.score < 4 %}
+        <span class="badge bg-warning text-dark ms-1">Score 4+ recommended</span>
+        {% endif %}
     </div>
     <div class="card-body">
-        <p class="small mb-2"><strong>{{ rsk05_item.reason }}</strong></p>
+        <p class="small mb-2"><strong>Not a separate disclosure item, but a precondition for assurance engagement.</strong></p>
         <p class="small text-muted mb-2">{{ rsk05_item.note }}</p>
-        <div class="alert alert-warning py-2 mb-0">
+        <div class="alert alert-danger py-2 mb-2">
+            <small><i class="bi bi-exclamation-triangle me-1"></i><strong>Conservative Assurance View:</strong> ISSA 5000 para 40-42 requires the auditor to understand controls over sustainability data. Without documented controls (data ownership, maker-checker review, audit trail, reconciliation), the auditor may decline the engagement or issue a modified conclusion. Score 4+ recommended — score 3 is insufficient for this foundational item.</small>
+        </div>
+        <div class="alert alert-info py-2 mb-0">
             <small><i class="bi bi-clock me-1"></i>{{ rsk05_item.assurance_note }}</small>
         </div>
     </div>
