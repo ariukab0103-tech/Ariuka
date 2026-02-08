@@ -628,7 +628,22 @@ def ai_assess_all_streaming(combined_text, batch_indices=None):
     if is_large:
         yield {"type": "pass1_start"}
         try:
-            scoring_text = _summarize_document(combined_text, api_key)
+            # Run Pass 1 in a background thread so we can yield keepalive
+            # events.  Without this, the SSE connection sits idle for ~40 s
+            # and Render's proxy kills it.
+            from concurrent.futures import ThreadPoolExecutor as _TPE
+
+            with _TPE(max_workers=1) as pass1_exec:
+                pass1_future = pass1_exec.submit(
+                    _summarize_document, combined_text, api_key
+                )
+                elapsed = 0
+                while not pass1_future.done():
+                    time.sleep(2)
+                    elapsed += 2
+                    yield {"type": "pass1_progress", "elapsed": elapsed}
+                scoring_text = pass1_future.result()  # re-raises stored exc
+
             yield {"type": "pass1_done"}
         except Exception as e:
             logger.warning(f"Pass 1 failed ({e}), using smart extraction")

@@ -817,6 +817,14 @@ function startStreamingAssess(assessmentId, retryBatches) {
                 addLog('Large document detected — summarizing first');
                 break;
 
+            case 'pass1_progress': {
+                // Keepalive during long summarization — show elapsed time
+                const pct1 = Math.min(14, 5 + Math.floor((data.elapsed || 0) / 3));
+                fill.style.width = pct1 + '%';
+                text.textContent = `Pass 1: Summarizing documents... (${data.elapsed}s)`;
+                break;
+            }
+
             case 'pass1_done':
                 fill.style.width = '15%';
                 text.textContent = 'Pass 1 complete. Starting scoring...';
