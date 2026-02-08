@@ -518,6 +518,17 @@ def download_report(assessment_id):
         from app.assurance_simulator import generate_simulation
         sim_data = generate_simulation(assessment, responses)
 
+    # Project execution checklist data
+    checklist_data = None
+    if "checklist" in sections:
+        from app.project_checklist import generate_checklist
+        checklist_data = generate_checklist(
+            assessment, responses,
+            roadmap_data=roadmap_data,
+            raci_data=raci_data,
+            relief_data=relief_data,
+        )
+
     return render_template(
         "assessment/download_report.html",
         assessment=assessment,
@@ -532,6 +543,7 @@ def download_report(assessment_id):
         raci=raci_data,
         relief=relief_data,
         sim=sim_data,
+        checklist_data=checklist_data,
         maturity_levels=MATURITY_LEVELS,
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
@@ -1105,6 +1117,39 @@ def relief_advisor(assessment_id):
         climate_only_option=relief_data.get("climate_only_option"),
         obligation_labels=OBLIGATION_LABELS,
         la_scope_labels=LA_SCOPE_LABELS,
+    )
+
+
+@assessment_bp.route("/<int:assessment_id>/project-checklist")
+@login_required
+def project_checklist(assessment_id):
+    """Project Execution Checklist — actionable task list for gap closure."""
+    assessment = db.session.get(Assessment, assessment_id)
+    denied = _require_access(assessment, "view")
+    if denied:
+        return denied
+
+    responses = {
+        r.criterion_id: r for r in assessment.responses.all()
+    }
+
+    scored = [r for r in responses.values() if r.score is not None]
+    if not scored:
+        flash("No scored criteria yet. Complete the assessment first.", "warning")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
+
+    from app.project_checklist import generate_checklist
+    checklist_data = generate_checklist(assessment, responses)
+
+    return render_template(
+        "assessment/project_checklist.html",
+        assessment=assessment,
+        phases=checklist_data["phases"],
+        evidence_tracker=checklist_data["evidence_tracker"],
+        budget_summary=checklist_data["budget_summary"],
+        gate_reviews=checklist_data["gate_reviews"],
+        year2_prep=checklist_data["year2_prep"],
+        summary=checklist_data["summary"],
     )
 
 

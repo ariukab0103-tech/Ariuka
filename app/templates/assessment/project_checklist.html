@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+{% block title %}Project Execution Checklist: {{ assessment.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .phase-card {
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    .phase-header {
+        padding: 1rem 1.25rem;
+        border-radius: 8px 8px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .phase-header .phase-num {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: white;
+        margin-right: 12px;
+    }
+    .checklist-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        font-size: 0.875rem;
+    }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item:hover { background: rgba(255,255,255,0.02); }
+    .evidence-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .evidence-badge.not_started { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .evidence-badge.in_progress { background: rgba(234,179,8,0.15); color: #eab308; }
+    .evidence-badge.likely_exists { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .gate-card {
+        border-left: 4px solid;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        background: rgba(255,255,255,0.02);
+        border-radius: 0 6px 6px 0;
+    }
+    .gate-card.phase-1 { border-color: #ef4444; }
+    .gate-card.phase-2 { border-color: #3b82f6; }
+    .gate-card.phase-3 { border-color: #eab308; }
+    .gate-card.phase-4 { border-color: #06b6d4; }
+    .gate-card.phase-5 { border-color: #22c55e; }
+    .effort-pill {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        background: rgba(139,92,246,0.12);
+        color: #a78bfa;
+    }
+    .dept-tag {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        background: rgba(59,130,246,0.1);
+        color: #60a5fa;
+        margin-right: 2px;
+    }
+    .tab-btn { border-radius: 8px 8px 0 0 !important; }
+    .tab-btn.active { background: rgba(59,130,246,0.1) !important; border-color: rgba(59,130,246,0.3) !important; }
+    .year2-item {
+        padding: 0.75rem 1rem;
+        border-left: 3px solid #f97316;
+        background: rgba(249,115,22,0.04);
+        margin-bottom: 0.5rem;
+        border-radius: 0 6px 6px 0;
+    }
+    @media print {
+        .no-print { display: none !important; }
+        .phase-card { break-inside: avoid; }
+        body { font-size: 11px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-clipboard2-check me-2"></i>Project Execution Checklist</h2>
+        <p class="text-muted mb-0">{{ assessment.entity_name }} | {{ assessment.fiscal_year }}</p>
+    </div>
+    <div class="d-flex gap-2 no-print">
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+        <a href="{{ url_for('assessment.view', assessment_id=assessment.id) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: var(--accent-red);">{{ summary.total_gaps }}</div>
+                <small class="text-muted">Gap Items</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: #ef4444;">{{ summary.la_gaps }}</div>
+                <small class="text-muted">LA-Critical</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: var(--accent-purple);">{{ summary.total_effort_range }}</div>
+                <small class="text-muted">Person-Days</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: var(--accent-yellow);">{{ summary.total_evidence_items }}</div>
+                <small class="text-muted">Evidence Items</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: var(--accent-blue);">{{ summary.gate_count }}</div>
+                <small class="text-muted">Gate Reviews</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card h-100">
+            <div class="card-body text-center py-3">
+                <div style="font-size: 1.8rem; font-weight: 700; color: #f97316;">{{ summary.year2_expansion_count }}</div>
+                <small class="text-muted">Year 2 Items</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4 no-print" id="checklistTabs">
+    <li class="nav-item">
+        <button class="nav-link tab-btn active" data-bs-toggle="tab" data-bs-target="#tab-phases">
+            <i class="bi bi-list-check me-1"></i>Phase Checklist
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link tab-btn" data-bs-toggle="tab" data-bs-target="#tab-evidence">
+            <i class="bi bi-folder me-1"></i>Evidence Tracker
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link tab-btn" data-bs-toggle="tab" data-bs-target="#tab-budget">
+            <i class="bi bi-calculator me-1"></i>Budget & Resources
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link tab-btn" data-bs-toggle="tab" data-bs-target="#tab-gates">
+            <i class="bi bi-flag me-1"></i>Gate Reviews
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link tab-btn" data-bs-toggle="tab" data-bs-target="#tab-year2">
+            <i class="bi bi-arrow-right-circle me-1"></i>Year 2+ Prep
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+<!-- ==================== PHASE CHECKLIST ==================== -->
+<div class="tab-pane fade show active" id="tab-phases">
+    {% for phase in phases %}
+    <div class="phase-card">
+        <div class="phase-header" style="background: rgba({% if phase.color == 'danger' %}239,68,68{% elif phase.color == 'primary' %}59,130,246{% elif phase.color == 'warning' %}234,179,8{% elif phase.color == 'info' %}6,182,212{% else %}34,197,94{% endif %},0.08);">
+            <div class="d-flex align-items-center">
+                <div class="phase-num" style="background: {% if phase.color == 'danger' %}#ef4444{% elif phase.color == 'primary' %}#3b82f6{% elif phase.color == 'warning' %}#eab308{% elif phase.color == 'info' %}#06b6d4{% else %}#22c55e{% endif %};">{{ phase.number }}</div>
+                <div>
+                    <strong>{{ phase.title }}</strong>
+                    <small class="d-block text-muted">{{ phase.subtitle }}</small>
+                </div>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-secondary">{{ phase.gap_count }} gaps</span>
+                {% if phase.effort_range != "0" %}
+                <span class="effort-pill ms-1">{{ phase.effort_range }} days</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if phase.gap_tasks %}
+            {% for task in phase.gap_tasks %}
+            <div class="checklist-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="d-flex align-items-start" style="flex: 1;">
+                        <input type="checkbox" class="form-check-input me-2 mt-1" style="min-width: 16px;">
+                        <div>
+                            <div>
+                                <code class="me-1">{{ task.criterion_id }}</code>
+                                <strong>{{ task.category }}</strong>
+                                {% if task.la_scope == "in_scope" %}<span class="badge bg-danger" style="font-size: 0.6rem;">LA Scope</span>{% endif %}
+                                {% if task.can_defer %}<span class="badge bg-info" style="font-size: 0.6rem;">Deferral OK</span>{% endif %}
+                                {% if task.can_simplify %}<span class="badge bg-warning text-dark" style="font-size: 0.6rem;">Simplified OK</span>{% endif %}
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                {% if task.score is not none %}Score: <span class="score-badge score-{{ task.score }}">{{ task.score }}</span> → Target: <span class="score-badge score-3">3</span>{% else %}<span class="text-warning">Not scored</span>{% endif %}
+                                <span class="effort-pill ms-2">{{ task.effort_days }} days</span>
+                                {% for dept in task.responsible %}<span class="dept-tag">R: {{ dept }}</span>{% endfor %}
+                                {% for dept in task.accountable %}<span class="dept-tag" style="background: rgba(234,179,8,0.1); color: #eab308;">A: {{ dept }}</span>{% endfor %}
+                            </small>
+                            {% if task.relief_note %}
+                            <small class="text-info d-block mt-1"><i class="bi bi-info-circle me-1"></i>{{ task.relief_note }}</small>
+                            {% endif %}
+                            <!-- Evidence items -->
+                            {% if task.evidence_items %}
+                            <div class="mt-2">
+                                {% for ev in task.evidence_items %}
+                                <div class="d-flex align-items-center mb-1">
+                                    <input type="checkbox" class="form-check-input me-2" style="min-width: 14px; width: 14px; height: 14px;">
+                                    <small class="text-muted me-2" style="flex: 1;">{{ ev.document }}</small>
+                                    <span class="evidence-badge {{ ev.status }}">{{ ev.status | replace('_', ' ') }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="checklist-item text-center text-muted py-3">
+                <i class="bi bi-check-circle me-1"></i>No gap items in this phase — all criteria at target
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- ==================== EVIDENCE TRACKER ==================== -->
+<div class="tab-pane fade" id="tab-evidence">
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between">
+            <span><i class="bi bi-folder me-2"></i>Evidence & Documentation Tracker</span>
+            <span>
+                <span class="evidence-badge not_started">{{ summary.evidence_not_started }} not started</span>
+                <span class="evidence-badge in_progress ms-1">{{ summary.evidence_in_progress }} in progress</span>
+                <span class="evidence-badge likely_exists ms-1">{{ summary.evidence_likely_exists }} likely exists</span>
+            </span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"></th>
+                            <th>Criterion</th>
+                            <th>Document Required</th>
+                            <th>Format</th>
+                            <th>Status</th>
+                            <th>Phase</th>
+                            <th>Owner</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ev in evidence_tracker %}
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input" {% if ev.status == 'likely_exists' %}checked{% endif %}></td>
+                            <td><code>{{ ev.criterion_id }}</code></td>
+                            <td><small>{{ ev.document }}</small></td>
+                            <td><small class="text-muted">{{ ev.format }}</small></td>
+                            <td><span class="evidence-badge {{ ev.status }}">{{ ev.status | replace('_', ' ') }}</span></td>
+                            <td><span class="badge bg-secondary">P{{ ev.phase }}</span></td>
+                            <td>{% for dept in ev.responsible %}<span class="dept-tag">{{ dept }}</span>{% endfor %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="alert alert-info py-2">
+        <small><i class="bi bi-info-circle me-1"></i>This tracker lists all evidence artifacts that an auditor will request under ISSA 5000 limited assurance. Organize evidence by criterion in a shared folder structure. The auditor should be able to trace any reported number back to its source document.</small>
+    </div>
+</div>
+
+<!-- ==================== BUDGET & RESOURCES ==================== -->
+<div class="tab-pane fade" id="tab-budget">
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header"><i class="bi bi-calculator me-2"></i>Budget Estimate</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Category</th><th>Estimate</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            {% for item in budget_summary %}
+                            <tr>
+                                <td><strong>{{ item.category }}</strong></td>
+                                <td><span class="effort-pill">{{ item.estimate }}</span></td>
+                                <td><small class="text-muted">{{ item.note }}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header"><i class="bi bi-people me-2"></i>Resource Requirements</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Total Effort:</strong>
+                        <div style="font-size: 1.5rem; color: var(--accent-purple);">{{ summary.total_effort_range }} person-days</div>
+                    </div>
+                    <div class="mb-3">
+                        <strong>External Help Needed:</strong>
+                        {% if summary.needs_external_help %}
+                        <div class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>{{ summary.external_items_count }} items may require external consultants</div>
+                        {% else %}
+                        <div class="text-success"><i class="bi bi-check-circle me-1"></i>Can be handled internally</div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <strong>Key Skills Needed:</strong>
+                        <div class="mt-1">
+                            <span class="dept-tag">ESG Lead</span>
+                            <span class="dept-tag">Finance</span>
+                            <span class="dept-tag">Operations</span>
+                            <span class="dept-tag">Risk Mgmt</span>
+                            <span class="dept-tag">Board Secretary</span>
+                            {% if summary.needs_external_help %}
+                            <span class="dept-tag" style="background: rgba(234,179,8,0.1); color: #eab308;">External Consultant</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="alert alert-warning py-2">
+        <small><i class="bi bi-exclamation-triangle me-1"></i>Budget estimates are indicative ranges based on typical Japanese listed company experience. Actual costs vary significantly by company size, data complexity, and existing processes. Assurance fees depend on provider, scope, and whether pre-engagement advisory is included.</small>
+    </div>
+</div>
+
+<!-- ==================== GATE REVIEWS ==================== -->
+<div class="tab-pane fade" id="tab-gates">
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-flag me-2"></i>Milestone Gate Reviews</div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">Gate reviews are project checkpoints where progress is validated before moving to the next phase. Each gate has specific pass/fail criteria. Do not proceed to the next phase until gate criteria are met.</p>
+            {% for gate in gate_reviews %}
+            <div class="gate-card phase-{{ gate.phase }}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>{{ gate.gate }}</strong>
+                        <small class="text-muted ms-2">{{ gate.timing }}</small>
+                    </div>
+                    <span class="dept-tag" style="background: rgba(234,179,8,0.1); color: #eab308;">{{ gate.owner }}</span>
+                </div>
+                <div class="mt-1">
+                    <small class="text-muted"><strong>Pass criteria:</strong> {{ gate.criteria }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="bi bi-calendar-check me-2"></i>Integration with Financial Close Calendar</div>
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Timing</th><th>Financial Calendar Event</th><th>SSBJ Action Required</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge bg-secondary">Q1</span></td>
+                        <td>Q1 earnings / interim</td>
+                        <td><small>Begin GHG data collection for current FY. Establish data collection rhythm.</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-secondary">Q2</span></td>
+                        <td>Mid-year review</td>
+                        <td><small>Mid-year GHG data completeness check. Draft governance/risk disclosures.</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-secondary">Q3</span></td>
+                        <td>Q3 earnings</td>
+                        <td><small>9-month GHG data compiled. Internal dry run of SSBJ disclosures.</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-warning text-dark">Q4</span></td>
+                        <td>Year-end close</td>
+                        <td><small>Finalize full-year GHG calculations. Complete all SSBJ disclosures.</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-danger">Post-close</span></td>
+                        <td>Annual report filing (有報)</td>
+                        <td><small>Integrate SSBJ disclosure into securities report. Evidence freeze for assurance.</small></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== YEAR 2+ PREP ==================== -->
+<div class="tab-pane fade" id="tab-year2">
+    <div class="card mb-4">
+        <div class="card-header"><i class="bi bi-arrow-right-circle me-2 text-warning"></i>Year 2+ Preparation — Items Requiring Year 1 Groundwork</div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">These items have transitional relief in Year 1, but the auditor reviewing Year 2 will ask: "What did you do in Year 1 to prepare?" Zero preparation creates qualification risk.</p>
+            {% if year2_prep %}
+            {% for item in year2_prep %}
+            <div class="year2-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <code>{{ item.criterion_id }}</code>
+                        <strong class="ms-1">{{ item.category }}</strong>
+                    </div>
+                </div>
+                {% if item.relief_note %}
+                <small class="text-info d-block mt-1"><i class="bi bi-clock-history me-1"></i><strong>Year 1 relief:</strong> {{ item.relief_note }}</small>
+                {% endif %}
+                <small class="text-muted d-block mt-1"><i class="bi bi-arrow-right me-1"></i><strong>Year 1 action:</strong> {{ item.year1_action }}</small>
+                {% if item.year2_req %}
+                <small class="text-warning d-block mt-1"><i class="bi bi-exclamation-triangle me-1"></i><strong>Year 2 requirement:</strong> {{ item.year2_req }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted text-center py-3"><i class="bi bi-check-circle me-1"></i>No deferred items — all criteria being addressed in Year 1.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="bi bi-graph-up me-2"></i>Assurance Scope Expansion Timeline</div>
+        <div class="card-body">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Year</th><th>Assurance Scope</th><th>What to Prepare</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge bg-danger">Year 1</span></td>
+                        <td>Disclosure only (no assurance)</td>
+                        <td><small>Establish processes, collect evidence, engage assurance provider</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-warning text-dark">Year 2</span></td>
+                        <td>Limited assurance: Scope 1 & 2, Governance, Risk Mgmt</td>
+                        <td><small>Full evidence packages, controls operating effectively, auditor fieldwork</small></td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge bg-info">Year 3+</span></td>
+                        <td>Scope expansion under consideration (Strategy, Metrics, Scope 3)</td>
+                        <td><small>Progressive quantification, Scope 3 calculations, scenario analysis maturity</small></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
