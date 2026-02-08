@@ -430,70 +430,6 @@
 <!-- Criteria by Pillar (with inline editing) -->
 <form method="POST" action="{{ url_for('assessment.bulk_save', assessment_id=assessment.id) }}" id="bulkSaveForm">
 
-<!-- Filter Bar -->
-<div class="card mb-3" style="border: 1px solid rgba(59,130,246,0.2);">
-    <div class="card-body py-2">
-        <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <small class="fw-bold text-muted"><i class="bi bi-funnel me-1"></i>Filter:</small>
-            </div>
-            <div class="col-md-2">
-                <input type="text" class="form-control form-control-sm" id="filterID" placeholder="ID (e.g. GOV-01)" oninput="applyFilters()">
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" id="filterCategory" onchange="applyFilters()">
-                    <option value="">All Categories</option>
-                    {% set seen_cats = [] %}
-                    {% for pillar, criteria in criteria_by_pillar.items() %}
-                    {% for c in criteria %}
-                    {% if c.category not in seen_cats %}
-                    {% if seen_cats.append(c.category) %}{% endif %}
-                    <option value="{{ c.category }}">{{ c.category }}</option>
-                    {% endif %}
-                    {% endfor %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" id="filterObligation" onchange="applyFilters()">
-                    <option value="">All Obligations</option>
-                    <option value="mandatory">Mandatory (SHALL)</option>
-                    <option value="recommended">Recommended (SHOULD)</option>
-                    <option value="interpretive">Interpretive</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" id="filterPriority" onchange="applyFilters()">
-                    <option value="">All Priorities</option>
-                    <option value="essential">Essential</option>
-                    <option value="important">Important</option>
-                    <option value="nice_to_have">Nice to Have</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-sm" id="filterScore" onchange="applyFilters()">
-                    <option value="">All Scores</option>
-                    <option value="unscored">Unscored</option>
-                    <option value="0">0 - Non-existent</option>
-                    <option value="1">1 - Initial</option>
-                    <option value="2">2 - Developing</option>
-                    <option value="3">3 - Defined</option>
-                    <option value="4">4 - Managed</option>
-                    <option value="5">5 - Optimized</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()" title="Clear filters">
-                    <i class="bi bi-x-circle"></i>
-                </button>
-            </div>
-            <div class="col-auto">
-                <small class="text-muted" id="filterCount"></small>
-            </div>
-        </div>
-    </div>
-</div>
-
 {% for pillar, criteria in criteria_by_pillar.items() %}
 <div class="pillar-header">
     <h5 class="mb-0">
@@ -503,6 +439,7 @@
         {% elif pillar == 'Metrics & Targets' %}<i class="bi bi-graph-up me-2"></i>
         {% endif %}
         {{ pillar }}
+        <small class="text-muted pillar-filter-count ms-2" style="font-size: 0.6em;"></small>
     </h5>
 </div>
 
@@ -511,11 +448,59 @@
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
-                    <th style="width: 80px;">ID</th>
-                    <th style="width: 130px;">Classification</th>
-                    <th>Category</th>
+                    <th style="width: 80px;">
+                        ID
+                        <input type="text" class="form-control form-control-sm mt-1 hdr-filter" data-filter="id"
+                               placeholder="Filter..." style="font-size:0.7rem; padding:2px 4px;" oninput="applyFilters()">
+                    </th>
+                    <th style="width: 160px;">
+                        Classification
+                        <select class="form-select form-select-sm mt-1 hdr-filter" data-filter="obligation"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="applyFilters()">
+                            <option value="">All</option>
+                            <option value="mandatory">Mandatory</option>
+                            <option value="recommended">Recommended</option>
+                            <option value="interpretive">Interpretive</option>
+                        </select>
+                        <select class="form-select form-select-sm mt-1 hdr-filter" data-filter="priority"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="applyFilters()">
+                            <option value="">All Priority</option>
+                            <option value="essential">Essential</option>
+                            <option value="important">Important</option>
+                            <option value="nice_to_have">Nice to Have</option>
+                        </select>
+                    </th>
+                    <th>
+                        Category
+                        <select class="form-select form-select-sm mt-1 hdr-filter" data-filter="category"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="applyFilters()">
+                            <option value="">All</option>
+                            {% set seen_cats = [] %}
+                            {% for p, cs in criteria_by_pillar.items() %}
+                            {% for cc in cs %}
+                            {% if cc.category not in seen_cats %}
+                            {% if seen_cats.append(cc.category) %}{% endif %}
+                            <option value="{{ cc.category }}">{{ cc.category }}</option>
+                            {% endif %}
+                            {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </th>
                     <th>Requirement</th>
-                    <th style="width: 100px;">Score</th>
+                    <th style="width: 100px;">
+                        Score
+                        <select class="form-select form-select-sm mt-1 hdr-filter" data-filter="score"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="applyFilters()">
+                            <option value="">All</option>
+                            <option value="unscored">Unscored</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </th>
                     <th style="width: 60px;">Files</th>
                     <th style="width: 100px;">Action</th>
                 </tr>
@@ -764,13 +749,35 @@ function markChanged(sel) {
     if (counter) counter.textContent = count;
 }
 
-/* ── Criteria Filters ── */
+/* ── Inline Header Filters ── */
 function applyFilters() {
-    const idVal = document.getElementById('filterID').value.toLowerCase().trim();
-    const catVal = document.getElementById('filterCategory').value;
-    const obVal = document.getElementById('filterObligation').value;
-    const prVal = document.getElementById('filterPriority').value;
-    const scVal = document.getElementById('filterScore').value;
+    // Read values from the first set of header filters (source of truth)
+    const filterSets = {};
+    document.querySelectorAll('.hdr-filter').forEach(el => {
+        const key = el.dataset.filter;
+        if (!(key in filterSets)) {
+            filterSets[key] = el.tagName === 'INPUT' ? el.value.toLowerCase().trim() : el.value;
+        }
+    });
+
+    // Sync all duplicate header filters across pillar tables
+    document.querySelectorAll('.hdr-filter').forEach(el => {
+        const key = el.dataset.filter;
+        if (key in filterSets) {
+            if (el.tagName === 'INPUT' && el.value.toLowerCase().trim() !== filterSets[key]) {
+                el.value = filterSets[key];
+            } else if (el.tagName === 'SELECT' && el.value !== filterSets[key]) {
+                el.value = filterSets[key];
+            }
+        }
+    });
+
+    const idVal = filterSets.id || '';
+    const catVal = filterSets.category || '';
+    const obVal = filterSets.obligation || '';
+    const prVal = filterSets.priority || '';
+    const scVal = filterSets.score || '';
+    const hasAny = idVal || catVal || obVal || prVal || scVal;
 
     const rows = document.querySelectorAll('.criteria-row');
     let shown = 0, total = rows.length;
@@ -788,28 +795,24 @@ function applyFilters() {
                 if (row.dataset.score !== scVal) visible = false;
             }
         }
-
         row.style.display = visible ? '' : 'none';
         if (visible) shown++;
     });
 
-    const countEl = document.getElementById('filterCount');
-    if (countEl) {
-        if (idVal || catVal || obVal || prVal || scVal) {
-            countEl.textContent = shown + '/' + total + ' shown';
-        } else {
-            countEl.textContent = '';
+    // Update per-pillar counts
+    document.querySelectorAll('.card.mb-4').forEach(card => {
+        const tbody = card.querySelector('tbody');
+        if (!tbody) return;
+        const allRows = tbody.querySelectorAll('.criteria-row');
+        const visRows = tbody.querySelectorAll('.criteria-row:not([style*="display: none"])');
+        const header = card.previousElementSibling;
+        if (header && header.classList.contains('pillar-header')) {
+            const countEl = header.querySelector('.pillar-filter-count');
+            if (countEl) {
+                countEl.textContent = hasAny ? `(${visRows.length}/${allRows.length})` : '';
+            }
         }
-    }
-}
-
-function clearFilters() {
-    document.getElementById('filterID').value = '';
-    document.getElementById('filterCategory').value = '';
-    document.getElementById('filterObligation').value = '';
-    document.getElementById('filterPriority').value = '';
-    document.getElementById('filterScore').value = '';
-    applyFilters();
+    });
 }
 
 function resetScores() {

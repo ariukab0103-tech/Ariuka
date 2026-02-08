@@ -172,20 +172,50 @@
         <span class="badge bg-warning text-dark ms-2">{{ other_gaps|length }} items</span>
     </div>
     <div class="card-body p-0">
-        <table class="table table-hover mb-0">
+        <table class="table table-hover mb-0" data-filterable>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Obligation</th>
-                    <th>Priority</th>
-                    <th>Score</th>
+                    <th>
+                        ID
+                        <input type="text" class="form-control form-control-sm mt-1 tbl-filter" data-col="cid"
+                               placeholder="Filter..." style="font-size:0.7rem; padding:2px 4px;" oninput="filterTable(this)">
+                    </th>
+                    <th>
+                        Obligation
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="obligation"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="mandatory">Mandatory</option>
+                            <option value="recommended">Recommended</option>
+                            <option value="interpretive">Interpretive</option>
+                        </select>
+                    </th>
+                    <th>
+                        Priority
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="priority"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="essential">Essential</option>
+                            <option value="important">Important</option>
+                            <option value="nice_to_have">Nice to Have</option>
+                        </select>
+                    </th>
+                    <th>
+                        Score
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="score"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                            <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                        </select>
+                    </th>
                     <th>Minimum to Comply</th>
                     <th>Best Practice</th>
                 </tr>
             </thead>
             <tbody>
                 {% for gap in other_gaps %}
-                <tr>
+                <tr class="filterable-row" data-cid="{{ gap.criterion.id }}" data-obligation="{{ gap.criterion.obligation }}" data-priority="{{ gap.criterion.la_priority }}" data-score="{{ gap.response.score }}">
                     <td>
                         <code>{{ gap.criterion.id }}</code>
                         <br><small class="text-muted">{{ gap.criterion.category }}</small>
@@ -253,13 +283,50 @@
         {{ pillar }} — Detailed Scores
     </div>
     <div class="card-body p-0">
-        <table class="table table-sm mb-0">
+        <table class="table table-sm mb-0" data-filterable>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Obligation</th>
-                    <th>Category</th>
-                    <th>Score</th>
+                    <th>
+                        ID
+                        <input type="text" class="form-control form-control-sm mt-1 tbl-filter" data-col="cid"
+                               placeholder="Filter..." style="font-size:0.7rem; padding:2px 4px;" oninput="filterTable(this)">
+                    </th>
+                    <th>
+                        Obligation
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="obligation"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="mandatory">Mandatory</option>
+                            <option value="recommended">Recommended</option>
+                            <option value="interpretive">Interpretive</option>
+                        </select>
+                    </th>
+                    <th>
+                        Category
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="category"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            {% set seen_cats = [] %}
+                            {% for p, cs in criteria_by_pillar.items() %}
+                            {% for cc in cs %}
+                            {% if cc.category not in seen_cats %}
+                            {% if seen_cats.append(cc.category) %}{% endif %}
+                            <option value="{{ cc.category }}">{{ cc.category }}</option>
+                            {% endif %}
+                            {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </th>
+                    <th>
+                        Score
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="score"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="unscored">Unscored</option>
+                            <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                            <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                        </select>
+                    </th>
                     <th>Maturity Level</th>
                     <th>Evidence Summary</th>
                 </tr>
@@ -267,7 +334,8 @@
             <tbody>
                 {% for c in criteria %}
                 {% set resp = responses.get(c.id) %}
-                <tr{% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
+                <tr class="filterable-row" data-cid="{{ c.id }}" data-obligation="{{ c.obligation }}" data-category="{{ c.category }}" data-score="{{ resp.score if resp and resp.score is not none else '' }}"
+                    {% if c.la_scope == 'in_scope' %} style="background: rgba(239,68,68,0.08);"{% endif %}>
                     <td>
                         <code>{{ c.id }}</code>
                         {% if c.la_scope == 'in_scope' %}
@@ -365,5 +433,27 @@ new Chart(document.getElementById('categoryChart'), {
         plugins: { legend: { display: false } }
     }
 });
+
+/* ── Inline table filters ── */
+function filterTable(el) {
+    const table = el.closest('table[data-filterable]');
+    if (!table) return;
+    const filters = {};
+    table.querySelectorAll('.tbl-filter').forEach(f => {
+        const col = f.dataset.col;
+        const val = f.tagName === 'INPUT' ? f.value.toLowerCase().trim() : f.value;
+        if (val) filters[col] = val;
+    });
+    table.querySelectorAll('.filterable-row').forEach(row => {
+        let vis = true;
+        for (const [col, val] of Object.entries(filters)) {
+            const d = row.dataset[col] || '';
+            if (col === 'cid') { if (!d.toLowerCase().includes(val)) vis = false; }
+            else if (col === 'score' && val === 'unscored') { if (d !== '') vis = false; }
+            else if (d !== val) vis = false;
+        }
+        row.style.display = vis ? '' : 'none';
+    });
+}
 </script>
 {% endblock %}

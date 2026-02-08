@@ -144,12 +144,37 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" data-filterable>
                 <thead>
                     <tr>
-                        <th style="width: 80px;">ID</th>
-                        <th>Category</th>
-                        <th style="width: 60px;">Score</th>
+                        <th style="width: 80px;">
+                            ID
+                            <input type="text" class="form-control form-control-sm mt-1 tbl-filter" data-col="cid"
+                                   placeholder="Filter..." style="font-size:0.7rem; padding:2px 4px;" oninput="filterTable(this)">
+                        </th>
+                        <th>
+                            Category
+                            <select class="form-select form-select-sm mt-1 tbl-filter" data-col="category"
+                                    style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                                <option value="">All</option>
+                                {% set seen_cats = [] %}
+                                {% for item in available_items %}
+                                {% if item.category not in seen_cats %}
+                                {% if seen_cats.append(item.category) %}{% endif %}
+                                <option value="{{ item.category }}">{{ item.category }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </th>
+                        <th style="width: 60px;">
+                            Score
+                            <select class="form-select form-select-sm mt-1 tbl-filter" data-col="score"
+                                    style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                                <option value="">All</option>
+                                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                            </select>
+                        </th>
                         <th>What You Can Defer/Simplify</th>
                         <th>What You Must Still Do</th>
                         <th>Year 2 Requirement</th>
@@ -157,7 +182,7 @@
                 </thead>
                 <tbody>
                     {% for item in available_items %}
-                    <tr>
+                    <tr class="filterable-row" data-cid="{{ item.criterion_id }}" data-category="{{ item.category }}" data-score="{{ item.score if item.score is not none else '' }}">
                         <td>
                             <code>{{ item.criterion_id }}</code>
                             {% if item.is_deferral %}
@@ -258,11 +283,30 @@
             <small><i class="bi bi-info-circle me-1"></i><strong>Climate-only Year 1:</strong> Under the SSBJ transition provision, these items are required only to the extent they relate to <strong>climate-related</strong> risks and opportunities — not all sustainability topics. Full sustainability scope applies from Year 2.</small>
         </div>
         <div class="table-responsive">
-            <table class="table table-sm mb-0">
-                <thead><tr><th>ID</th><th>Category</th><th>Score</th><th>Status</th><th>Disclosure Requirement</th><th>Climate-Only Scope</th></tr></thead>
+            <table class="table table-sm mb-0" data-filterable>
+                <thead><tr>
+                    <th>
+                        ID
+                        <input type="text" class="form-control form-control-sm mt-1 tbl-filter" data-col="cid"
+                               placeholder="Filter..." style="font-size:0.7rem; padding:2px 4px;" oninput="filterTable(this)">
+                    </th>
+                    <th>Category</th>
+                    <th>
+                        Score
+                        <select class="form-select form-select-sm mt-1 tbl-filter" data-col="score"
+                                style="font-size:0.7rem; padding:2px 4px;" onchange="filterTable(this)">
+                            <option value="">All</option>
+                            <option value="unscored">Unscored</option>
+                            <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                            <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                        </select>
+                    </th>
+                    <th>Status</th><th>Disclosure Requirement</th><th>Climate-Only Scope</th>
+                </tr></thead>
                 <tbody>
                     {% for item in no_relief_items %}
-                    <tr {% if item.at_risk %}style="background: rgba(239,68,68,0.06);"{% endif %}>
+                    <tr class="filterable-row" data-cid="{{ item.criterion_id }}" data-score="{{ item.score if item.score is not none else '' }}"
+                        {% if item.at_risk %}style="background: rgba(239,68,68,0.06);"{% endif %}>
                         <td><code>{{ item.criterion_id }}</code></td>
                         <td><small>{{ item.category }}</small></td>
                         <td>{% if item.score is not none %}<span class="score-badge score-{{ item.score }}">{{ item.score }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
@@ -431,4 +475,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function filterTable(el) {
+    const table = el.closest('table[data-filterable]');
+    if (!table) return;
+    const filters = {};
+    table.querySelectorAll('.tbl-filter').forEach(f => {
+        const col = f.dataset.col;
+        const val = f.tagName === 'INPUT' ? f.value.toLowerCase().trim() : f.value;
+        if (val) filters[col] = val;
+    });
+    table.querySelectorAll('.filterable-row').forEach(row => {
+        let vis = true;
+        for (const [col, val] of Object.entries(filters)) {
+            const d = row.dataset[col] || '';
+            if (col === 'cid') { if (!d.toLowerCase().includes(val)) vis = false; }
+            else if (col === 'score' && val === 'unscored') { if (d !== '') vis = false; }
+            else if (d !== val) vis = false;
+        }
+        row.style.display = vis ? '' : 'none';
+    });
+}
+</script>
 {% endblock %}
