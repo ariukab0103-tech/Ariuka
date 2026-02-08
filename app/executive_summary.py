@@ -55,11 +55,13 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
     # ---- Timeline (defensive: works even if roadmap_data is None) ----
     if roadmap_data:
         months_remaining = roadmap_data["months_remaining"]
-        urgency = roadmap_data["urgency"]
+        months_to_assurance = roadmap_data.get("months_to_assurance", months_remaining + 12)
+        urgency = roadmap_data.get("disclosure_urgency", roadmap_data["urgency"])
+        assurance_urgency = roadmap_data.get("assurance_urgency", urgency)
         compliance_year = roadmap_data["compliance_year"]
     else:
         # Fallback: compute independently from assessment
-        from app.roadmap import _extract_year
+        from app.roadmap import _extract_year, _urgency_level
         import calendar
         fy_end_month = getattr(assessment, "fy_end_month", 3) or 3
         comp_year = _extract_year(assessment.fiscal_year)
@@ -72,15 +74,10 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
         fy_end_day = calendar.monthrange(adj_year, fy_end_month)[1]
         comp_date = date(adj_year, fy_end_month, fy_end_day)
         months_remaining = (comp_date.year - date.today().year) * 12 + (comp_date.month - date.today().month)
+        months_to_assurance = months_remaining + 12
         compliance_year = comp_year
-        if months_remaining <= 6:
-            urgency = "critical"
-        elif months_remaining <= 12:
-            urgency = "tight"
-        elif months_remaining <= 24:
-            urgency = "adequate"
-        else:
-            urgency = "comfortable"
+        urgency = _urgency_level(months_remaining)
+        assurance_urgency = _urgency_level(months_to_assurance)
 
     # ---- Standard classification (SSBJ No.1 General vs No.2 Climate) ----
     s1_gaps = [g for g in gaps if criteria_map.get(g["id"], {}).get("standard") == "General (S1)"]
@@ -386,7 +383,9 @@ def generate_executive_summary(assessment, responses_dict, pillar_scores, roadma
         "la_gaps": la_gaps,
         "pillar_scores": pillar_scores,
         "months_remaining": months_remaining,
+        "months_to_assurance": months_to_assurance,
         "urgency": urgency,
+        "assurance_urgency": assurance_urgency,
         "compliance_year": compliance_year,
         "verdict": verdict,
         "verdict_label": verdict_label,

@@ -89,23 +89,36 @@
                            value="{{ assessment.entity_name }}" required>
                 </div>
                 <div class="col-md-3 mb-3">
-                    <label for="edit_fiscal" class="form-label">Fiscal Year (affects roadmap)</label>
+                    <label for="edit_fiscal" class="form-label">First Disclosure FY</label>
                     <select class="form-select" id="edit_fiscal" name="fiscal_year" required>
                         <option value="FY2025 (ending March 2026)" {% if 'FY2025' in assessment.fiscal_year %}selected{% endif %}>FY2025 — Voluntary</option>
-                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 — Phase 1 (¥3T+)</option>
-                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 — Phase 2 (¥1T+)</option>
-                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 — Phase 3 (¥500B+)</option>
-                        <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029</option>
+                        <option value="FY2026 (ending March 2027)" {% if 'FY2026' in assessment.fiscal_year %}selected{% endif %}>FY2026 (ending Mar 2027)</option>
+                        <option value="FY2027 (ending March 2028)" {% if 'FY2027' in assessment.fiscal_year %}selected{% endif %}>FY2027 (ending Mar 2028)</option>
+                        <option value="FY2028 (ending March 2029)" {% if 'FY2028' in assessment.fiscal_year %}selected{% endif %}>FY2028 (ending Mar 2029)</option>
+                        <option value="FY2029 (ending March 2030)" {% if 'FY2029' in assessment.fiscal_year %}selected{% endif %}>FY2029 (ending Mar 2030)</option>
                     </select>
                 </div>
-                <div class="col-md-1 mb-3">
-                    <label for="edit_fy_end_month" class="form-label">FY End</label>
+                <div class="col-md-3 mb-3">
+                    <label for="edit_market_cap" class="form-label">Market Cap Phase</label>
+                    <select class="form-select" id="edit_market_cap" name="market_cap_phase">
+                        {% set current_phase = assessment.market_cap_phase or 1 %}
+                        <option value="1" {% if current_phase == 1 %}selected{% endif %}>Phase 1: ¥3T+ (disclosure Mar 2027, assurance Mar 2028)</option>
+                        <option value="2" {% if current_phase == 2 %}selected{% endif %}>Phase 2: ¥1T+ (disclosure Mar 2028, assurance Mar 2029)</option>
+                        <option value="3" {% if current_phase == 3 %}selected{% endif %}>Phase 3: ¥500B+ (disclosure Mar 2029, assurance Mar 2030)</option>
+                        <option value="4" {% if current_phase == 4 %}selected{% endif %}>Phase 4: Other Prime (TBD, 2030s)</option>
+                        <option value="0" {% if current_phase == 0 %}selected{% endif %}>Voluntary early adopter</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-2 mb-3">
+                    <label for="edit_fy_end_month" class="form-label">FY End Month</label>
                     <select class="form-select" id="edit_fy_end_month" name="fy_end_month">
                         {% set current_fy_month = assessment.fy_end_month or 3 %}
-                        <option value="3" {% if current_fy_month == 3 %}selected{% endif %}>3月</option>
-                        <option value="6" {% if current_fy_month == 6 %}selected{% endif %}>6月</option>
-                        <option value="9" {% if current_fy_month == 9 %}selected{% endif %}>9月</option>
-                        <option value="12" {% if current_fy_month == 12 %}selected{% endif %}>12月</option>
+                        <option value="3" {% if current_fy_month == 3 %}selected{% endif %}>3月 (March)</option>
+                        <option value="6" {% if current_fy_month == 6 %}selected{% endif %}>6月 (June)</option>
+                        <option value="9" {% if current_fy_month == 9 %}selected{% endif %}>9月 (September)</option>
+                        <option value="12" {% if current_fy_month == 12 %}selected{% endif %}>12月 (December)</option>
                     </select>
                 </div>
             </div>

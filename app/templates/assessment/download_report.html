@@ -86,23 +86,25 @@
                 <small class="text-muted">Assessed</small>
             </div></div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card"><div class="card-body text-center py-2">
                 {% if exec_summary.months_remaining is not none %}
-                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.months_remaining }} months</div>
-                <small class="text-muted">To Compliance (FY{{ exec_summary.compliance_year }})</small>
+                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.months_remaining }}mo</div>
+                <small class="text-muted">To Disclosure</small>
+                <br><span class="badge bg-{% if exec_summary.urgency == 'critical' %}danger{% elif exec_summary.urgency == 'tight' %}warning text-dark{% elif exec_summary.urgency == 'adequate' %}info{% else %}success{% endif %}">{{ exec_summary.urgency|upper }}</span>
                 {% else %}
                 <div class="fw-bold" style="font-size: 1.3rem;">—</div>
                 <small class="text-muted">Timeline TBD</small>
                 {% endif %}
             </div></div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="card"><div class="card-body text-center py-2">
-                <div class="fw-bold" style="font-size: 1.3rem;">
-                    <span class="badge bg-{% if exec_summary.urgency == 'critical' %}danger{% elif exec_summary.urgency == 'tight' %}warning text-dark{% elif exec_summary.urgency == 'adequate' %}info{% else %}success{% endif %}">{{ exec_summary.urgency|upper }}</span>
-                </div>
-                <small class="text-muted">Timeline Urgency</small>
+                {% if exec_summary.months_to_assurance is not none %}
+                <div class="fw-bold" style="font-size: 1.3rem;">{{ exec_summary.months_to_assurance }}mo</div>
+                <small class="text-muted">To Assurance</small>
+                <br><span class="badge bg-{% if exec_summary.assurance_urgency == 'critical' %}danger{% elif exec_summary.assurance_urgency == 'tight' %}warning text-dark{% elif exec_summary.assurance_urgency == 'adequate' %}info{% else %}success{% endif %}">{{ exec_summary.assurance_urgency|upper }}</span>
+                {% endif %}
             </div></div>
         </div>
     </div>

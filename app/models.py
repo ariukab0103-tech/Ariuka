@@ -53,6 +53,7 @@ class Assessment(db.Model):
     entity_name = db.Column(db.String(256), nullable=False)
     fiscal_year = db.Column(db.String(100), nullable=False)
     fy_end_month = db.Column(db.Integer, default=3)  # Month FY ends: 3=March (Japan default), 12=December, etc.
+    market_cap_phase = db.Column(db.Integer, default=1)  # FSA phase: 1=¥3T+, 2=¥1T+, 3=¥500B+, 4=Other Prime
     status = db.Column(db.String(20), default="draft")
     # Status: draft, in_progress, completed, under_review, reviewed
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
