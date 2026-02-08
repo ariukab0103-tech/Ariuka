@@ -620,7 +620,14 @@ def bulk_upload(assessment_id):
 @assessment_bp.route("/<int:assessment_id>/auto-assess", methods=["GET", "POST"])
 @login_required
 def auto_assess(assessment_id):
-    """Run auto-assessment on all uploaded documents."""
+    """Run auto-assessment on all uploaded documents.
+
+    Launches the AI assessment in a background thread and returns
+    immediately so that Render's proxy doesn't time out (~30s limit).
+    The background thread saves results directly to the database.
+    """
+    import threading
+
     assessment = db.session.get(Assessment, assessment_id)
     denied = _require_access(assessment, "edit")
     if denied:
@@ -630,9 +637,12 @@ def auto_assess(assessment_id):
     if request.method == "GET":
         return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-    try:
-        from app.analyzer import auto_assess_all
+    # Prevent double-click while already assessing
+    if assessment.status == "assessing":
+        flash("Assessment is already running. Please wait and refresh the page.", "info")
+        return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
+    try:
         # Combine text from all assessment documents
         docs = assessment.documents.all()
         if not docs:
@@ -644,32 +654,59 @@ def auto_assess(assessment_id):
             flash("Could not extract text from uploaded documents. Try PDF, DOCX, XLSX, CSV, or TXT files.", "warning")
             return redirect(url_for("assessment.view", assessment_id=assessment_id))
 
-        # Run auto-assessment (AI if API key set, otherwise keyword fallback)
-        results, method, ai_error = auto_assess_all(combined_text)
-
-        # Update responses
-        updated = 0
-        for resp in assessment.responses.all():
-            if resp.criterion_id in results:
-                score, evidence, notes = results[resp.criterion_id]
-                if score > 0:  # Only update if we found something
-                    resp.score = score
-                    resp.evidence = evidence
-                    resp.notes = notes
-                    updated += 1
-
-        if assessment.status in ("draft", "completed", "under_review", "reviewed"):
-            assessment.status = "in_progress"
-
+        # Mark as assessing BEFORE starting background thread
+        assessment.status = "assessing"
         db.session.commit()
 
-        if method == "ai":
-            flash(f"AI assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored by Claude AI. Review and adjust scores as needed.", "success")
-        elif ai_error:
-            flash(f"AI assessment FAILED: {ai_error}", "danger")
-            flash(f"Fell back to keyword-based scoring. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Fix the API issue and try again for accurate AI analysis.", "warning")
-        else:
-            flash(f"Keyword-based assessment complete. {updated} of {len(SSBJ_CRITERIA)} criteria scored. Set ANTHROPIC_API_KEY for AI-powered analysis.", "warning")
+        # Run assessment in background thread — returns immediately
+        # so Render's proxy doesn't time out
+        app = current_app._get_current_object()
+
+        def _run_assessment():
+            with app.app_context():
+                try:
+                    from app.analyzer import auto_assess_all
+
+                    results, method, ai_error = auto_assess_all(combined_text)
+
+                    # Reload assessment in this thread's session
+                    a = db.session.get(Assessment, assessment_id)
+                    if not a:
+                        return
+
+                    updated = 0
+                    for resp in a.responses.all():
+                        if resp.criterion_id in results:
+                            score, evidence, notes = results[resp.criterion_id]
+                            if score > 0:
+                                resp.score = score
+                                resp.evidence = evidence
+                                resp.notes = notes
+                                updated += 1
+
+                    a.status = "in_progress"
+                    db.session.commit()
+                    app.logger.info(
+                        f"Background assessment done: {updated} criteria, method={method}"
+                    )
+                except Exception as e:
+                    app.logger.error(f"Background assessment failed: {e}")
+                    try:
+                        a = db.session.get(Assessment, assessment_id)
+                        if a and a.status == "assessing":
+                            a.status = "in_progress"
+                            db.session.commit()
+                    except Exception:
+                        pass
+
+        thread = threading.Thread(target=_run_assessment, daemon=True)
+        thread.start()
+
+        flash(
+            "AI assessment started! Results will appear in about 1 minute. "
+            "Please refresh this page shortly.",
+            "info",
+        )
 
     except Exception as e:
         import traceback
